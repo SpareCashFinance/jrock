@@ -13,7 +13,7 @@ export function RewardExplainer() {
             <article key={step.n} className="border-t border-[rgba(247,147,26,0.28)] pt-5">
               <p className="font-mono text-sm text-[var(--orange)]">{step.n}</p>
               <h3 className="display mt-2 text-4xl">{step.title}</h3>
-              <p className="mt-3 text-sm leading-6 text-[var(--muted)]">{step.body}</p>
+              <p className="mt-3 text-sm leading-6 text-[var(--dim)]">{step.body}</p>
             </article>
           ))}
         </div>

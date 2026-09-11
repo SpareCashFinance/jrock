@@ -24,7 +24,7 @@ export function Stat({ label, value, suffix, note }: StatProps) {
           value
         )}
       </p>
-      {note ? <p className="mt-1 text-xs text-[var(--muted)]">{note}</p> : null}
+      {note ? <p className="mt-1 text-xs text-[var(--dim)]">{note}</p> : null}
     </div>
   );
 }

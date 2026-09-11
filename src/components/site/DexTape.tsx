@@ -50,7 +50,7 @@ export function DexTape() {
 
       <div className="tape-scanlines relative overflow-hidden rounded-[22px] bg-black shadow-[inset_0_0_0_1px_rgba(0,0,0,0.35)]">
         <BorderBeam colorFrom="#f7931a" colorTo="#d4b46a" size={140} duration={10} />
-        <div className="relative min-h-[360px] w-full sm:min-h-[460px] lg:min-h-[520px]">
+        <div className="relative min-h-[280px] w-full sm:min-h-[360px] lg:min-h-[400px]">
           {live && inView ? (
             <>
               {!loaded ? <ChartSkeleton /> : null}

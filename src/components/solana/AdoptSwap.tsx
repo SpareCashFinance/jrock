@@ -6,6 +6,7 @@ import { LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import { NetworkSolana } from "@web3icons/react";
 import { BorderBeam } from "@/components/ui/border-beam";
 import { Card } from "@/components/ui/card";
+import { SpringButton } from "@/components/ui/spring-button";
 import { hasMint, project } from "@/lib/config";
 import { formatAmount } from "@/lib/format";
 import { WSOL_MINT } from "@/lib/solana";
@@ -168,51 +169,39 @@ export function AdoptSwap() {
         : `Adopt with ${amount || "0"} SOL`;
 
   return (
-    <section id="adopt" className="section pt-6">
-      <Card className="relative overflow-hidden border-[rgba(232,210,176,0.14)] bg-[#0c1320]/80 p-6 sm:p-8">
-        <BorderBeam colorFrom="#f7931a" colorTo="#d4b46a" size={110} duration={8} />
-        <div className="flex flex-wrap items-end justify-between gap-4">
+    <section id="adopt" className="section py-6">
+      <Card className="relative mx-auto max-w-[440px] overflow-hidden border-[rgba(232,210,176,0.14)] bg-[#0c1320]/85 p-4 sm:p-5">
+        <BorderBeam colorFrom="#f7931a" colorTo="#d4b46a" size={80} duration={8} />
+        <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="kicker">Kennel desk · Jupiter</p>
-            <h2 className="display mt-3 text-5xl text-white sm:text-7xl">Adopt $JROCK</h2>
-            <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--dim)]">
-              Enter SOL and we quote the $JROCK you get before you sign. Same Jupiter
-              routing we run on LaunchHouse.
-            </p>
+            <p className="kicker">Jupiter desk</p>
+            <h2 className="mt-1 text-lg font-semibold tracking-tight text-white">Adopt $JROCK</h2>
           </div>
-          <div className="flex items-center gap-2 text-xs tracking-[0.16em] uppercase text-[var(--dim)]">
-            <NetworkSolana variant="branded" size={16} />
-            SOL
-            <span className="text-[var(--gold)]">→</span>
-            {project.ticker}
+          <div className="flex items-center gap-1.5 text-[11px] text-[var(--dim)]">
+            <NetworkSolana variant="branded" size={14} />
+            SOL → {project.ticker}
           </div>
         </div>
 
-        <div className="mt-8 grid gap-3">
-          <label className="block rounded-2xl border border-[rgba(232,210,176,0.16)] bg-[#060a12] p-4">
+        <div className="mt-4 space-y-2">
+          <label className="block rounded-xl border border-[rgba(232,210,176,0.14)] bg-[#060a12] px-3 py-2.5">
             <span className="kicker">You pay</span>
-            <div className="mt-2 flex items-end justify-between gap-3">
+            <div className="mt-1 flex items-center justify-between gap-3">
               <input
                 value={amount}
                 onChange={(event) => setAmount(event.target.value)}
                 inputMode="decimal"
-                className="w-full bg-transparent font-mono text-3xl text-white outline-none sm:text-4xl"
+                className="w-full bg-transparent font-mono text-2xl text-white outline-none"
                 placeholder="0.25"
               />
-              <span className="shrink-0 font-mono text-sm tracking-[0.16em] text-[var(--gold)]">SOL</span>
+              <span className="shrink-0 text-xs font-semibold text-[var(--gold)]">SOL</span>
             </div>
           </label>
 
-          <div className="flex justify-center">
-            <span className="grid h-9 w-9 place-items-center rounded-full border border-[rgba(232,210,176,0.16)] bg-[#0c1320] text-[var(--gold)]">
-              ↓
-            </span>
-          </div>
-
-          <div className="rounded-2xl border border-[rgba(247,147,26,0.28)] bg-[#0a1008] p-4">
-            <p className="kicker">You receive</p>
-            <div className="mt-2 flex items-end justify-between gap-3">
-              <p className="min-w-0 font-mono text-3xl text-white sm:text-4xl">
+          <label className="block rounded-xl border border-[rgba(247,147,26,0.28)] bg-[#0a1008] px-3 py-2.5">
+            <span className="kicker">You receive</span>
+            <div className="mt-1 flex items-center justify-between gap-3">
+              <p className="min-w-0 font-mono text-2xl text-white">
                 {outTokens != null ? (
                   <NumberFlow
                     value={outTokens}
@@ -226,78 +215,58 @@ export function AdoptSwap() {
                   <span className="text-[var(--stone)]">Mint pending</span>
                 )}
               </p>
-              <span className="shrink-0 font-mono text-sm tracking-[0.16em] text-[var(--orange)]">
-                {project.ticker}
-              </span>
+              <span className="shrink-0 text-xs font-semibold text-[var(--orange)]">{project.ticker}</span>
             </div>
-            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--dim)]">
-              <span>
-                Min received{" "}
-                <span className="text-white">
-                  {minTokens != null
-                    ? `${formatAmount(minTokens, minTokens >= 1000 ? 2 : 4)} ${project.ticker}`
-                    : "—"}
-                </span>
-              </span>
-              <span>
-                Rate{" "}
-                <span className="text-white">
-                  {rate != null
-                    ? `1 SOL ≈ ${formatAmount(rate, rate >= 1000 ? 0 : 2)} ${project.ticker}`
-                    : "—"}
-                </span>
-              </span>
-              <span>1.5% slippage</span>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2 pt-2">
-            {PRESETS.map((value) => (
-              <button
-                key={value}
-                type="button"
-                className="btn btn-ghost min-h-10 px-3 text-[11px]"
-                onClick={() => setAmount(String(value))}
-              >
-                {value} SOL
-              </button>
-            ))}
-            {displayBal > 0 ? (
-              <button
-                type="button"
-                className="btn btn-ghost min-h-10 px-3 text-[11px]"
-                onClick={() => setAmount(Math.max(0, displayBal - 0.02).toFixed(3))}
-              >
-                Max
-              </button>
-            ) : null}
-          </div>
-          <p className="text-xs text-[var(--dim)]">
-            {solana.connected
-              ? `Wallet balance ${displayBal.toFixed(3)} SOL`
-              : "Connect a wallet to sign. The quote above does not need a wallet."}
-          </p>
-
-          {solana.connected ? (
-            <button
-              type="button"
-              className="btn btn-primary mt-2 w-full"
-              disabled={!hasMint() || !amountRaw || Boolean(phase) || outTokens == null}
-              onClick={() => void swap()}
-            >
-              {phase || receiveLabel}
-            </button>
-          ) : (
-            <AdoptButton className="btn btn-primary mt-2 w-full" idleLabel="Connect wallet to adopt" />
-          )}
+          </label>
         </div>
 
-        {error ? <p className="mt-4 text-sm text-[#ff8a6a]">{error}</p> : null}
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {PRESETS.map((value) => (
+            <button key={value} type="button" className="chip" onClick={() => setAmount(String(value))}>
+              {value} SOL
+            </button>
+          ))}
+          {displayBal > 0 ? (
+            <button
+              type="button"
+              className="chip"
+              onClick={() => setAmount(Math.max(0, displayBal - 0.02).toFixed(3))}
+            >
+              Max
+            </button>
+          ) : null}
+        </div>
+
+        <p className="mt-2 text-[11px] leading-4 text-[var(--dim)]">
+          {solana.connected
+            ? `Balance ${displayBal.toFixed(3)} SOL · min ${minTokens != null ? formatAmount(minTokens, 2) : "—"} ${project.ticker} · 1.5% slip`
+            : `Quote before you sign · min ${minTokens != null ? formatAmount(minTokens, 2) : "—"} · 1.5% slip`}
+          {rate != null ? ` · 1 SOL ≈ ${formatAmount(rate, rate >= 1000 ? 0 : 2)}` : ""}
+        </p>
+
+        {solana.connected ? (
+          <SpringButton
+            type="button"
+            className="btn-primary mt-3 w-full"
+            disabled={!hasMint() || !amountRaw || Boolean(phase) || outTokens == null}
+            onClick={() => void swap()}
+          >
+            {phase || receiveLabel}
+          </SpringButton>
+        ) : (
+          <AdoptButton
+            shine
+            className="mt-3 w-full"
+            idleLabel="Connect wallet to adopt"
+          />
+        )}
+
+        {error ? <p className="mt-3 text-sm text-[#ff8a6a]">{error}</p> : null}
         {liveQuote?.error && hasMint() ? (
-          <p className="mt-4 text-sm text-[var(--dim)]">{liveQuote.error}</p>
+          <p className="mt-3 text-sm text-[var(--dim)]">{liveQuote.error}</p>
         ) : null}
         {signature ? (
-          <div className="mt-4 space-y-1">
+          <div className="mt-3 space-y-1">
             {received != null ? (
               <p className="text-sm text-white">
                 You received{" "}

@@ -1,3 +1,4 @@
+import { BitcoinRain } from "@/components/brand/BitcoinRain";
 import { AdoptSwap } from "@/components/solana/AdoptSwap";
 import { Header } from "./Header";
 import { Hero } from "./Hero";
@@ -16,6 +17,7 @@ import type { MarketSnapshot } from "@/lib/market";
 export function Home({ market }: { market: MarketSnapshot }) {
   return (
     <>
+      <BitcoinRain />
       <Header />
       <main>
         <Hero />

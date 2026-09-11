@@ -26,7 +26,7 @@ export function Header() {
             </span>
           </span>
         </a>
-        <nav className="hidden items-center gap-6 text-xs tracking-[0.18em] uppercase text-[var(--muted)] md:flex">
+        <nav className="hidden items-center gap-5 text-xs font-medium text-[var(--dim)] md:flex">
           {nav.map((item) => (
             <a key={item.href} href={item.href} className="hover:text-white">
               {item.label}
@@ -37,10 +37,10 @@ export function Header() {
           <CopyButton
             value={project.mint}
             label="Copy"
-            className="btn btn-ghost hidden min-h-11 px-4 text-[11px] sm:inline-flex"
+            className="btn btn-ghost hidden px-3 text-xs sm:inline-flex"
           />
           <AdoptButton
-            className="btn btn-primary min-h-11 px-4 text-[11px]"
+            className="px-3 text-xs"
             idleLabel="Connect wallet"
             connectedLabel="Adopt $JROCK"
           />

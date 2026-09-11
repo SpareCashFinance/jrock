@@ -36,7 +36,7 @@ export function Hero() {
             flipsPerChar={4}
           />
         </div>
-        <h1 className="display text-[clamp(3.2rem,10vw,7.4rem)] text-white">
+        <h1 className="display text-[clamp(2.6rem,8vw,5.6rem)] text-white">
           The pet rock
           <br />
           that pays in <span className="text-[var(--orange)]">Bitcoin.</span>
@@ -55,7 +55,7 @@ export function Hero() {
               onMouseEnter={() => setDropping(true)}
               onMouseLeave={() => setDropping(false)}
             >
-              <AdoptButton className="btn btn-primary relative overflow-hidden" />
+              <AdoptButton shine />
             </span>
           </Magnet>
           <a className="btn btn-ghost" href="#rewards">
