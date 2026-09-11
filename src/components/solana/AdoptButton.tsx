@@ -41,7 +41,6 @@ export function AdoptButton({
   function onClick() {
     if (!connected) {
       openModal();
-      window.setTimeout(scrollToAdopt, 250);
       return;
     }
     scrollToAdopt();
