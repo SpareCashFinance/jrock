@@ -215,6 +215,8 @@ a {
 }
 
 .btn {
+  position: relative;
+  overflow: hidden;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -227,6 +229,7 @@ a {
   letter-spacing: 0.01em;
   text-transform: none;
   white-space: nowrap;
+  isolation: isolate;
   transition:
     transform 160ms ease,
     background-color 160ms ease,
@@ -250,14 +253,56 @@ a {
 }
 
 .btn-ghost {
-  border: 1px solid rgba(232, 210, 176, 0.28);
-  background: rgba(6, 10, 18, 0.35);
+  border: 1px solid rgba(232, 210, 176, 0.22);
+  background: rgba(12, 19, 32, 0.55);
   color: var(--cream);
+  backdrop-filter: blur(14px) saturate(140%);
 }
 
 .btn-ghost:hover {
   border-color: rgba(247, 147, 26, 0.55);
+  background: rgba(247, 147, 26, 0.1);
   color: white;
+}
+
+.lh-shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    110deg,
+    transparent 35%,
+    color-mix(in srgb, #fff 34%, transparent) 50%,
+    transparent 65%
+  );
+  transform: translateX(-130%);
+  opacity: 0;
+}
+
+@media (hover: hover) {
+  .lh-shine:hover::after {
+    opacity: 1;
+    animation: lh-shine-sweep 0.7s ease-out;
+  }
+}
+
+.lh-shine:focus-visible::after {
+  opacity: 1;
+  animation: lh-shine-sweep 0.7s ease-out;
+}
+
+@keyframes lh-shine-sweep {
+  to {
+    transform: translateX(130%);
+  }
+}
+
+.dock {
+  background: rgba(12, 19, 32, 0.58);
+  border: 1px solid rgba(232, 210, 176, 0.14);
+  backdrop-filter: blur(18px) saturate(150%);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
 }
 
 .kicker {
@@ -412,6 +457,7 @@ a {
   .mascot-idle,
   .coin-drop,
   .bitcoin-rain,
+  .lh-shine::after,
   .unfold {
     animation: none !important;
   }

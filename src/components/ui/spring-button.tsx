@@ -15,7 +15,7 @@ export function SpringButton({
       whileHover={{ scale: 1.03 }}
       whileTap={{ scale: 0.97 }}
       transition={spring}
-      className={cn("btn", className)}
+      className={cn("btn lh-shine", className)}
       {...props}
     >
       {children}

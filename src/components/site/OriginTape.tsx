@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Pause, Play, Volume2, VolumeX } from "lucide-react";
+import { HouseButton } from "@/components/ui/house-button";
 
 const captions = [
   "He called it a pet rock.",
@@ -110,14 +111,14 @@ export function OriginTape() {
           </motion.p>
         </AnimatePresence>
         <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
-          <button type="button" className="btn btn-ghost min-h-9 px-3 text-[11px]" onClick={togglePlay}>
+          <HouseButton className="min-h-9 px-3 text-[11px]" onClick={togglePlay}>
             {playing ? <Pause className="size-4" /> : <Play className="size-4" />}
             {playing ? "Hold tape" : "Play tape"}
-          </button>
-          <button type="button" className="btn btn-ghost min-h-9 px-3 text-[11px]" onClick={toggleMute}>
+          </HouseButton>
+          <HouseButton className="min-h-9 px-3 text-[11px]" onClick={toggleMute}>
             {muted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
             {muted ? "Muted" : "Sound on"}
-          </button>
+          </HouseButton>
         </div>
       </div>
     </div>

@@ -4,6 +4,7 @@ import { NetworkSolana, TokenWBTC } from "@web3icons/react";
 import { Card } from "@/components/ui/card";
 import { displayValue, project } from "@/lib/config";
 import { explorerUrl, stonkfunTokenUrl } from "@/lib/links";
+import { HouseButton } from "@/components/ui/house-button";
 import { CopyButton } from "./CopyButton";
 
 const rows = [
@@ -39,16 +40,16 @@ export function TokenDetails() {
         </dl>
         <div className="flex flex-wrap gap-3 border-t border-[rgba(232,210,176,0.08)] p-5">
           <CopyButton value={project.mint} />
-          <a className="btn btn-primary" href="#adopt">
+          <HouseButton variant="primary" href="#adopt">
             Adopt $JROCK
-          </a>
-          <a className="btn btn-ghost" href={stonkfunTokenUrl()}>
+          </HouseButton>
+          <HouseButton href={stonkfunTokenUrl()} target="_blank">
             stonk.fun
-          </a>
+          </HouseButton>
           {explorerUrl() ? (
-            <a className="btn btn-ghost" href={explorerUrl()}>
+            <HouseButton href={explorerUrl()} target="_blank">
               Solana Explorer
-            </a>
+            </HouseButton>
           ) : null}
         </div>
       </Card>

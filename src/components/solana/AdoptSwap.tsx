@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import NumberFlow from "@number-flow/react";
 import { LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import { NetworkSolana } from "@web3icons/react";
+import { LiquidSurface } from "@/components/brand/LiquidSurface";
 import { BorderBeam } from "@/components/ui/border-beam";
 import { Card } from "@/components/ui/card";
 import { SpringButton } from "@/components/ui/spring-button";
@@ -169,7 +170,8 @@ export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
         : `Adopt with ${amount || "0"} SOL`;
 
   const card = (
-      <Card className="relative h-full overflow-hidden border-[rgba(232,210,176,0.14)] bg-[#0c1320]/85 p-4 sm:p-5">
+    <LiquidSurface intensity="panel" radius={24} className="h-full">
+      <Card className="relative h-full overflow-hidden border-[rgba(232,210,176,0.14)] bg-[#0c1320]/70 p-4 sm:p-5">
         <BorderBeam colorFrom="#f7931a" colorTo="#d4b46a" size={80} duration={8} />
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -284,6 +286,7 @@ export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
           </div>
         ) : null}
       </Card>
+    </LiquidSurface>
   );
 
   if (embedded) return card;

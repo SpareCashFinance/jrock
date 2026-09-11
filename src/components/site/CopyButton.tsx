@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { HouseButton } from "@/components/ui/house-button";
 
 type CopyButtonProps = {
   value: string;
@@ -12,7 +13,7 @@ type CopyButtonProps = {
 export function CopyButton({
   value,
   label = "Copy contract",
-  className = "btn btn-ghost",
+  className,
   emptyLabel = "Contract pending",
 }: CopyButtonProps) {
   const [copied, setCopied] = useState(false);
@@ -26,14 +27,8 @@ export function CopyButton({
   }
 
   return (
-    <button
-      type="button"
-      className={className}
-      onClick={onCopy}
-      disabled={!ready}
-      aria-live="polite"
-    >
+    <HouseButton className={className} onClick={onCopy} disabled={!ready} aria-live="polite">
       {ready ? (copied ? "Copied" : label) : emptyLabel}
-    </button>
+    </HouseButton>
   );
 }

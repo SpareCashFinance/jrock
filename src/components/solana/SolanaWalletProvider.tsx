@@ -120,7 +120,7 @@ function SolanaWalletModal({
         {connected ? (
           <button
             type="button"
-            className="btn btn-ghost mt-2 w-full"
+            className="btn btn-ghost lh-shine mt-2 w-full"
             onClick={() => {
               void disconnect();
               onOpenChange(false);

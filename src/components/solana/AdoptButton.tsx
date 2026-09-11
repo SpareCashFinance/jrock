@@ -4,7 +4,7 @@ import { useSyncExternalStore } from "react";
 import { NetworkSolana } from "@web3icons/react";
 import { useSolanaWallet } from "./SolanaWalletProvider";
 import { shortenAddress } from "@/lib/format";
-import { ShimmerButton } from "@/components/ui/shimmer-button";
+import { HouseButton } from "@/components/ui/house-button";
 import { SpringButton } from "@/components/ui/spring-button";
 import { cn } from "@/lib/utils";
 
@@ -47,27 +47,15 @@ export function AdoptButton({
     scrollToAdopt();
   }
 
-  if (shine) {
-    return (
-      <ShimmerButton
-        background="#f7931a"
-        shimmerColor="#fff4d6"
-        className={cn("h-11 px-5 text-sm font-semibold text-[#1a0f04] shadow-[0_8px_18px_rgba(247,147,26,0.24)]", className)}
-        onClick={onClick}
-      >
-        <span className="relative z-10 inline-flex items-center gap-2">
-          <NetworkSolana variant="branded" size={16} />
-          {label}
-        </span>
-      </ShimmerButton>
-    );
-  }
-
   return (
-    <SpringButton type="button" className={cn("btn-primary", className)} onClick={onClick}>
+    <HouseButton
+      variant="primary"
+      className={cn(shine ? "h-11 px-5" : "px-3 text-xs", className)}
+      onClick={onClick}
+    >
       <NetworkSolana variant="branded" size={16} />
       {label}
-    </SpringButton>
+    </HouseButton>
   );
 }
 

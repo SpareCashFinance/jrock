@@ -12,6 +12,7 @@ import { formatAmount, formatCount, formatUsd, shortenAddress, timeAgo } from "@
 import { explorerUrl } from "@/lib/links";
 import type { MarketSnapshot } from "@/lib/market";
 import { useMarketSnapshot } from "@/lib/market-client";
+import { HouseButton } from "@/components/ui/house-button";
 import { CopyButton } from "./CopyButton";
 
 const statusLabel: Record<MarketSnapshot["status"], string> = {
@@ -82,16 +83,16 @@ export function RewardTerminal({ market: initial }: { market: MarketSnapshot }) 
 
         <div className="mt-8 flex flex-wrap items-center gap-3 text-sm text-[var(--dim)]">
           <span>Mint {shortenAddress(project.mint || "pending")}</span>
-          <CopyButton value={project.mint} className="btn btn-ghost min-h-10 px-3 text-[11px]" />
+          <CopyButton value={project.mint} className="px-3 text-[11px]" />
           {explorerUrl() ? (
-            <a className="btn btn-ghost min-h-10 px-3 text-[11px]" href={explorerUrl()}>
+            <HouseButton className="px-3 text-[11px]" href={explorerUrl()} target="_blank">
               Explorer
-            </a>
+            </HouseButton>
           ) : null}
           {explorerUrl(project.rewardMint) ? (
-            <a className="btn btn-ghost min-h-10 px-3 text-[11px]" href={explorerUrl(project.rewardMint)}>
+            <HouseButton className="px-3 text-[11px]" href={explorerUrl(project.rewardMint)} target="_blank">
               WBTC mint
-            </a>
+            </HouseButton>
           ) : (
             <span>WBTC mint · To be confirmed</span>
           )}

@@ -1,9 +1,12 @@
 import { copy } from "@/lib/config";
+import { LiquidSurface } from "@/components/brand/LiquidSurface";
+import { HouseButton } from "@/components/ui/house-button";
 
 export function RewardExplainer() {
   return (
     <section className="section pt-0" id="how">
-      <div className="glass-panel rounded-[32px] p-6 sm:p-10">
+      <LiquidSurface intensity="panel" radius={32} className="rounded-[32px]">
+        <div className="p-6 sm:p-10">
         <p className="kicker">How the rock gets paid</p>
         <h2 className="display mt-3 text-5xl text-white sm:text-7xl">
           Three steps. Zero promises.
@@ -25,10 +28,11 @@ export function RewardExplainer() {
             </li>
           ))}
         </ul>
-        <a className="btn btn-primary mt-8" href="#adopt">
+        <HouseButton variant="primary" href="#adopt" className="mt-8">
           Adopt $JROCK
-        </a>
-      </div>
+        </HouseButton>
+        </div>
+      </LiquidSurface>
     </section>
   );
 }

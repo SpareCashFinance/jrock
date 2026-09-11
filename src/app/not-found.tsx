@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { HouseButton } from "@/components/ui/house-button";
 
 export default function NotFound() {
   return (
@@ -16,9 +16,9 @@ export default function NotFound() {
       <p className="serif mt-4 max-w-md text-xl text-[var(--cream)]">
         No exhibit in this drawer. The official kennel is still one click away.
       </p>
-      <Link href="/" className="btn btn-primary mt-8">
+      <HouseButton variant="primary" href="/" className="mt-8">
         Take me home
-      </Link>
+      </HouseButton>
     </main>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { HouseButton } from "@/components/ui/house-button";
 import { Mascot } from "./Mascot";
 
 const tricks = [
@@ -35,17 +36,16 @@ export function TrainYourRock() {
           <div>
             <div className="flex flex-wrap gap-2">
               {tricks.map((item) => (
-                <button
+                <HouseButton
                   key={item.id}
-                  type="button"
-                  className={`btn ${trick === item.id ? "btn-primary" : "btn-ghost"} min-h-11`}
+                  variant={trick === item.id ? "primary" : "ghost"}
                   onClick={() => {
                     setTrick(item.id);
                     setLine(item.line);
                   }}
                 >
                   {item.label}
-                </button>
+                </HouseButton>
               ))}
             </div>
             <p className="serif mt-6 text-2xl text-[var(--cream)]">{line}</p>

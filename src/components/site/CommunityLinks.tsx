@@ -1,5 +1,6 @@
 import { project } from "@/lib/config";
 import { shareOnXUrl, visibleLinks } from "@/lib/links";
+import { HouseButton } from "@/components/ui/house-button";
 import { CopyButton } from "./CopyButton";
 
 export function CommunityLinks() {
@@ -10,13 +11,13 @@ export function CommunityLinks() {
       <h2 className="display mt-3 text-6xl text-white sm:text-7xl">Take the rock with you.</h2>
       <div className="mt-8 flex flex-wrap gap-3">
         {items.map((item) => (
-          <a key={item.label} className="btn btn-ghost" href={item.href}>
+          <HouseButton key={item.label} href={item.href} target="_blank">
             {item.label}
-          </a>
+          </HouseButton>
         ))}
-        <a className="btn btn-ghost" href={shareOnXUrl()}>
+        <HouseButton href={shareOnXUrl()} target="_blank">
           Share on X
-        </a>
+        </HouseButton>
         <CopyButton value={project.mint} />
       </div>
       <p className="serif mt-6 max-w-xl text-xl text-[var(--cream)]">

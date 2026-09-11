@@ -7,6 +7,8 @@ import { ChainMarks } from "@/components/brand/ChainMarks";
 import { project } from "@/lib/config";
 import { links } from "@/lib/links";
 import { AdoptButton } from "@/components/solana/AdoptButton";
+import { AnimatedShinyText } from "@/components/ui/animated-shiny-text";
+import { InteractiveHoverButton } from "@/components/ui/interactive-hover-button";
 import { CopyButton } from "./CopyButton";
 import { Mascot } from "./Mascot";
 
@@ -20,7 +22,9 @@ export function Hero() {
       className="relative z-1 mx-auto grid w-[min(1120px,calc(100%-1.5rem))] items-center gap-8 pb-10 pt-8 lg:grid-cols-[1.05fr_0.95fr] lg:pb-16 lg:pt-12"
     >
       <div className="order-2 space-y-6 lg:order-1">
-        <p className="kicker">Solana · stonk.fun · WBTC holder rewards</p>
+        <AnimatedShinyText className="kicker mx-0 max-w-none text-[var(--gold)] dark:text-[var(--gold)] dark:via-[var(--orange)]">
+          Solana · stonk.fun · WBTC holder rewards
+        </AnimatedShinyText>
         <div className="overflow-x-auto pb-1">
           <SplitFlapText
             words={["JAMIE'S PET ROCK", "$JROCK", "PAYS IN WBTC"]}
@@ -58,12 +62,8 @@ export function Hero() {
               <AdoptButton shine />
             </span>
           </Magnet>
-          <a className="btn btn-ghost" href="#rewards">
-            View WBTC rewards
-          </a>
-          <a className="btn btn-ghost" href="#tape">
-            Watch the tape
-          </a>
+          <InteractiveHoverButton href="#rewards">View WBTC rewards</InteractiveHoverButton>
+          <InteractiveHoverButton href="#tape">Watch the tape</InteractiveHoverButton>
           <CopyButton value={project.mint} />
         </div>
         <ChainMarks />
