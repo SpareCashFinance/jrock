@@ -83,19 +83,19 @@ export function OriginTape() {
     >
       <div className="mb-3 flex items-center justify-between px-1 text-[11px] tracking-[0.2em] uppercase">
         <span>Exhibit A · Origin tape</span>
-        <span>00:14</span>
+        <span>01:14</span>
       </div>
       <div className="tape-scanlines relative min-h-0 flex-1 overflow-hidden rounded-[20px] bg-black shadow-[inset_0_0_0_1px_rgba(0,0,0,0.35)]">
         <video
           ref={videoRef}
           className="aspect-video h-full w-full object-cover lg:aspect-auto lg:min-h-[280px]"
-          poster="/media/pet-rock-poster.jpg"
+          poster="/media/pet-rock-poster.jpg?v=3512"
           playsInline
           loop
           muted
           preload="metadata"
         >
-          <source src="/media/pet-rock.mp4" type="video/mp4" />
+          <source src="/media/pet-rock.mp4?v=3512" type="video/mp4" />
         </video>
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(6,10,18,0.08),transparent_30%,rgba(6,10,18,0.35))]" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-[linear-gradient(transparent,rgba(6,10,18,0.72))]" />
