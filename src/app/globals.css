@@ -203,9 +203,12 @@ a {
 }
 
 .glass-panel {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   background: rgba(12, 19, 32, 0.72);
   border: 1px solid rgba(232, 210, 176, 0.14);
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px) saturate(140%);
 }
 
 .terminal-glow {
