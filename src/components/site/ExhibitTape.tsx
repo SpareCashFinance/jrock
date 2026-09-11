@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Pause, Play, Volume2, VolumeX } from "lucide-react";
+import { DexTape } from "./DexTape";
 import { Mascot } from "./Mascot";
 
 const captions = [
@@ -80,7 +81,7 @@ export function ExhibitTape() {
       <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="kicker">Exhibit A · Origin tape</p>
-          <h2 className="display mt-3 max-w-3xl text-6xl text-white sm:text-8xl">
+          <h2 className="display mt-3 max-w-3xl text-6xl text-white [word-spacing:0.16em] sm:text-8xl">
             He said it on television.
             <span className="block text-[var(--orange)]">We incorporated the rock.</span>
           </h2>
@@ -150,6 +151,8 @@ export function ExhibitTape() {
           </div>
         </div>
       </div>
+
+      <DexTape />
     </section>
   );
 }

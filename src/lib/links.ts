@@ -30,10 +30,31 @@ export function stonkfunTokenUrl() {
   );
 }
 
+export function dexscreenerChartId() {
+  return envLink("NEXT_PUBLIC_DEXSCREENER_PAIR") || project.mint.trim();
+}
+
 export function dexscreenerUrl() {
   if (links.dexscreenerOverride) return links.dexscreenerOverride;
-  if (!hasMint()) return "";
-  return `${DEXSCREENER_ORIGIN}/${project.mint}`;
+  const id = dexscreenerChartId();
+  if (!id) return "";
+  return `${DEXSCREENER_ORIGIN}/${id}`;
+}
+
+export function dexscreenerEmbedUrl() {
+  const custom = envLink("NEXT_PUBLIC_DEXSCREENER_EMBED_URL");
+  if (custom) return custom;
+  const id = dexscreenerChartId();
+  if (!id) return "";
+  const qs = new URLSearchParams({
+    embed: "1",
+    theme: "dark",
+    chartTheme: "dark",
+    trades: "0",
+    info: "0",
+    chartLeftToolbar: "0",
+  });
+  return `${DEXSCREENER_ORIGIN}/${encodeURIComponent(id)}?${qs}`;
 }
 
 export function explorerUrl(address = project.mint) {
