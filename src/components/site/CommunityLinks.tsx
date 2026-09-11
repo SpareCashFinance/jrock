@@ -1,0 +1,27 @@
+import { project } from "@/lib/config";
+import { shareOnXUrl, visibleLinks } from "@/lib/links";
+import { CopyButton } from "./CopyButton";
+
+export function CommunityLinks() {
+  const items = visibleLinks();
+  return (
+    <section id="community" className="section pt-0">
+      <p className="kicker">Kennel club</p>
+      <h2 className="display mt-3 text-6xl text-white sm:text-7xl">Take the rock with you.</h2>
+      <div className="mt-8 flex flex-wrap gap-3">
+        {items.map((item) => (
+          <a key={item.label} className="btn btn-ghost" href={item.href}>
+            {item.label}
+          </a>
+        ))}
+        <a className="btn btn-ghost" href={shareOnXUrl()}>
+          Share on X
+        </a>
+        <CopyButton value={project.mint} />
+      </div>
+      <p className="serif mt-6 max-w-xl text-xl text-[var(--cream)]">
+        “{project.shareText}”
+      </p>
+    </section>
+  );
+}

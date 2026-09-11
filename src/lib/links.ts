@@ -1,0 +1,71 @@
+import { hasMint, project } from "./config";
+
+const STONKFUN_ORIGIN = "https://www.stonkfun.xyz";
+const SOLSCAN_ORIGIN = "https://solscan.io";
+const DEXSCREENER_ORIGIN = "https://dexscreener.com/solana";
+
+function envLink(key: string) {
+  return (process.env[key] ?? "").trim();
+}
+
+function withMint(template: string, mint: string) {
+  return template.replace("{mint}", mint);
+}
+
+export const links = {
+  stonkfun: envLink("NEXT_PUBLIC_STONKFUN_URL") || STONKFUN_ORIGIN,
+  stonkfunRewards:
+    envLink("NEXT_PUBLIC_STONKFUN_REWARDS_URL") || `${STONKFUN_ORIGIN}/rewards`,
+  twitter: envLink("NEXT_PUBLIC_X_URL"),
+  telegram: envLink("NEXT_PUBLIC_TELEGRAM_URL"),
+  dexscreenerOverride: envLink("NEXT_PUBLIC_DEXSCREENER_URL"),
+  explorerOverride: envLink("NEXT_PUBLIC_EXPLORER_URL"),
+};
+
+export function stonkfunTokenUrl() {
+  if (!hasMint()) return links.stonkfun;
+  return (
+    envLink("NEXT_PUBLIC_STONKFUN_TOKEN_URL") ||
+    `${STONKFUN_ORIGIN}/token/${project.mint}`
+  );
+}
+
+export function dexscreenerUrl() {
+  if (links.dexscreenerOverride) return links.dexscreenerOverride;
+  if (!hasMint()) return "";
+  return `${DEXSCREENER_ORIGIN}/${project.mint}`;
+}
+
+export function explorerUrl(address = project.mint) {
+  if (!address) return "";
+  if (links.explorerOverride && address === project.mint) {
+    return links.explorerOverride;
+  }
+  return `${SOLSCAN_ORIGIN}/token/${address}`;
+}
+
+export function explorerTxUrl(signature: string) {
+  return `${SOLSCAN_ORIGIN}/tx/${signature}`;
+}
+
+export function shareOnXUrl() {
+  const url = new URL("https://twitter.com/intent/tweet");
+  url.searchParams.set("text", project.shareText);
+  if (project.siteUrl) url.searchParams.set("url", project.siteUrl);
+  return url.toString();
+}
+
+export function visibleLinks() {
+  return [
+    { label: "stonk.fun", href: stonkfunTokenUrl() },
+    { label: "Rewards", href: links.stonkfunRewards },
+    links.twitter ? { label: "X", href: links.twitter } : null,
+    links.telegram ? { label: "Telegram", href: links.telegram } : null,
+    dexscreenerUrl()
+      ? { label: "DexScreener", href: dexscreenerUrl() }
+      : null,
+    explorerUrl() ? { label: "Explorer", href: explorerUrl() } : null,
+  ].filter((item): item is { label: string; href: string } => Boolean(item));
+}
+
+export { withMint };
