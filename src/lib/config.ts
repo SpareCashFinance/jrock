@@ -18,6 +18,8 @@ export const project = {
   mint: process.env.NEXT_PUBLIC_JROCK_MINT ?? "",
   rewardMint: process.env.NEXT_PUBLIC_WBTC_MINT ?? "",
   totalSupply: process.env.NEXT_PUBLIC_TOTAL_SUPPLY ?? "",
+  burnPercent: Number(process.env.NEXT_PUBLIC_BURN_PERCENT || 60) || 60,
+  burnTx: (process.env.NEXT_PUBLIC_BURN_TX ?? "").trim(),
   transferFee: process.env.NEXT_PUBLIC_TRANSFER_FEE ?? "",
   eligibility: process.env.NEXT_PUBLIC_ELIGIBILITY ?? "",
   liquidityStatus: process.env.NEXT_PUBLIC_LIQUIDITY_STATUS ?? "",
@@ -69,6 +71,8 @@ export const copy = {
     "Eligibility and distribution rules are controlled by the live stonk.fun implementation.",
     "Verify transactions and reward distributions on-chain.",
     "A transfer tax or other platform fees may apply if configured at launch.",
+    "At launch, 60% of supply is planned to be purchased and burned. Verify that transaction on-chain when the receipt is filed.",
+    "A smaller float does not guarantee larger or faster WBTC payouts.",
   ],
   disclaimer:
     "Jamie’s Pet Rock is an independent parody memecoin created for entertainment. It is not affiliated with, sponsored by or endorsed by Jamie Dimon, JPMorgan Chase, Bitcoin, Wrapped Bitcoin or stonk.fun. Holder rewards are variable, depend on platform activity and are not guaranteed. Cryptocurrency is highly speculative and may lose all value.",
@@ -80,4 +84,8 @@ export function displayValue(value: string, fallback = "To be confirmed") {
 
 export function hasMint() {
   return project.mint.trim().length > 0;
+}
+
+export function hasBurnTx() {
+  return project.burnTx.length > 0;
 }

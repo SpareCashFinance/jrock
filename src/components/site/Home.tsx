@@ -6,6 +6,7 @@ import { LiveRewardStrip } from "./LiveRewardStrip";
 import { ExhibitTape } from "./ExhibitTape";
 import { LoreSection } from "./LoreSection";
 import { RewardExplainer } from "./RewardExplainer";
+import { BurnReceipt } from "./BurnReceipt";
 import { RewardTerminal } from "./RewardTerminal";
 import { TrainYourRock } from "./TrainYourRock";
 import { TokenDetails } from "./TokenDetails";
@@ -26,6 +27,7 @@ export function Home({ market }: { market: MarketSnapshot }) {
         <ExhibitTape />
         <LoreSection />
         <RewardExplainer />
+        <BurnReceipt />
         <RewardTerminal market={market} />
         <TrainYourRock />
         <TokenDetails />

@@ -2,8 +2,9 @@
 
 import { NetworkSolana, TokenWBTC } from "@web3icons/react";
 import { Card } from "@/components/ui/card";
-import { displayValue, project } from "@/lib/config";
-import { explorerUrl, stonkfunTokenUrl } from "@/lib/links";
+import { displayValue, hasBurnTx, project } from "@/lib/config";
+import { explorerTxUrl, explorerUrl, stonkfunTokenUrl } from "@/lib/links";
+import { shortenAddress } from "@/lib/format";
 import { HouseButton } from "@/components/ui/house-button";
 import { CopyButton } from "./CopyButton";
 
@@ -15,6 +16,12 @@ const rows = [
   { label: "Reward asset", value: project.rewardAsset, icon: <TokenWBTC variant="branded" size={16} /> },
   { label: "Contract", value: displayValue(project.mint) },
   { label: "Total supply", value: displayValue(project.totalSupply) },
+  { label: "Launch burn", value: `${project.burnPercent}% purchased and burned` },
+  { label: "Float after burn", value: `${Math.max(0, 100 - project.burnPercent)}% remains` },
+  {
+    label: "Burn transaction",
+    value: hasBurnTx() ? shortenAddress(project.burnTx, 6) : "Receipt pending",
+  },
   { label: "Transfer / trading fee", value: displayValue(project.transferFee) },
   { label: "Holder eligibility", value: displayValue(project.eligibility) },
   { label: "Liquidity", value: displayValue(project.liquidityStatus) },
@@ -51,6 +58,13 @@ export function TokenDetails() {
               Solana Explorer
             </HouseButton>
           ) : null}
+          {hasBurnTx() ? (
+            <HouseButton href={explorerTxUrl(project.burnTx)} target="_blank">
+              Burn tx
+            </HouseButton>
+          ) : (
+            <HouseButton href="#burn">Burn receipt</HouseButton>
+          )}
         </div>
       </Card>
     </section>

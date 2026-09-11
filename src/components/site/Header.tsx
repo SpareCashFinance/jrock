@@ -5,6 +5,7 @@ import { CopyButton } from "./CopyButton";
 const nav = [
   { href: "#adopt", label: "Adopt" },
   { href: "#tape", label: "The tape" },
+  { href: "#burn", label: "Burn" },
   { href: "#rewards", label: "Rewards" },
   { href: "#train", label: "Train" },
   { href: "#rockonomics", label: "Rockonomics" },
