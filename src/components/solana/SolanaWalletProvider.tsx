@@ -120,13 +120,13 @@ function SolanaWalletModal({
         {connected ? (
           <button
             type="button"
-            className="rounded-xl px-3 py-2 text-left text-sm text-[var(--dim)] hover:bg-white/5 hover:text-white"
+            className="btn btn-ghost mt-2 w-full"
             onClick={() => {
               void disconnect();
               onOpenChange(false);
             }}
           >
-            Disconnect
+            Disconnect wallet
           </button>
         ) : null}
       </DialogContent>

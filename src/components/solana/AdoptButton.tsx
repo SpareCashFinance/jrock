@@ -71,35 +71,57 @@ export function AdoptButton({
   );
 }
 
-export function WalletChip({ className }: { className?: string }) {
+export function WalletControls({
+  className,
+  compact = false,
+}: {
+  className?: string;
+  compact?: boolean;
+}) {
   const { address, connected, connecting, openModal, disconnect } = useSolanaWallet();
   const mounted = useSyncExternalStore(
     () => () => {},
     () => true,
     () => false,
   );
-  const label = !mounted
-    ? "Connect"
-    : connecting
-      ? "…"
-      : connected && address
-        ? shortenAddress(address)
-        : "Connect";
+
+  if (!mounted) {
+    return compact ? null : (
+      <SpringButton type="button" className={cn("btn-ghost px-3 text-xs", className)} disabled>
+        <NetworkSolana variant="branded" size={14} />
+        Connect wallet
+      </SpringButton>
+    );
+  }
+
+  if (!connected) {
+    if (compact) return null;
+    return (
+      <SpringButton
+        type="button"
+        className={cn("btn-ghost px-3 text-xs", className)}
+        disabled={connecting}
+        onClick={openModal}
+      >
+        <NetworkSolana variant="branded" size={14} />
+        {connecting ? "Connecting…" : "Connect wallet"}
+      </SpringButton>
+    );
+  }
 
   return (
-    <SpringButton
-      type="button"
-      className={cn("btn-ghost px-3 text-xs", className)}
-      onClick={() => {
-        if (connected) {
-          void disconnect();
-          return;
-        }
-        openModal();
-      }}
-    >
-      <NetworkSolana variant="branded" size={14} />
-      {label}
-    </SpringButton>
+    <div className={cn("flex items-center gap-1.5", className)}>
+      <SpringButton type="button" className="btn-ghost hidden px-3 text-xs sm:inline-flex" onClick={openModal}>
+        <NetworkSolana variant="branded" size={14} />
+        {shortenAddress(address)}
+      </SpringButton>
+      <SpringButton type="button" className="btn-ghost px-3 text-xs" onClick={() => void disconnect()}>
+        Disconnect
+      </SpringButton>
+    </div>
   );
+}
+
+export function WalletChip({ className }: { className?: string }) {
+  return <WalletControls className={className} />;
 }

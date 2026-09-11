@@ -12,7 +12,7 @@ import { formatAmount } from "@/lib/format";
 import { WSOL_MINT } from "@/lib/solana";
 import { explorerTxUrl } from "@/lib/links";
 import { useSolanaWallet } from "./SolanaWalletProvider";
-import { AdoptButton } from "./AdoptButton";
+import { AdoptButton, WalletControls } from "./AdoptButton";
 
 const PRESETS = [0.1, 0.25, 0.5, 1];
 const TOKEN_DECIMALS = Number(process.env.NEXT_PUBLIC_JROCK_DECIMALS || 6);
@@ -177,10 +177,14 @@ export function AdoptSwap() {
             <p className="kicker">Jupiter desk</p>
             <h2 className="mt-1 text-lg font-semibold tracking-tight text-white">Adopt $JROCK</h2>
           </div>
-          <div className="flex items-center gap-1.5 text-[11px] text-[var(--dim)]">
-            <NetworkSolana variant="branded" size={14} />
-            SOL → {project.ticker}
-          </div>
+          {solana.connected ? (
+            <WalletControls compact className="justify-end" />
+          ) : (
+            <div className="flex items-center gap-1.5 text-[11px] text-[var(--dim)]">
+              <NetworkSolana variant="branded" size={14} />
+              SOL → {project.ticker}
+            </div>
+          )}
         </div>
 
         <div className="mt-4 space-y-2">

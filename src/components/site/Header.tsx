@@ -1,5 +1,5 @@
 import { project } from "@/lib/config";
-import { AdoptButton } from "@/components/solana/AdoptButton";
+import { AdoptButton, WalletControls } from "@/components/solana/AdoptButton";
 import { CopyButton } from "./CopyButton";
 
 const nav = [
@@ -39,6 +39,7 @@ export function Header() {
             label="Copy"
             className="btn btn-ghost hidden px-3 text-xs sm:inline-flex"
           />
+          <WalletControls compact />
           <AdoptButton
             className="px-3 text-xs"
             idleLabel="Connect wallet"
