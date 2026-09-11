@@ -32,7 +32,7 @@ function toTokens(raw?: string) {
   return Number.isFinite(n) ? n : null;
 }
 
-export function AdoptSwap() {
+export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
   const solana = useSolanaWallet();
   const [amount, setAmount] = useState("0.25");
   const [solBal, setSolBal] = useState(0);
@@ -168,9 +168,8 @@ export function AdoptSwap() {
         ? "Quoting…"
         : `Adopt with ${amount || "0"} SOL`;
 
-  return (
-    <section id="adopt" className="section py-6">
-      <Card className="relative mx-auto max-w-[440px] overflow-hidden border-[rgba(232,210,176,0.14)] bg-[#0c1320]/85 p-4 sm:p-5">
+  const card = (
+      <Card className="relative h-full overflow-hidden border-[rgba(232,210,176,0.14)] bg-[#0c1320]/85 p-4 sm:p-5">
         <BorderBeam colorFrom="#f7931a" colorTo="#d4b46a" size={80} duration={8} />
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -285,6 +284,13 @@ export function AdoptSwap() {
           </div>
         ) : null}
       </Card>
+  );
+
+  if (embedded) return card;
+
+  return (
+    <section id="adopt" className="section py-6">
+      <div className="mx-auto max-w-[440px]">{card}</div>
     </section>
   );
 }

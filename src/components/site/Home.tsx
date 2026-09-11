@@ -1,7 +1,7 @@
 import { BitcoinRain } from "@/components/brand/BitcoinRain";
-import { AdoptSwap } from "@/components/solana/AdoptSwap";
 import { Header } from "./Header";
 import { Hero } from "./Hero";
+import { AdoptDesk } from "./AdoptDesk";
 import { LiveRewardStrip } from "./LiveRewardStrip";
 import { ExhibitTape } from "./ExhibitTape";
 import { LoreSection } from "./LoreSection";
@@ -21,7 +21,7 @@ export function Home({ market }: { market: MarketSnapshot }) {
       <Header />
       <main>
         <Hero />
-        <AdoptSwap />
+        <AdoptDesk />
         <LiveRewardStrip market={market} />
         <ExhibitTape />
         <LoreSection />
