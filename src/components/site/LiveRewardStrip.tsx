@@ -1,17 +1,25 @@
 "use client";
 
 import { formatAmount, formatUsd } from "@/lib/format";
+import { useMarketSnapshot } from "@/lib/market-client";
 import type { MarketSnapshot } from "@/lib/market";
 import { Stat } from "./Stat";
 
-export function LiveRewardStrip({ market }: { market: MarketSnapshot }) {
+export function LiveRewardStrip({ market: initial }: { market: MarketSnapshot }) {
+  const market = useMarketSnapshot(initial);
   return (
     <section className="relative z-1 border-y border-[rgba(232,210,176,0.1)] bg-[#080d16]/80">
       <div className="mx-auto grid w-[min(1120px,calc(100%-1.5rem))] gap-6 py-5 sm:grid-cols-2 lg:grid-cols-4">
         <Stat
           label="WBTC distributed"
           value={formatAmount(market.totalDistributed, 6)}
-          note={market.totalDistributed == null ? market.status === "awaiting_launch" ? "Awaiting launch" : "No verified total yet" : market.totalDistributedSymbol}
+          note={
+            market.totalDistributed == null
+              ? market.status === "awaiting_launch" || market.status === "awaiting_index"
+                ? "Awaiting launch"
+                : "No verified total yet"
+              : market.totalDistributedSymbol
+          }
         />
         <Stat
           label="Market cap"

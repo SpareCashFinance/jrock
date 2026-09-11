@@ -11,22 +11,31 @@ import { displayValue, project } from "@/lib/config";
 import { formatAmount, formatCount, formatUsd, shortenAddress, timeAgo } from "@/lib/format";
 import { explorerUrl } from "@/lib/links";
 import type { MarketSnapshot } from "@/lib/market";
+import { useMarketSnapshot } from "@/lib/market-client";
 import { CopyButton } from "./CopyButton";
 
 const statusLabel: Record<MarketSnapshot["status"], string> = {
   awaiting_launch: "Awaiting launch",
+  awaiting_index: "Waiting on stonk.fun",
+  standard_mode: "Standard launch",
   no_distribution: "No verified distribution yet",
   unavailable: "Live data unavailable",
   live: "Live tape",
 };
 
-export function RewardTerminal({ market }: { market: MarketSnapshot }) {
+export function RewardTerminal({ market: initial }: { market: MarketSnapshot }) {
+  const market = useMarketSnapshot(initial);
+  const tax =
+    market.transferFeeBps != null ? `${(market.transferFeeBps / 100).toFixed(2)}%` : displayValue(project.transferFee);
   const figures = [
-    { label: "Total WBTC distributed", value: formatAmount(market.totalDistributed, 6), hint: market.totalDistributedSymbol },
+    { label: `Total ${market.totalDistributedSymbol} distributed`, value: formatAmount(market.totalDistributed, 6), hint: market.totalDistributedSymbol },
+    { label: "Pending pot", value: formatAmount(market.pendingDistributed, 6), hint: "Accrued, not paid yet" },
     { label: "Eligible holders", value: formatCount(market.holders), hint: "From stonk.fun when live" },
+    { label: "Distributions", value: formatCount(market.payoutCount), hint: "Confirmed payouts" },
     { label: "24h volume", value: formatUsd(market.volume24hUsd), hint: "Official market only" },
     { label: "Market cap", value: formatUsd(market.marketCapUsd), hint: "Not a promise" },
     { label: "Liquidity", value: formatUsd(market.liquidityUsd), hint: displayValue(project.liquidityStatus, "To be confirmed") },
+    { label: "Transfer tax", value: tax, hint: "Paid to holders on transfers" },
     { label: "Last payout", value: timeAgo(market.lastDistribution?.at) ?? "None yet", hint: market.nextRewardStatus },
   ];
 
