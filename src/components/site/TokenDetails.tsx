@@ -39,8 +39,11 @@ export function TokenDetails() {
         </dl>
         <div className="flex flex-wrap gap-3 border-t border-[rgba(232,210,176,0.08)] p-5">
           <CopyButton value={project.mint} />
-          <a className="btn btn-primary" href={stonkfunTokenUrl()}>
-            Official stonk.fun market
+          <a className="btn btn-primary" href="#adopt">
+            Adopt $JROCK
+          </a>
+          <a className="btn btn-ghost" href={stonkfunTokenUrl()}>
+            stonk.fun
           </a>
           {explorerUrl() ? (
             <a className="btn btn-ghost" href={explorerUrl()}>

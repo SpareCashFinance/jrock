@@ -49,7 +49,7 @@ export const copy = {
     {
       n: "01",
       title: "Adopt the rock",
-      body: "Buy $JROCK through the official stonk.fun market. No substitute pet rocks.",
+      body: "Connect a Solana wallet and swap SOL into $JROCK through our Jupiter desk.",
     },
     {
       n: "02",

@@ -1,5 +1,5 @@
 import { project } from "@/lib/config";
-import { stonkfunTokenUrl, visibleLinks } from "@/lib/links";
+import { visibleLinks } from "@/lib/links";
 
 export function Footer() {
   return (
@@ -17,7 +17,7 @@ export function Footer() {
               {item.label}
             </a>
           ))}
-          <a href={stonkfunTokenUrl()} className="hover:text-white">
+          <a href="#adopt" className="hover:text-white">
             Adopt
           </a>
         </div>

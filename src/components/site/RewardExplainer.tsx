@@ -1,5 +1,4 @@
 import { copy } from "@/lib/config";
-import { stonkfunTokenUrl } from "@/lib/links";
 
 export function RewardExplainer() {
   return (
@@ -26,8 +25,8 @@ export function RewardExplainer() {
             </li>
           ))}
         </ul>
-        <a className="btn btn-primary mt-8" href={stonkfunTokenUrl()}>
-          Open the official market
+        <a className="btn btn-primary mt-8" href="#adopt">
+          Adopt $JROCK
         </a>
       </div>
     </section>

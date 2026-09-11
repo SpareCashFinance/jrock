@@ -5,7 +5,8 @@ import { Magnet } from "@/components/react-bits/Magnet";
 import SplitFlapText from "@/components/react-bits/SplitFlapText";
 import { ChainMarks } from "@/components/brand/ChainMarks";
 import { project } from "@/lib/config";
-import { links, stonkfunTokenUrl } from "@/lib/links";
+import { links } from "@/lib/links";
+import { AdoptButton } from "@/components/solana/AdoptButton";
 import { CopyButton } from "./CopyButton";
 import { Mascot } from "./Mascot";
 
@@ -50,17 +51,12 @@ export function Hero() {
         </p>
         <div className="flex flex-wrap gap-3">
           <Magnet>
-            <a
-              className="btn btn-primary relative overflow-hidden"
-              href={stonkfunTokenUrl()}
+            <span
               onMouseEnter={() => setDropping(true)}
               onMouseLeave={() => setDropping(false)}
-              onFocus={() => setDropping(true)}
-              onBlur={() => setDropping(false)}
             >
-              <span className="pointer-events-none absolute inset-0 animate-pulse bg-[linear-gradient(110deg,transparent,rgba(255,255,255,0.28),transparent)]" />
-              Adopt $JROCK
-            </a>
+              <AdoptButton className="btn btn-primary relative overflow-hidden" />
+            </span>
           </Magnet>
           <a className="btn btn-ghost" href="#rewards">
             View WBTC rewards

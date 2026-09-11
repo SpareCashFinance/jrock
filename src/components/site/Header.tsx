@@ -1,8 +1,9 @@
 import { project } from "@/lib/config";
-import { stonkfunTokenUrl } from "@/lib/links";
+import { AdoptButton } from "@/components/solana/AdoptButton";
 import { CopyButton } from "./CopyButton";
 
 const nav = [
+  { href: "#adopt", label: "Adopt" },
   { href: "#tape", label: "The tape" },
   { href: "#rewards", label: "Rewards" },
   { href: "#train", label: "Train" },
@@ -38,9 +39,11 @@ export function Header() {
             label="Copy"
             className="btn btn-ghost hidden min-h-11 px-4 text-[11px] sm:inline-flex"
           />
-          <a className="btn btn-primary min-h-11 px-4 text-[11px]" href={stonkfunTokenUrl()}>
-            Adopt
-          </a>
+          <AdoptButton
+            className="btn btn-primary min-h-11 px-4 text-[11px]"
+            idleLabel="Connect wallet"
+            connectedLabel="Adopt $JROCK"
+          />
         </div>
       </div>
     </header>

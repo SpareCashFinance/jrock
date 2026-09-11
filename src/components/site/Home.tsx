@@ -1,3 +1,4 @@
+import { AdoptSwap } from "@/components/solana/AdoptSwap";
 import { Header } from "./Header";
 import { Hero } from "./Hero";
 import { LiveRewardStrip } from "./LiveRewardStrip";
@@ -18,6 +19,7 @@ export function Home({ market }: { market: MarketSnapshot }) {
       <Header />
       <main>
         <Hero />
+        <AdoptSwap />
         <LiveRewardStrip market={market} />
         <ExhibitTape />
         <LoreSection />
