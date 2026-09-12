@@ -20,12 +20,13 @@ export function Header() {
   return (
     <header className="sticky z-40 px-3" style={{ top: "var(--tape-h)" }}>
       <div className="dock mx-auto flex w-[min(1120px,calc(100%-0.5rem))] items-center justify-between gap-2 rounded-full px-2 py-1.5 sm:gap-3 sm:px-3 sm:py-2">
-        <a href="/" className="flex min-w-0 items-center gap-2 sm:gap-2.5">
+        <a
+          href="/"
+          aria-label={project.name}
+          className="flex min-w-0 items-center gap-2"
+        >
           <BrandMark size={32} className="shrink-0 border border-[rgba(247,147,26,0.35)] sm:h-9 sm:w-9" />
-          <span className="display hidden whitespace-nowrap text-2xl leading-none sm:inline">
-            {project.name}
-          </span>
-          <span className="shrink-0 whitespace-nowrap text-[11px] tracking-[0.18em] text-[var(--gold)]">
+          <span className="display whitespace-nowrap text-[1.65rem] leading-none text-[var(--gold)] sm:text-2xl">
             {project.ticker}
           </span>
         </a>
