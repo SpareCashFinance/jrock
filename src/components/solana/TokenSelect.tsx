@@ -88,9 +88,11 @@ export function TokenSelect({
   }, [open]);
 
   const shown = useMemo(() => {
+    const filtered = results.filter((token) => token.mint !== excludeMint);
+    if (query.trim()) return filtered;
     const pinned = PINNED_PAY_TOKENS.filter((token) => token.mint !== excludeMint);
-    const rest = results.filter((token) => !pinned.some((item) => item.mint === token.mint));
-    return query.trim() ? results : [...pinned, ...rest];
+    const rest = filtered.filter((token) => !pinned.some((item) => item.mint === token.mint));
+    return [...pinned, ...rest];
   }, [excludeMint, query, results]);
 
   function pick(token: SwapToken) {
