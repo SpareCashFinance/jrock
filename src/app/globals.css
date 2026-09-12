@@ -188,6 +188,14 @@ a {
   font-family: var(--font-newsreader), Georgia, serif;
 }
 
+.emoji {
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
 .cardboard {
   background:
     repeating-linear-gradient(

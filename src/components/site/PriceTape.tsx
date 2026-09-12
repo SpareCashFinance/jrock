@@ -40,7 +40,7 @@ function TapeSequence({ tape }: { tape: PriceTapeSnapshot }) {
           <span className="px-5 tracking-[0.22em] text-[var(--orange)]">Live tape</span>
           <QuoteCell quote={tape.btc} mark={<TokenBTC variant="branded" size={14} />} />
           <span className="text-[var(--stone)]">•</span>
-          <QuoteCell quote={tape.jrock} mark={<span aria-hidden>🪨</span>} />
+          <QuoteCell quote={tape.jrock} mark={<span className="emoji" aria-hidden>🪨</span>} />
           <span className="px-5 text-[var(--stone)]">•</span>
         </span>
       ))}

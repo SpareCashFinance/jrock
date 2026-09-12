@@ -24,8 +24,7 @@ export const project = {
   eligibility: process.env.NEXT_PUBLIC_ELIGIBILITY ?? "",
   liquidityStatus: process.env.NEXT_PUBLIC_LIQUIDITY_STATUS ?? "",
   authorityStatus: process.env.NEXT_PUBLIC_AUTHORITY_STATUS ?? "",
-  shareText:
-    "Jamie said Bitcoin was a pet rock. Mine pays me in WBTC. 🪨₿",
+  shareText: "Jamie said Bitcoin was a pet rock. Mine pays me in WBTC. 🪨",
 } as const;
 
 export const copy = {

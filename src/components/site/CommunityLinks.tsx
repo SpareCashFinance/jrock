@@ -21,7 +21,8 @@ export function CommunityLinks() {
         <CopyButton value={project.mint} />
       </div>
       <p className="serif mt-6 max-w-xl text-xl text-[var(--cream)]">
-        “{project.shareText}”
+        “Jamie said Bitcoin was a pet rock. Mine pays me in WBTC.{" "}
+        <span className="emoji">🪨</span>”
       </p>
     </section>
   );
