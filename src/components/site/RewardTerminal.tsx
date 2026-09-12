@@ -17,7 +17,7 @@ import { CopyButton } from "./CopyButton";
 
 const statusLabel: Record<MarketSnapshot["status"], string> = {
   awaiting_launch: "Awaiting launch",
-  awaiting_index: "Waiting on the market",
+  awaiting_index: "Waiting on stonk.fun",
   standard_mode: "Standard launch",
   no_distribution: "No verified distribution yet",
   unavailable: "Live data unavailable",
@@ -31,7 +31,7 @@ export function RewardTerminal({ market: initial }: { market: MarketSnapshot }) 
   const figures = [
     { label: `Total ${market.totalDistributedSymbol} distributed`, value: formatAmount(market.totalDistributed, 6), hint: market.totalDistributedSymbol },
     { label: "Pending pot", value: formatAmount(market.pendingDistributed, 6), hint: "Accrued, not paid yet" },
-    { label: "Eligible holders", value: formatCount(market.holders), hint: "From the official market when live" },
+    { label: "Eligible holders", value: formatCount(market.holders), hint: "From stonk.fun when live" },
     { label: "Distributions", value: formatCount(market.payoutCount), hint: "Confirmed payouts" },
     { label: "24h volume", value: formatUsd(market.volume24hUsd), hint: "Official market only" },
     { label: "Market cap", value: formatUsd(market.marketCapUsd), hint: "Not a promise" },
@@ -86,7 +86,7 @@ export function RewardTerminal({ market: initial }: { market: MarketSnapshot }) 
           <CopyButton value={project.mint} className="px-3 text-[11px]" />
           {explorerUrl() ? (
             <HouseButton className="px-3 text-[11px]" href={explorerUrl()} target="_blank">
-              Solscan
+              Explorer
             </HouseButton>
           ) : null}
           {explorerUrl(project.rewardMint) ? (

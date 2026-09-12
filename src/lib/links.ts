@@ -1,6 +1,6 @@
 import { hasMint, project } from "./config";
 
-const PUMPFUN_ORIGIN = "https://pump.fun";
+const STONKFUN_ORIGIN = "https://www.stonkfun.xyz";
 const SOLSCAN_ORIGIN = "https://solscan.io";
 const DEXSCREENER_ORIGIN = "https://dexscreener.com/solana";
 
@@ -13,7 +13,9 @@ function withMint(template: string, mint: string) {
 }
 
 export const links = {
-  pumpfun: envLink("NEXT_PUBLIC_PUMPFUN_URL") || PUMPFUN_ORIGIN,
+  stonkfun: envLink("NEXT_PUBLIC_STONKFUN_URL") || STONKFUN_ORIGIN,
+  stonkfunRewards:
+    envLink("NEXT_PUBLIC_STONKFUN_REWARDS_URL") || `${STONKFUN_ORIGIN}/rewards`,
   twitter: envLink("NEXT_PUBLIC_X_URL") || "https://x.com/petrockbtc",
   telegram:
     envLink("NEXT_PUBLIC_TELEGRAM_URL") || "https://t.me/Jamiespetrock",
@@ -21,11 +23,11 @@ export const links = {
   explorerOverride: envLink("NEXT_PUBLIC_EXPLORER_URL"),
 };
 
-export function pumpfunTokenUrl() {
-  if (!hasMint()) return links.pumpfun;
+export function stonkfunTokenUrl() {
+  if (!hasMint()) return links.stonkfun;
   return (
-    envLink("NEXT_PUBLIC_PUMPFUN_TOKEN_URL") ||
-    `${PUMPFUN_ORIGIN}/coin/${project.mint}`
+    envLink("NEXT_PUBLIC_STONKFUN_TOKEN_URL") ||
+    `${STONKFUN_ORIGIN}/token/${project.mint}`
   );
 }
 
@@ -100,13 +102,14 @@ export function socialLinks(): { kind: SocialKind; href: string; label: string }
 
 export function visibleLinks(): SiteLink[] {
   return [
-    { label: "pump.fun", href: pumpfunTokenUrl() },
+    { label: "stonk.fun", href: stonkfunTokenUrl() },
+    { label: "Rewards", href: links.stonkfunRewards },
     links.twitter ? { label: "X", href: links.twitter, kind: "x" } : null,
     links.telegram ? { label: "Telegram", href: links.telegram, kind: "telegram" } : null,
     dexscreenerUrl()
       ? { label: "DexScreener", href: dexscreenerUrl() }
       : null,
-    explorerUrl() ? { label: "Solscan", href: explorerUrl() } : null,
+    explorerUrl() ? { label: "Explorer", href: explorerUrl() } : null,
   ].filter((item): item is SiteLink => Boolean(item));
 }
 

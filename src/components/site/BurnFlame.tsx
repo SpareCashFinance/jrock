@@ -141,7 +141,7 @@ export function BurnIncinerator({ initial }: { initial: BurnSnapshot }) {
           </p>
         </div>
         <div>
-          <p className="kicker">On-chain flywheel</p>
+          <p className="kicker">stonk.fun flywheel</p>
           <p className="mt-2 font-mono text-2xl text-white">
             {burn.platformBurned > 0 ? formatCompact(burn.platformBurned) : "—"}
           </p>

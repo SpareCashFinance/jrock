@@ -26,7 +26,7 @@ export function ExhibitTape() {
             <p className="serif mt-2 text-2xl">Same rock. Higher standards.</p>
             <p className="mt-2 text-sm leading-6 text-[#4a3b28]">
               They said Bitcoin does nothing. Eligible $JROCK holders may receive
-              variable WBTC. That is the entire punchline.
+              variable WBTC through stonk.fun. That is the entire punchline.
             </p>
           </div>
         </div>

@@ -4,7 +4,7 @@ import { NetworkSolana } from "@web3icons/react";
 import { WbtcMark } from "@/components/brand/WbtcMark";
 import { Card } from "@/components/ui/card";
 import { displayValue, hasBurnTx, project } from "@/lib/config";
-import { explorerTxUrl, explorerUrl, pumpfunTokenUrl } from "@/lib/links";
+import { explorerTxUrl, explorerUrl, stonkfunTokenUrl } from "@/lib/links";
 import { shortenAddress } from "@/lib/format";
 import { HouseButton } from "@/components/ui/house-button";
 import { CopyButton } from "./CopyButton";
@@ -51,12 +51,12 @@ export function TokenDetails() {
           <HouseButton variant="primary" href="#adopt">
             Adopt $JROCK
           </HouseButton>
-          <HouseButton href={pumpfunTokenUrl()} target="_blank">
-            pump.fun
+          <HouseButton href={stonkfunTokenUrl()} target="_blank">
+            stonk.fun
           </HouseButton>
           {explorerUrl() ? (
             <HouseButton href={explorerUrl()} target="_blank">
-              Solscan
+              Solana Explorer
             </HouseButton>
           ) : null}
           {hasBurnTx() ? (

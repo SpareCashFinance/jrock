@@ -22,7 +22,7 @@ export function Hero() {
     >
       <div className="order-2 space-y-5 lg:order-1">
         <AnimatedShinyText className="kicker mx-0 max-w-none text-[var(--gold)] dark:text-[var(--gold)] dark:via-[var(--orange)]">
-          Solana · pump.fun · WBTC holder rewards
+          Solana · stonk.fun · WBTC holder rewards
         </AnimatedShinyText>
         <div className="overflow-x-auto pb-1">
           <SplitFlapText
@@ -60,8 +60,8 @@ export function Hero() {
           <InteractiveHoverButton href="/memes">Steal these</InteractiveHoverButton>
         </div>
         <ChainMarks />
-        <a href={links.pumpfun} className="inline-block text-[11px] tracking-[0.18em] uppercase text-[var(--stone)] hover:text-[var(--orange)]">
-          Official market · pump.fun
+        <a href={links.stonkfun} className="inline-block text-[11px] tracking-[0.18em] uppercase text-[var(--stone)] hover:text-[var(--orange)]">
+          Official market · stonk.fun
         </a>
       </div>
       <div className="order-1 lg:order-2">
