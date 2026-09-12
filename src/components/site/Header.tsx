@@ -6,14 +6,14 @@ import { AdoptButton, WalletControls } from "@/components/solana/AdoptButton";
 import { HouseButton } from "@/components/ui/house-button";
 import { CopyButton } from "./CopyButton";
 
-const nav: { href: string; label: string; wide?: boolean }[] = [
+const nav: { href: string; label: string; show?: string }[] = [
   { href: "/#adopt", label: "Adopt" },
   { href: "/memes", label: "Memes" },
   { href: "/#tape", label: "The tape" },
   { href: "/#burn", label: "Burn" },
-  { href: "/#rewards", label: "Rewards" },
-  { href: "/#train", label: "Train", wide: true },
-  { href: "/#rockonomics", label: "Rockonomics", wide: true },
+  { href: "/#rewards", label: "Rewards", show: "lg" },
+  { href: "/#train", label: "Train", show: "xl" },
+  { href: "/#rockonomics", label: "Rockonomics", show: "xl" },
 ];
 
 export function Header() {
@@ -30,12 +30,14 @@ export function Header() {
             </span>
           </span>
         </a>
-        <nav className="hidden items-center gap-1 text-xs font-medium text-[var(--dim)] md:flex">
+        <nav className="hidden items-center gap-0.5 text-xs font-medium text-[var(--dim)] lg:gap-1 md:flex">
           {nav.map((item) => (
             <a
               key={item.href}
               href={item.href}
-              className={`rounded-full px-3 py-1.5 hover:bg-white/5 hover:text-white ${item.wide ? "hidden xl:inline" : ""}`}
+              className={`shrink-0 whitespace-nowrap rounded-full px-2 py-1.5 hover:bg-white/5 hover:text-white lg:px-3 ${
+                item.show === "xl" ? "hidden xl:inline" : item.show === "lg" ? "hidden lg:inline" : ""
+              }`}
             >
               {item.label}
             </a>
