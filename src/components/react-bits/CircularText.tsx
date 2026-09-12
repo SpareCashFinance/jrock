@@ -1,9 +1,10 @@
 type CircularTextProps = {
   text: string;
+  pathId: string;
   className?: string;
 };
 
-export function CircularText({ text, className = "" }: CircularTextProps) {
+export function CircularText({ text, pathId, className = "" }: CircularTextProps) {
   const phrase = `${text} • `;
   return (
     <svg
@@ -13,12 +14,12 @@ export function CircularText({ text, className = "" }: CircularTextProps) {
     >
       <defs>
         <path
-          id="jrock-circle"
+          id={pathId}
           d="M100,100 m-78,0 a78,78 0 1,1 156,0 a78,78 0 1,1 -156,0"
         />
       </defs>
       <text fill="currentColor" fontSize="11.5" letterSpacing="2.4">
-        <textPath href="#jrock-circle">{phrase.repeat(2)}</textPath>
+        <textPath href={`#${pathId}`}>{phrase.repeat(2)}</textPath>
       </text>
     </svg>
   );

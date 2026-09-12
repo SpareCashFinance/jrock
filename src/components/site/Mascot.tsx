@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { CircularText } from "@/components/react-bits/CircularText";
 
 type Trick = "idle" | "sit" | "stay" | "rollover" | "fetch" | "stack";
@@ -29,6 +29,7 @@ export function Mascot({
   stacked = 0,
 }: MascotProps) {
   const wrap = useRef<HTMLDivElement>(null);
+  const ringId = `jrock-ring-${useId().replace(/:/g, "")}`;
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
@@ -61,6 +62,7 @@ export function Mascot({
       style={{ width: "min(100%, 520px)", aspectRatio: "1" }}
     >
       <CircularText
+        pathId={ringId}
         text="THE PET ROCK THAT PAYS IN BITCOIN  $JROCK  WBTC  STONK.FUN"
         className="pointer-events-none absolute inset-[-8%] text-[rgba(232,210,176,0.42)]"
       />
@@ -70,15 +72,20 @@ export function Mascot({
           transform: `perspective(900px) rotateX(${tilt.y}deg) rotateY(${tilt.x}deg)`,
         }}
       >
-        <div className="absolute inset-6 rounded-[42%] bg-[radial-gradient(circle,rgba(247,147,26,0.28),transparent_68%)] blur-2xl" />
-        <Image
-          src="/mascot.jpg"
-          alt="Jamie’s Pet Rock mascot sitting in a cardboard carrier, wearing a navy tie and a Bitcoin medallion"
-          width={dim}
-          height={dim}
-          priority={size === "hero"}
-          className="relative z-10 h-auto w-full max-w-[460px] select-none drop-shadow-[0_30px_50px_rgba(0,0,0,0.45)]"
-        />
+        <div className="absolute inset-6 rounded-full bg-[radial-gradient(circle,rgba(247,147,26,0.28),transparent_68%)] blur-2xl" />
+        <div
+          className="relative z-10 overflow-hidden rounded-full border border-[rgba(247,147,26,0.35)]"
+          style={{ width: `min(100%, ${dim}px)`, aspectRatio: "1" }}
+        >
+          <Image
+            src="/mascot.jpg"
+            alt="Jamie’s Pet Rock mascot sitting in a cardboard carrier, wearing a navy tie and a Bitcoin medallion"
+            width={dim}
+            height={dim}
+            priority={size === "hero"}
+            className="h-full w-full select-none object-cover"
+          />
+        </div>
         {dropping ? (
           <span className="coin-drop absolute left-1/2 top-[18%] z-20 grid h-10 w-10 place-items-center rounded-full bg-[#f7931a] text-lg font-black text-[#1a0f04] shadow-[0_0_24px_rgba(247,147,26,0.65)]">
             ₿

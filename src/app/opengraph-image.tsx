@@ -34,8 +34,19 @@ export default async function Image() {
             The pet rock that pays in Bitcoin.
           </div>
         </div>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={src} width={360} height={360} alt="" />
+        <div
+          style={{
+            width: 360,
+            height: 360,
+            borderRadius: 999,
+            overflow: "hidden",
+            border: "3px solid rgba(247,147,26,0.4)",
+            display: "flex",
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={src} width={360} height={360} alt="" style={{ objectFit: "cover" }} />
+        </div>
       </div>
     ),
     size,
