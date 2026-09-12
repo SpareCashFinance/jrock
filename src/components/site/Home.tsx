@@ -13,12 +13,21 @@ import { TokenDetails } from "./TokenDetails";
 import { CommunityLinks } from "./CommunityLinks";
 import { RiskDisclosure } from "./RiskDisclosure";
 import { Footer } from "./Footer";
+import { PriceTape } from "./PriceTape";
 import type { MarketSnapshot } from "@/lib/market";
+import type { PriceTapeSnapshot } from "@/lib/tape";
 
-export function Home({ market }: { market: MarketSnapshot }) {
+export function Home({
+  market,
+  tape,
+}: {
+  market: MarketSnapshot;
+  tape: PriceTapeSnapshot;
+}) {
   return (
     <>
       <BitcoinRain />
+      <PriceTape initial={tape} />
       <Header />
       <main>
         <Hero />

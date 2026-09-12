@@ -13,6 +13,30 @@ export function formatUsd(value: number | null | undefined) {
   }).format(value);
 }
 
+export function formatUsdPrice(value: number | null | undefined) {
+  if (value == null || !Number.isFinite(value)) return null;
+  if (value >= 1) {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
+  }
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 8,
+  }).format(value);
+}
+
+export function formatPct(value: number | null | undefined) {
+  if (value == null || !Number.isFinite(value)) return null;
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${value.toFixed(2)}%`;
+}
+
 export function formatAmount(value: number | null | undefined, digits = 4) {
   if (value == null || !Number.isFinite(value)) return null;
   return new Intl.NumberFormat("en-US", {

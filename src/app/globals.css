@@ -371,6 +371,28 @@ a {
   opacity: 0.35;
 }
 
+.price-tape {
+  height: 34px;
+}
+
+.price-tape-track {
+  display: flex;
+  width: max-content;
+  height: 34px;
+  align-items: center;
+  animation: price-tape-scroll 38s linear infinite;
+}
+
+.price-tape:hover .price-tape-track {
+  animation-play-state: paused;
+}
+
+@keyframes price-tape-scroll {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
 .bitcoin-rain {
   animation-name: bitcoin-fall;
   animation-timing-function: linear;
@@ -474,6 +496,7 @@ a {
   .mascot-idle,
   .coin-drop,
   .bitcoin-rain,
+  .price-tape-track,
   .lh-shine::after,
   .unfold {
     animation: none !important;
