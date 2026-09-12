@@ -71,8 +71,13 @@ export function OriginTape() {
   function toggleMute() {
     const video = videoRef.current;
     if (!video) return;
-    video.muted = !video.muted;
-    setMuted(video.muted);
+    const nextMuted = !video.muted;
+    video.muted = nextMuted;
+    setMuted(nextMuted);
+    if (nextMuted) return;
+    video.currentTime = 0;
+    void video.play().catch(() => undefined);
+    setPlaying(true);
   }
 
   return (
@@ -92,7 +97,7 @@ export function OriginTape() {
           poster="/media/pet-rock-poster.jpg?v=3512"
           playsInline
           loop
-          muted
+          muted={muted}
           preload="metadata"
         >
           <source src="/media/pet-rock.mp4?v=3512" type="video/mp4" />
