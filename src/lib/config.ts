@@ -52,7 +52,7 @@ export const copy = {
     {
       n: "01",
       title: "Adopt the rock",
-      body: "Connect a Solana wallet and swap SOL into $JROCK through our Jupiter desk.",
+      body: "Connect a Solana wallet and swap SOL, USDC, or any Solana asset into $JROCK through our Jupiter desk.",
     },
     {
       n: "02",

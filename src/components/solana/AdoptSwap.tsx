@@ -2,21 +2,29 @@
 
 import { useEffect, useMemo, useState } from "react";
 import NumberFlow from "@number-flow/react";
-import { LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
-import { NetworkSolana } from "@web3icons/react";
 import { LiquidSurface } from "@/components/brand/LiquidSurface";
 import { BorderBeam } from "@/components/ui/border-beam";
 import { Card } from "@/components/ui/card";
 import { SpringButton } from "@/components/ui/spring-button";
 import { hasMint, project } from "@/lib/config";
 import { formatAmount } from "@/lib/format";
-import { WSOL_MINT } from "@/lib/solana";
 import { explorerTxUrl } from "@/lib/links";
+import { WSOL_MINT } from "@/lib/solana";
+import {
+  SOL_TOKEN,
+  adoptOutputToken,
+  defaultPayAmount,
+  formatPreset,
+  fromRawAmount,
+  payPresets,
+  toRawAmount,
+  type SwapToken,
+} from "@/lib/swap-tokens";
+import { readTokenBalance } from "@/lib/token-balance";
 import { useSolanaWallet } from "./SolanaWalletProvider";
 import { AdoptButton, WalletControls } from "./AdoptButton";
+import { TokenSelect } from "./TokenSelect";
 
-const PRESETS = [0.1, 0.25, 0.5, 1];
-const TOKEN_DECIMALS = Number(process.env.NEXT_PUBLIC_JROCK_DECIMALS || 6);
 const SLIPPAGE_BPS = 150;
 
 type Quote = {
@@ -25,18 +33,15 @@ type Quote = {
   quoteResponse?: Record<string, unknown>;
   error?: string;
   forAmount?: string;
+  forMint?: string;
 };
-
-function toTokens(raw?: string) {
-  if (!raw) return null;
-  const n = Number(raw) / 10 ** TOKEN_DECIMALS;
-  return Number.isFinite(n) ? n : null;
-}
 
 export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
   const solana = useSolanaWallet();
-  const [amount, setAmount] = useState("0.25");
-  const [solBal, setSolBal] = useState(0);
+  const output = adoptOutputToken();
+  const [payToken, setPayToken] = useState<SwapToken>(SOL_TOKEN);
+  const [amount, setAmount] = useState(defaultPayAmount(SOL_TOKEN));
+  const [balance, setBalance] = useState(0);
   const [quote, setQuote] = useState<Quote | null>(null);
   const [quoting, setQuoting] = useState(false);
   const [phase, setPhase] = useState("");
@@ -44,39 +49,38 @@ export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
   const [signature, setSignature] = useState("");
   const [received, setReceived] = useState<number | null>(null);
 
-  const amountRaw = useMemo(() => {
-    const n = Number(amount || 0);
-    if (!Number.isFinite(n) || n <= 0) return "";
-    return String(Math.round(n * LAMPORTS_PER_SOL));
-  }, [amount]);
+  const amountRaw = useMemo(() => toRawAmount(amount, payToken.decimals), [amount, payToken.decimals]);
 
   useEffect(() => {
-    if (!solana.address) return;
+    if (!solana.address) {
+      setBalance(0);
+      return;
+    }
     let cancelled = false;
-    void solana.connection
-      .getBalance(new PublicKey(solana.address))
-      .then((lamports) => {
-        if (!cancelled) setSolBal(lamports / LAMPORTS_PER_SOL);
+    void readTokenBalance(solana.connection, solana.address, payToken.mint)
+      .then((value) => {
+        if (!cancelled) setBalance(value ?? 0);
       })
       .catch(() => {
-        if (!cancelled) setSolBal(0);
+        if (!cancelled) setBalance(0);
       });
     return () => {
       cancelled = true;
     };
-  }, [solana.address, solana.connection]);
+  }, [payToken.mint, solana.address, solana.connection]);
 
   useEffect(() => {
-    if (!hasMint() || !amountRaw) return;
+    if (!amountRaw || payToken.mint === output.mint) return;
     const requested = amountRaw;
+    const inputMint = payToken.mint;
     const handle = window.setTimeout(() => {
       setQuoting(true);
       void fetch("/api/trade/jupiter/quote", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          inputMint: WSOL_MINT,
-          outputMint: project.mint,
+          inputMint,
+          outputMint: output.mint,
           amount: requested,
           slippageBps: SLIPPAGE_BPS,
         }),
@@ -85,22 +89,33 @@ export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
         .then((data) =>
           setQuote(
             data.outAmount
-              ? { ...data, forAmount: requested }
-              : { error: data.error || "No route yet", forAmount: requested },
+              ? { ...data, forAmount: requested, forMint: inputMint }
+              : { error: data.error || "No route yet", forAmount: requested, forMint: inputMint },
           ),
         )
-        .catch(() => setQuote({ error: "Quote unavailable", forAmount: requested }))
+        .catch(() => setQuote({ error: "Quote unavailable", forAmount: requested, forMint: inputMint }))
         .finally(() => setQuoting(false));
     }, 280);
     return () => window.clearTimeout(handle);
-  }, [amountRaw]);
+  }, [amountRaw, output.mint, payToken.mint]);
 
-  const liveQuote = hasMint() && amountRaw && quote?.forAmount === amountRaw ? quote : null;
-  const outTokens = toTokens(liveQuote?.outAmount);
-  const minTokens = toTokens(liveQuote?.minOutAmount || liveQuote?.outAmount);
-  const solIn = Number(amount || 0);
-  const rate = outTokens != null && solIn > 0 ? outTokens / solIn : null;
-  const displayBal = solana.address ? solBal : 0;
+  const liveQuote =
+    amountRaw && quote?.forAmount === amountRaw && quote.forMint === payToken.mint ? quote : null;
+  const outTokens = fromRawAmount(liveQuote?.outAmount, output.decimals);
+  const minTokens = fromRawAmount(liveQuote?.minOutAmount || liveQuote?.outAmount, output.decimals);
+  const payIn = Number(amount || 0);
+  const rate = outTokens != null && payIn > 0 ? outTokens / payIn : null;
+  const displayBal = solana.address ? balance : 0;
+  const outputIsJrock = hasMint();
+
+  function choosePayToken(token: SwapToken) {
+    setPayToken(token);
+    setAmount(defaultPayAmount(token));
+    setQuote(null);
+    setError("");
+    setSignature("");
+    setReceived(null);
+  }
 
   async function swap() {
     setError("");
@@ -108,12 +123,12 @@ export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
     setReceived(null);
     const owner = solana.requireWallet();
     if (!owner) return;
-    if (!hasMint()) {
-      setError("The $JROCK mint is not published yet.");
+    if (!amountRaw) {
+      setError(`Enter an amount of ${payToken.symbol}.`);
       return;
     }
-    if (!amountRaw) {
-      setError("Enter an amount of SOL.");
+    if (payToken.mint === output.mint) {
+      setError("Pick a different asset to pay with.");
       return;
     }
     try {
@@ -123,8 +138,8 @@ export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           owner,
-          inputMint: WSOL_MINT,
-          outputMint: project.mint,
+          inputMint: payToken.mint,
+          outputMint: output.mint,
           amount: amountRaw,
           slippageBps: SLIPPAGE_BPS,
           quoteResponse: liveQuote?.quoteResponse,
@@ -149,11 +164,11 @@ export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
         const exec = (await landed.json()) as { signature?: string; outAmount?: string; error?: string };
         if (!landed.ok) throw new Error(exec.error ?? "Jupiter execute failed");
         setSignature(exec.signature || "");
-        setReceived(toTokens(exec.outAmount || plan.outAmount || liveQuote?.outAmount));
+        setReceived(fromRawAmount(exec.outAmount || plan.outAmount || liveQuote?.outAmount, output.decimals));
       } else {
         const sig = await solana.signAndSendBase64(plan.tx);
         setSignature(sig);
-        setReceived(toTokens(plan.outAmount || liveQuote?.outAmount));
+        setReceived(fromRawAmount(plan.outAmount || liveQuote?.outAmount, output.decimals));
       }
       setPhase("");
     } catch (e) {
@@ -164,10 +179,10 @@ export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
 
   const receiveLabel =
     outTokens != null
-      ? `Adopt ${outTokens.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${project.ticker}`
+      ? `Adopt ${outTokens.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${output.symbol}`
       : quoting
         ? "Quoting…"
-        : `Adopt with ${amount || "0"} SOL`;
+        : `Adopt with ${amount || "0"} ${payToken.symbol}`;
 
   const card = (
     <LiquidSurface intensity="panel" radius={24} className="h-full">
@@ -181,10 +196,9 @@ export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
           {solana.connected ? (
             <WalletControls compact className="justify-end" />
           ) : (
-            <div className="flex items-center gap-1.5 text-[11px] text-[var(--dim)]">
-              <NetworkSolana variant="branded" size={14} />
-              SOL → {project.ticker}
-            </div>
+            <p className="text-[11px] text-[var(--dim)]">
+              {payToken.symbol} → {output.symbol}
+            </p>
           )}
         </div>
 
@@ -197,9 +211,9 @@ export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
                 onChange={(event) => setAmount(event.target.value)}
                 inputMode="decimal"
                 className="w-full bg-transparent font-mono text-2xl text-white outline-none"
-                placeholder="0.25"
+                placeholder={defaultPayAmount(payToken)}
               />
-              <span className="shrink-0 text-xs font-semibold text-[var(--gold)]">SOL</span>
+              <TokenSelect value={payToken} excludeMint={output.mint} onChange={choosePayToken} />
             </div>
           </label>
 
@@ -214,28 +228,32 @@ export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
                   />
                 ) : quoting ? (
                   <span className="text-[var(--stone)]">Quoting…</span>
-                ) : hasMint() ? (
-                  <span className="text-[var(--stone)]">—</span>
                 ) : (
-                  <span className="text-[var(--stone)]">Opens at launch</span>
+                  <span className="text-[var(--stone)]">—</span>
                 )}
               </p>
-              <span className="shrink-0 text-xs font-semibold text-[var(--orange)]">{project.ticker}</span>
+              <span className="shrink-0 text-xs font-semibold text-[var(--orange)]">{output.symbol}</span>
             </div>
           </label>
         </div>
 
         <div className="mt-3 flex flex-wrap gap-1.5">
-          {PRESETS.map((value) => (
+          {payPresets(payToken).map((value) => (
             <button key={value} type="button" className="chip" onClick={() => setAmount(String(value))}>
-              {value} SOL
+              {formatPreset(value, payToken)}
             </button>
           ))}
           {displayBal > 0 ? (
             <button
               type="button"
               className="chip"
-              onClick={() => setAmount(Math.max(0, displayBal - 0.02).toFixed(3))}
+              onClick={() =>
+                setAmount(
+                  Math.max(0, payToken.mint === WSOL_MINT ? displayBal - 0.02 : displayBal).toFixed(
+                    payToken.decimals > 4 ? 3 : 2,
+                  ),
+                )
+              }
             >
               Max
             </button>
@@ -244,39 +262,38 @@ export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
 
         <p className="mt-2 text-[11px] leading-4 text-[var(--dim)]">
           {solana.connected
-            ? `Balance ${displayBal.toFixed(3)} SOL · min ${minTokens != null ? formatAmount(minTokens, 2) : "—"} ${project.ticker} · 1.5% slip`
+            ? `Balance ${formatAmount(displayBal, displayBal >= 100 ? 2 : 4) ?? "0"} ${payToken.symbol} · min ${minTokens != null ? formatAmount(minTokens, 2) : "—"} ${output.symbol} · 1.5% slip`
             : `Quote before you sign · min ${minTokens != null ? formatAmount(minTokens, 2) : "—"} · 1.5% slip`}
-          {rate != null ? ` · 1 SOL ≈ ${formatAmount(rate, rate >= 1000 ? 0 : 2)}` : ""}
+          {rate != null ? ` · 1 ${payToken.symbol} ≈ ${formatAmount(rate, rate >= 1000 ? 0 : 2)}` : ""}
         </p>
+        {!outputIsJrock ? (
+          <p className="mt-1 text-[11px] leading-4 text-[var(--gold)]">
+            Desk is live. Output is USDC until the $JROCK mint is published.
+          </p>
+        ) : null}
 
         {solana.connected ? (
           <SpringButton
             type="button"
             className="btn-primary mt-3 w-full"
-            disabled={!hasMint() || !amountRaw || Boolean(phase) || outTokens == null}
+            disabled={!amountRaw || Boolean(phase) || outTokens == null}
             onClick={() => void swap()}
           >
             {phase || receiveLabel}
           </SpringButton>
         ) : (
-          <AdoptButton
-            shine
-            className="mt-3 w-full"
-            idleLabel="Connect wallet to adopt"
-          />
+          <AdoptButton shine className="mt-3 w-full" idleLabel="Connect wallet to adopt" />
         )}
 
         {error ? <p className="mt-3 text-sm text-[#ff8a6a]">{error}</p> : null}
-        {liveQuote?.error && hasMint() ? (
-          <p className="mt-3 text-sm text-[var(--dim)]">{liveQuote.error}</p>
-        ) : null}
+        {liveQuote?.error ? <p className="mt-3 text-sm text-[var(--dim)]">{liveQuote.error}</p> : null}
         {signature ? (
           <div className="mt-3 space-y-1">
             {received != null ? (
               <p className="text-sm text-white">
                 You received{" "}
                 <span className="font-mono text-[var(--orange)]">
-                  {formatAmount(received, received >= 1000 ? 2 : 4)} {project.ticker}
+                  {formatAmount(received, received >= 1000 ? 2 : 4)} {output.symbol}
                 </span>
               </p>
             ) : null}

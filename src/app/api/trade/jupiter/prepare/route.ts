@@ -13,6 +13,9 @@ export async function POST(req: Request) {
     if (!body.owner || !body.inputMint || !body.outputMint || !body.amount) {
       return NextResponse.json({ error: "Missing Jupiter swap fields" }, { status: 400 });
     }
+    if (body.inputMint === body.outputMint) {
+      return NextResponse.json({ error: "Pick two different assets." }, { status: 400 });
+    }
     const { prepareJupiterSwap } = await import("@/lib/jupiter/swap");
     const plan = await prepareJupiterSwap({
       owner: body.owner,
