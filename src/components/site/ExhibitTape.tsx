@@ -17,7 +17,7 @@ export function ExhibitTape() {
           </p>
         </div>
         <div className="relative">
-          <div className="absolute -left-2 top-6 hidden rotate-[-8deg] rounded bg-[#c0392b] px-3 py-1 text-[11px] font-bold tracking-[0.18em] text-white shadow-lg lg:block">
+          <div className="absolute left-2 top-2 z-20 hidden rotate-[-8deg] rounded bg-[#c0392b] px-3 py-1 text-[11px] font-bold tracking-[0.18em] text-white shadow-lg lg:block">
             ENTERED
           </div>
           <Mascot size="stage" />

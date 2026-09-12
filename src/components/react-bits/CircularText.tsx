@@ -15,7 +15,7 @@ export function CircularText({ text, pathId, className = "" }: CircularTextProps
       <defs>
         <path
           id={pathId}
-          d="M100,100 m-78,0 a78,78 0 1,1 156,0 a78,78 0 1,1 -156,0"
+          d="M100,100 m-88,0 a88,88 0 1,1 176,0 a88,88 0 1,1 -176,0"
         />
       </defs>
       <text fill="currentColor" fontSize="11.5" letterSpacing="2.4">

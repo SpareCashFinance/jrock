@@ -9,7 +9,7 @@ export default function NotFound() {
         alt="Jamie’s Pet Rock looking unimpressed"
         width={280}
         height={280}
-        className="mb-8 aspect-square max-w-[60vw] rounded-full border border-[rgba(247,147,26,0.35)] object-cover"
+        className="mb-8 aspect-square max-w-[60vw] rounded-full border border-[rgba(247,147,26,0.35)] bg-[#060a12] object-contain p-[12%]"
       />
       <p className="kicker">404 · Rock not found</p>
       <h1 className="display mt-3 text-6xl text-white">This rock wandered off.</h1>

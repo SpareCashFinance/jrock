@@ -41,11 +41,14 @@ export default async function Image() {
             borderRadius: 999,
             overflow: "hidden",
             border: "3px solid rgba(247,147,26,0.4)",
+            background: "#060a12",
             display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={src} width={360} height={360} alt="" style={{ objectFit: "cover" }} />
+          <img src={src} width={260} height={260} alt="" style={{ objectFit: "contain" }} />
         </div>
       </div>
     ),

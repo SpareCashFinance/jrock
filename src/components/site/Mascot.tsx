@@ -53,37 +53,35 @@ export function Mascot({
     };
   }, []);
 
-  const dim = size === "hero" ? 460 : 320;
+  const dim = size === "hero" ? 360 : 260;
 
   return (
     <div
       ref={wrap}
       className="relative mx-auto grid place-items-center"
-      style={{ width: "min(100%, 520px)", aspectRatio: "1" }}
+      style={{ width: size === "hero" ? "min(100%, 520px)" : "min(100%, 380px)", aspectRatio: "1" }}
     >
       <CircularText
         pathId={ringId}
         text="THE PET ROCK THAT PAYS IN BITCOIN  $JROCK  WBTC  STONK.FUN"
-        className="pointer-events-none absolute inset-[-8%] text-[rgba(232,210,176,0.42)]"
+        className="pointer-events-none absolute inset-0 text-[rgba(232,210,176,0.42)]"
       />
       <div
-        className={`mascot-idle relative transition-transform duration-500 ${trickClass[trick]}`}
+        className={`mascot-idle relative grid place-items-center transition-transform duration-500 ${trickClass[trick]}`}
         style={{
+          width: "70%",
           transform: `perspective(900px) rotateX(${tilt.y}deg) rotateY(${tilt.x}deg)`,
         }}
       >
-        <div className="absolute inset-6 rounded-full bg-[radial-gradient(circle,rgba(247,147,26,0.28),transparent_68%)] blur-2xl" />
-        <div
-          className="relative z-10 overflow-hidden rounded-full border border-[rgba(247,147,26,0.35)]"
-          style={{ width: `min(100%, ${dim}px)`, aspectRatio: "1" }}
-        >
+        <div className="absolute inset-[-8%] rounded-full bg-[radial-gradient(circle,rgba(247,147,26,0.28),transparent_68%)] blur-2xl" />
+        <div className="relative z-10 grid aspect-square w-full place-items-center overflow-hidden rounded-full border border-[rgba(247,147,26,0.35)] bg-[#060a12]">
           <Image
             src="/mascot.jpg"
             alt="Jamie’s Pet Rock mascot sitting in a cardboard carrier, wearing a navy tie and a Bitcoin medallion"
             width={dim}
             height={dim}
             priority={size === "hero"}
-            className="h-full w-full select-none object-cover"
+            className="h-[78%] w-[78%] select-none object-contain"
           />
         </div>
         {dropping ? (
