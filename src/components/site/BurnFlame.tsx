@@ -148,7 +148,7 @@ export function BurnIncinerator({ initial }: { initial: BurnSnapshot }) {
           <p className="mt-1 text-xs text-[var(--dim)]">
             {burn.platformCount > 0
               ? `${burn.platformCount.toLocaleString()} sweeps${last ? ` · ${last}` : ""}`
-              : "Fee sweep burns after volume"}
+              : "Extra burns after volume"}
           </p>
         </div>
         <div>
