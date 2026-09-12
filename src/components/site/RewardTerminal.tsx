@@ -1,6 +1,6 @@
 "use client";
 
-import { TokenWBTC } from "@web3icons/react";
+import { WbtcMark } from "@/components/brand/WbtcMark";
 import { RewardAnalytics } from "@/components/charts/RewardAnalytics";
 import { TapeChart } from "@/components/charts/TapeChart";
 import { SlotHeadline } from "@/components/motion/SlotHeadline";
@@ -50,7 +50,7 @@ export function RewardTerminal({ market: initial }: { market: MarketSnapshot }) 
           </h2>
         </div>
         <Badge variant="secondary" className="rounded-full px-3 py-1 text-[11px] tracking-[0.16em] uppercase">
-          <TokenWBTC variant="branded" size={14} />
+          <WbtcMark size={14} />
           {statusLabel[market.status]}
         </Badge>
       </div>

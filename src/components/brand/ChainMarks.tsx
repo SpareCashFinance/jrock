@@ -1,7 +1,8 @@
 "use client";
 
-import { NetworkSolana, TokenBTC, TokenWBTC } from "@web3icons/react";
+import { NetworkSolana, TokenBTC } from "@web3icons/react";
 import { cn } from "@/lib/utils";
+import { WbtcMark } from "./WbtcMark";
 
 export function ChainMarks({ className }: { className?: string }) {
   return (
@@ -12,7 +13,7 @@ export function ChainMarks({ className }: { className?: string }) {
       </span>
       <span className="text-[var(--gold)]">/</span>
       <span className="inline-flex items-center gap-1.5">
-        <TokenWBTC variant="branded" size={16} />
+        <WbtcMark size={16} />
         WBTC
       </span>
       <span className="text-[var(--gold)]">/</span>

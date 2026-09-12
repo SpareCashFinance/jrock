@@ -1,6 +1,7 @@
 "use client";
 
-import { NetworkSolana, TokenWBTC } from "@web3icons/react";
+import { NetworkSolana } from "@web3icons/react";
+import { WbtcMark } from "@/components/brand/WbtcMark";
 import { Card } from "@/components/ui/card";
 import { displayValue, hasBurnTx, project } from "@/lib/config";
 import { explorerTxUrl, explorerUrl, stonkfunTokenUrl } from "@/lib/links";
@@ -13,7 +14,7 @@ const rows = [
   { label: "Ticker", value: project.ticker },
   { label: "Network", value: project.network, icon: <NetworkSolana variant="branded" size={16} /> },
   { label: "Launchpad", value: project.launchpad },
-  { label: "Reward asset", value: project.rewardAsset, icon: <TokenWBTC variant="branded" size={16} /> },
+  { label: "Reward asset", value: project.rewardAsset, icon: <WbtcMark size={16} /> },
   { label: "Contract", value: displayValue(project.mint) },
   { label: "Total supply", value: displayValue(project.totalSupply) },
   { label: "Launch burn", value: `${project.burnPercent}% purchased and burned` },
