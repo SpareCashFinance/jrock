@@ -58,7 +58,7 @@ export function SwapToast({
               rel="noreferrer"
               className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-medium text-white/90 hover:bg-white/10"
             >
-              <SolscanMark size={14} />
+              <SolscanMark size={16} />
               Solscan
               <span className="font-mono text-[var(--dim)]">{shortenAddress(signature, 4)}</span>
             </a>
