@@ -4,8 +4,10 @@ type CircularTextProps = {
   className?: string;
 };
 
+const RING_RADIUS = 88;
+const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
+
 export function CircularText({ text, pathId, className = "" }: CircularTextProps) {
-  const phrase = `${text} • `;
   return (
     <svg
       viewBox="0 0 200 200"
@@ -15,11 +17,13 @@ export function CircularText({ text, pathId, className = "" }: CircularTextProps
       <defs>
         <path
           id={pathId}
-          d="M100,100 m-88,0 a88,88 0 1,1 176,0 a88,88 0 1,1 -176,0"
+          d={`M100,100 m-${RING_RADIUS},0 a${RING_RADIUS},${RING_RADIUS} 0 1,1 ${RING_RADIUS * 2},0 a${RING_RADIUS},${RING_RADIUS} 0 1,1 -${RING_RADIUS * 2},0`}
         />
       </defs>
-      <text fill="currentColor" fontSize="11.5" letterSpacing="2.4">
-        <textPath href={`#${pathId}`}>{phrase.repeat(2)}</textPath>
+      <text fill="currentColor" fontSize="10.5" letterSpacing="1.6">
+        <textPath href={`#${pathId}`} textLength={RING_LENGTH} lengthAdjust="spacing">
+          {`${text} • `}
+        </textPath>
       </text>
     </svg>
   );
