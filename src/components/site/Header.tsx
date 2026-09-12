@@ -1,5 +1,7 @@
 import { project } from "@/lib/config";
+import { socialLinks } from "@/lib/links";
 import { BrandMark } from "@/components/brand/BrandMark";
+import { SocialIconLink } from "@/components/brand/SocialMarks";
 import { AdoptButton, WalletControls } from "@/components/solana/AdoptButton";
 import { CopyButton } from "./CopyButton";
 
@@ -34,6 +36,15 @@ export function Header() {
           ))}
         </nav>
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+          {socialLinks().map((item) => (
+            <SocialIconLink
+              key={item.kind}
+              kind={item.kind}
+              href={item.href}
+              label={item.label}
+              className="size-8 sm:size-9"
+            />
+          ))}
           <div className="hidden md:block">
             <CopyButton value={project.mint} label="Copy" className="px-3 text-xs" />
           </div>

@@ -1,5 +1,6 @@
 import { project } from "@/lib/config";
-import { visibleLinks } from "@/lib/links";
+import { socialLinks, visibleLinks } from "@/lib/links";
+import { SocialIconLink, SocialMark } from "@/components/brand/SocialMarks";
 
 export function Footer() {
   return (
@@ -11,9 +12,13 @@ export function Footer() {
             {project.ticker} · {project.coreLine}
           </p>
         </div>
-        <div className="flex flex-wrap gap-4 text-xs tracking-[0.16em] uppercase text-[var(--dim)]">
+        <div className="flex flex-wrap items-center gap-4 text-xs tracking-[0.16em] uppercase text-[var(--dim)]">
+          {socialLinks().map((item) => (
+            <SocialIconLink key={item.kind} kind={item.kind} href={item.href} label={item.label} className="size-8" />
+          ))}
           {visibleLinks().map((item) => (
-            <a key={item.label} href={item.href} className="hover:text-white">
+            <a key={item.label} href={item.href} className="inline-flex items-center gap-1.5 hover:text-white">
+              {item.kind ? <SocialMark kind={item.kind} size={13} /> : null}
               {item.label}
             </a>
           ))}

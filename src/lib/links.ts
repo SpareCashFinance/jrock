@@ -77,17 +77,32 @@ export function shareOnXUrl() {
   return url.toString();
 }
 
-export function visibleLinks() {
+export type SocialKind = "telegram" | "x";
+
+export type SiteLink = {
+  label: string;
+  href: string;
+  kind?: SocialKind;
+};
+
+export function socialLinks(): { kind: SocialKind; href: string; label: string }[] {
+  return [
+    links.telegram ? { kind: "telegram" as const, href: links.telegram, label: "Telegram" } : null,
+    links.twitter ? { kind: "x" as const, href: links.twitter, label: "X" } : null,
+  ].filter((item): item is { kind: SocialKind; href: string; label: string } => Boolean(item));
+}
+
+export function visibleLinks(): SiteLink[] {
   return [
     { label: "stonk.fun", href: stonkfunTokenUrl() },
     { label: "Rewards", href: links.stonkfunRewards },
-    links.twitter ? { label: "X", href: links.twitter } : null,
-    links.telegram ? { label: "Telegram", href: links.telegram } : null,
+    links.twitter ? { label: "X", href: links.twitter, kind: "x" } : null,
+    links.telegram ? { label: "Telegram", href: links.telegram, kind: "telegram" } : null,
     dexscreenerUrl()
       ? { label: "DexScreener", href: dexscreenerUrl() }
       : null,
     explorerUrl() ? { label: "Explorer", href: explorerUrl() } : null,
-  ].filter((item): item is { label: string; href: string } => Boolean(item));
+  ].filter((item): item is SiteLink => Boolean(item));
 }
 
 export { withMint };
