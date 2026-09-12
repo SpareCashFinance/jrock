@@ -7,7 +7,7 @@ import { project } from "@/lib/config";
 import { links, shareMemeOnXUrl } from "@/lib/links";
 import { memes, type MemeCard } from "@/lib/memes";
 
-type Flash = "caption" | "image" | "saved" | "fail" | null;
+type Flash = "caption" | "image" | "saved" | "posted" | "shared" | "paste" | "fail" | null;
 
 async function toPngBlob(blob: Blob) {
   if (blob.type === "image/png") return blob;
@@ -36,7 +36,7 @@ function MemeActions({ meme }: { meme: MemeCard }) {
 
   function ping(next: Flash) {
     setFlash(next);
-    window.setTimeout(() => setFlash(null), 1600);
+    window.setTimeout(() => setFlash(null), next === "posted" || next === "paste" ? 3200 : 1600);
   }
 
   async function copyCaption() {
@@ -74,6 +74,37 @@ function MemeActions({ meme }: { meme: MemeCard }) {
     }
   }
 
+  async function postOnX() {
+    const intent = shareMemeOnXUrl(meme.caption);
+    const shareProbe = new File([new Blob(["x"], { type: "image/png" })], "x.png", { type: "image/png" });
+    const useShare = navigator.canShare?.({ files: [shareProbe], text: meme.caption }) === true;
+    if (!useShare) {
+      window.open(intent, "_blank", "noopener,noreferrer");
+    }
+    try {
+      const blob = await fetchMeme(meme.src);
+      const png = await toPngBlob(blob);
+      const file = new File([png], meme.file.replace(/\.jpe?g$/i, ".png"), { type: "image/png" });
+      if (useShare) {
+        try {
+          await navigator.share({ files: [file], text: meme.caption });
+          ping("shared");
+          return;
+        } catch (error) {
+          if (error instanceof Error && error.name === "AbortError") return;
+          window.open(intent, "_blank", "noopener,noreferrer");
+          ping("paste");
+          return;
+        }
+      }
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": png })]);
+      ping("posted");
+    } catch {
+      if (useShare) window.open(intent, "_blank", "noopener,noreferrer");
+      ping("paste");
+    }
+  }
+
   const status =
     flash === "caption"
       ? "Caption copied"
@@ -81,9 +112,15 @@ function MemeActions({ meme }: { meme: MemeCard }) {
         ? "Image copied"
         : flash === "saved"
           ? "Saved"
-          : flash === "fail"
-            ? "The rock refused"
-            : null;
+          : flash === "posted"
+            ? "Image copied — paste it in the post"
+            : flash === "shared"
+              ? "Handed to the share sheet"
+              : flash === "paste"
+                ? "Attach the image in the composer"
+                : flash === "fail"
+                  ? "The rock refused"
+                  : null;
 
   return (
     <div className="space-y-3">
@@ -97,7 +134,7 @@ function MemeActions({ meme }: { meme: MemeCard }) {
         <HouseButton onClick={saveImage} className="px-3 text-xs">
           {flash === "saved" ? "Saved" : "Save"}
         </HouseButton>
-        <HouseButton href={shareMemeOnXUrl(meme.caption)} target="_blank" className="px-3 text-xs">
+        <HouseButton onClick={postOnX} className="px-3 text-xs">
           <XMark size={13} />
           Post on X
         </HouseButton>
@@ -128,7 +165,7 @@ export function MemeDesk() {
           <ol className="serif mt-3 space-y-2 text-lg leading-6 text-[#2a2116]">
             <li>01 · Copy the line.</li>
             <li>02 · Copy or save the picture.</li>
-            <li>03 · Post on X. Attach the image yourself.</li>
+            <li>03 · Post on X. Paste the image into the composer.</li>
             <li>04 · Drop extras in the kennel.</li>
           </ol>
           <p className="mt-4 text-sm leading-6 text-[#4a3b28]">

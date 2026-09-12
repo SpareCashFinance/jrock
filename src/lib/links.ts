@@ -82,7 +82,7 @@ export function shareOnXUrl() {
 }
 
 export function shareMemeOnXUrl(caption: string) {
-  return tweetIntentUrl(`${caption} ${project.ticker}`);
+  return tweetIntentUrl(caption, "");
 }
 
 export type SocialKind = "telegram" | "x";
