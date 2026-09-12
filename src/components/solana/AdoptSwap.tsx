@@ -280,13 +280,7 @@ export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
             <p className="kicker">Jupiter desk</p>
             <h2 className="mt-1 text-lg font-semibold tracking-tight text-white">Adopt $JROCK</h2>
           </div>
-          {solana.connected ? (
-            <WalletControls compact className="justify-end" />
-          ) : (
-            <p className="text-[11px] text-[var(--dim)]">
-              {payToken.symbol} → {receiveToken.symbol}
-            </p>
-          )}
+          {solana.connected ? <WalletControls compact className="justify-end" /> : null}
         </div>
 
         <div className="relative mt-4 space-y-2">
