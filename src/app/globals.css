@@ -363,7 +363,7 @@ a {
   margin: 0 auto;
   width: min(1120px, calc(100% - 2rem));
   padding: 3.25rem 0;
-  scroll-margin-top: 5.5rem;
+  scroll-margin-top: calc(var(--tape-h) + 5.5rem);
 }
 
 #adopt,
@@ -376,7 +376,7 @@ a {
 #lore,
 #community,
 #top {
-  scroll-margin-top: 5.5rem;
+  scroll-margin-top: calc(var(--tape-h) + 5.5rem);
 }
 
 .tape-scanlines::after {
