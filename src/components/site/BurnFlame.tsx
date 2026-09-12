@@ -1,5 +1,6 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import NumberFlow from "@number-flow/react";
 import { formatCompact, formatUsd, timeAgo } from "@/lib/format";
 import { useBurnSnapshot } from "@/lib/burn-client";
@@ -12,12 +13,31 @@ function heatFor(burn: BurnSnapshot) {
   return "lit";
 }
 
+function subscribeReducedMotion(cb: () => void) {
+  const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+  mq.addEventListener("change", cb);
+  return () => mq.removeEventListener("change", cb);
+}
+
 function FireMark({ heat, size = "sm" }: { heat: ReturnType<typeof heatFor>; size?: "sm" | "lg" }) {
+  const reduce = useSyncExternalStore(
+    subscribeReducedMotion,
+    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    () => false,
+  );
+  const px = size === "lg" ? 56 : 26;
+
   return (
     <span className={`burn-fire burn-fire-${heat} ${size === "lg" ? "burn-fire-lg" : ""}`} aria-hidden>
       <span className="burn-fire-glow" />
-      <span className="burn-fire-wick" />
-      <span className="emoji burn-fire-emoji">🔥</span>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={reduce ? "/media/burn-fire-still.png" : "/media/burn-fire.gif"}
+        alt=""
+        width={px}
+        height={px}
+        className="burn-fire-gif"
+      />
     </span>
   );
 }

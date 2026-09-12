@@ -32,6 +32,7 @@ export function AdoptButton({
     () => false,
   );
 
+  const liveConnected = mounted && connected;
   const label = !mounted
     ? idleLabel
     : connecting
@@ -50,11 +51,15 @@ export function AdoptButton({
 
   return (
     <HouseButton
-      variant="primary"
-      className={cn(shine ? "h-11 px-5" : "min-h-9 px-2.5 text-xs sm:px-3", className)}
+      variant={liveConnected ? "primary" : "ghost"}
+      className={cn(
+        liveConnected ? "" : "btn-connect",
+        shine ? "h-11 px-5" : "min-h-9 px-2.5 text-xs sm:px-3",
+        className,
+      )}
       onClick={onClick}
     >
-      <NetworkSolana variant="branded" size={16} />
+      {liveConnected ? <NetworkSolana variant="branded" size={16} /> : null}
       {compact ? (
         <>
           <span className="sm:hidden">{connected ? "Adopt" : connecting ? "…" : "Connect"}</span>
