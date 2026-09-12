@@ -60,6 +60,26 @@ export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
   const amountRaw = useMemo(() => toRawAmount(amount, payToken.decimals), [amount, payToken.decimals]);
 
   useEffect(() => {
+    const mint = payToken.mint;
+    const ac = new AbortController();
+    void fetch(`/api/trade/jupiter/tokens?q=${encodeURIComponent(mint)}`, { signal: ac.signal })
+      .then((res) => res.json() as Promise<{ tokens?: SwapToken[] }>)
+      .then((data) => {
+        const match = (data.tokens ?? []).find((token) => token.mint === mint);
+        if (!match) return;
+        setPayToken((prev) =>
+          prev.mint !== mint
+            ? prev
+            : { ...prev, ...match, icon: match.icon || prev.icon },
+        );
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+      });
+    return () => ac.abort();
+  }, [payToken.mint]);
+
+  useEffect(() => {
     if (!solana.address) {
       setBalance(0);
       return;

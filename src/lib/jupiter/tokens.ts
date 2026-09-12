@@ -1,6 +1,12 @@
 import "server-only";
 
-import { SOL_TOKEN, USDC_TOKEN, USDT_TOKEN, type SwapToken } from "@/lib/swap-tokens";
+import {
+  SOL_TOKEN,
+  USDC_TOKEN,
+  USDT_TOKEN,
+  normalizeTokenIcon,
+  type SwapToken,
+} from "@/lib/swap-tokens";
 
 const PAID = "https://api.jup.ag/tokens/v2";
 const LITE = "https://lite-api.jup.ag/tokens/v2";
@@ -45,20 +51,50 @@ export function toSwapToken(row: JupiterMint): SwapToken | null {
     symbol: row.symbol,
     name: row.name || row.symbol,
     decimals: row.decimals,
-    icon: row.icon || undefined,
+    icon: normalizeTokenIcon(row.icon),
     verified: Boolean(row.isVerified),
   };
 }
 
 function dedupe(tokens: SwapToken[]) {
-  const seen = new Set<string>();
-  const out: SwapToken[] = [];
+  const map = new Map<string, SwapToken>();
   for (const token of tokens) {
-    if (seen.has(token.mint)) continue;
-    seen.add(token.mint);
-    out.push(token);
+    const prev = map.get(token.mint);
+    if (!prev) {
+      map.set(token.mint, token);
+      continue;
+    }
+    map.set(token.mint, {
+      ...prev,
+      ...token,
+      icon: token.icon || prev.icon,
+      verified: Boolean(prev.verified || token.verified),
+    });
   }
-  return out;
+  return [...map.values()];
+}
+
+/** Tokens API v2 mint lookup — comma-separated ids, max 100. This is the enrich path. */
+async function enrichJupiterTokens(tokens: SwapToken[]) {
+  if (!tokens.length) return tokens;
+  const mints = [...new Set(tokens.map((token) => token.mint))].slice(0, 100);
+  const rows = await jupGet(`/search?query=${encodeURIComponent(mints.join(","))}`);
+  const byMint = new Map(
+    rows
+      .map(toSwapToken)
+      .filter((row): row is SwapToken => Boolean(row))
+      .map((row) => [row.mint, row] as const),
+  );
+  return tokens.map((token) => {
+    const enriched = byMint.get(token.mint);
+    if (!enriched) return token;
+    return {
+      ...token,
+      ...enriched,
+      icon: enriched.icon || token.icon,
+      verified: Boolean(token.verified || enriched.verified),
+    };
+  });
 }
 
 const STRICT_TICKERS = new Set(["usdc", "usdt", "sol", "btc", "wbtc", "eth", "jup"]);
@@ -79,7 +115,7 @@ export async function searchJupiterTokens(query: string) {
     const verified = tokens.filter((token) => token.verified);
     if (verified.length) tokens = verified;
   }
-  return tokens.sort((a, b) => rankToken(b, q) - rankToken(a, q));
+  return enrichJupiterTokens(tokens.sort((a, b) => rankToken(b, q) - rankToken(a, q)));
 }
 
 export async function discoverJupiterTokens() {
@@ -91,5 +127,5 @@ export async function discoverJupiterTokens() {
   const fromJupiter = [...pinned, ...trending]
     .map(toSwapToken)
     .filter((row): row is SwapToken => Boolean(row));
-  return dedupe([SOL_TOKEN, USDC_TOKEN, USDT_TOKEN, ...fromJupiter]);
+  return enrichJupiterTokens(dedupe([SOL_TOKEN, USDC_TOKEN, USDT_TOKEN, ...fromJupiter]));
 }

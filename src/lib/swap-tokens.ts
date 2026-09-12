@@ -18,7 +18,6 @@ export const SOL_TOKEN: SwapToken = {
   symbol: "SOL",
   name: "Solana",
   decimals: 9,
-  icon: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png",
   verified: true,
 };
 
@@ -27,7 +26,6 @@ export const USDC_TOKEN: SwapToken = {
   symbol: "USDC",
   name: "USD Coin",
   decimals: 6,
-  icon: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png",
   verified: true,
 };
 
@@ -38,6 +36,20 @@ export const USDT_TOKEN: SwapToken = {
   decimals: 6,
   verified: true,
 };
+
+const DEAD_SOL_ICON =
+  "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png";
+const LIVE_SOL_ICON =
+  "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/solana/info/logo.png";
+
+/** Tokens API v2 may return ipfs://, a blank icon, or the retired SOL token-list URL. */
+export function normalizeTokenIcon(icon?: string | null) {
+  const raw = icon?.trim();
+  if (!raw) return undefined;
+  if (raw === DEAD_SOL_ICON) return LIVE_SOL_ICON;
+  if (raw.startsWith("ipfs://")) return `https://ipfs.io/ipfs/${raw.slice("ipfs://".length)}`;
+  return raw;
+}
 
 export const PINNED_PAY_TOKENS = [SOL_TOKEN, USDC_TOKEN] as const;
 
