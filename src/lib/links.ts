@@ -16,7 +16,7 @@ export const links = {
   stonkfun: envLink("NEXT_PUBLIC_STONKFUN_URL") || STONKFUN_ORIGIN,
   stonkfunRewards:
     envLink("NEXT_PUBLIC_STONKFUN_REWARDS_URL") || `${STONKFUN_ORIGIN}/rewards`,
-  twitter: envLink("NEXT_PUBLIC_X_URL"),
+  twitter: envLink("NEXT_PUBLIC_X_URL") || "https://x.com/petrockbtc",
   telegram:
     envLink("NEXT_PUBLIC_TELEGRAM_URL") || "https://t.me/Jamiespetrock",
   dexscreenerOverride: envLink("NEXT_PUBLIC_DEXSCREENER_URL"),
