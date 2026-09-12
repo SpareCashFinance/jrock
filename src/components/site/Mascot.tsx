@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useId, useRef, useState } from "react";
 import { CircularText } from "@/components/react-bits/CircularText";
 
@@ -21,6 +20,46 @@ const trickClass: Record<Trick, string> = {
   fetch: "-translate-x-8 -translate-y-3",
   stack: "translate-x-3",
 };
+
+function MascotEyes({ eager = false }: { eager?: boolean }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) return;
+
+    const play = () => {
+      void video.play().catch(() => undefined);
+    };
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) play();
+        else video.pause();
+      },
+      { threshold: 0.2 },
+    );
+    io.observe(video);
+    return () => io.disconnect();
+  }, []);
+
+  return (
+    <video
+      ref={videoRef}
+      className="pointer-events-none h-[78%] w-[78%] select-none object-contain"
+      poster="/mascot.jpg"
+      playsInline
+      muted
+      loop
+      autoPlay
+      preload={eager ? "auto" : "metadata"}
+      aria-label="Jamie’s Pet Rock mascot sitting in a cardboard carrier, wearing a navy tie and a Bitcoin medallion"
+    >
+      <source src="/media/mascot-eyes.mp4" type="video/mp4" />
+    </video>
+  );
+}
 
 export function Mascot({
   size = "hero",
@@ -53,8 +92,6 @@ export function Mascot({
     };
   }, []);
 
-  const dim = size === "hero" ? 360 : 260;
-
   return (
     <div
       ref={wrap}
@@ -75,14 +112,7 @@ export function Mascot({
       >
         <div className="absolute inset-[-8%] rounded-full bg-[radial-gradient(circle,rgba(247,147,26,0.28),transparent_68%)] blur-2xl" />
         <div className="relative z-10 grid aspect-square w-full place-items-center overflow-hidden rounded-full border border-[rgba(247,147,26,0.35)] bg-[#060a12]">
-          <Image
-            src="/mascot.jpg"
-            alt="Jamie’s Pet Rock mascot sitting in a cardboard carrier, wearing a navy tie and a Bitcoin medallion"
-            width={dim}
-            height={dim}
-            priority={size === "hero"}
-            className="h-[78%] w-[78%] select-none object-contain"
-          />
+          <MascotEyes eager={size === "hero"} />
         </div>
         {dropping ? (
           <span className="coin-drop absolute left-1/2 top-[18%] z-20 grid h-10 w-10 place-items-center rounded-full bg-[#f7931a] text-lg font-black text-[#1a0f04] shadow-[0_0_24px_rgba(247,147,26,0.65)]">
