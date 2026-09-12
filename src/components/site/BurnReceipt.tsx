@@ -19,8 +19,8 @@ export function BurnReceipt({ burn }: { burn: BurnSnapshot }) {
       </h2>
       <p className="mt-4 max-w-2xl text-sm leading-6 text-[var(--dim)]">
         At launch we buy {project.burnPercent}% of {project.ticker} supply and send it to the
-        burn. After that, stonk.fun’s fee sweep keeps buying and burning on its own. Same
-        reward pot. Smaller float. Variable WBTC. Not a promise.
+        burn. Holder Rewards stay separate: a 3% trading fee is meant to pay eligible
+        holders in WBTC. Smaller float. Variable Bitcoin. Not a promise.
       </p>
 
       <div className="mt-8">
@@ -38,7 +38,7 @@ export function BurnReceipt({ burn }: { burn: BurnSnapshot }) {
           <div className="relative">
             <div className="flex flex-wrap gap-2">
               <span className="chip">{project.burnPercent}% launch burn</span>
-              <span className="chip">stonk.fun flywheel</span>
+              <span className="chip">3% to holders in WBTC</span>
               <span className="chip">{remaining}% remains after launch</span>
             </div>
 

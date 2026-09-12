@@ -151,7 +151,7 @@ export async function getBurnSnapshot(): Promise<BurnSnapshot> {
   if (!hasMint() || !looksLikeMint(project.mint)) {
     return snapshot({
       status: "awaiting_launch",
-      message: `Launch burn is armed at ${project.burnPercent}%. stonk.fun’s fee sweep starts after the mint is live.`,
+      message: `Launch burn is armed at ${project.burnPercent}%. Holder Rewards stay on a separate 3% WBTC track after the mint is live.`,
     });
   }
 
@@ -166,7 +166,7 @@ export async function getBurnSnapshot(): Promise<BurnSnapshot> {
     if (burnHit.status === 429) {
       return snapshot({
         status: "unavailable",
-        message: "stonk.fun is rate-limiting burn reads. The fire retries on the next refresh.",
+        message: "Burn reads are rate-limited. The fire retries on the next refresh.",
         circulatingSupply: circulating,
       });
     }
@@ -201,8 +201,8 @@ export async function getBurnSnapshot(): Promise<BurnSnapshot> {
     return snapshot({
       status: live ? "live" : "armed",
       message: live
-        ? "Live incinerator. Launch buyback plus stonk.fun’s fee-sweep burns. Amounts can move."
-        : `Mint is set. ${project.burnPercent}% launch burn is armed. The flywheel lights once stonk.fun starts sweeping fees.`,
+        ? "Live incinerator. Launch buyback plus later on-chain burns. Amounts can move."
+        : `Mint is set. ${project.burnPercent}% launch burn is armed. Holder Rewards pay WBTC from trading fees, not from the burn.`,
       circulatingSupply: circulating,
       launchBurned,
       platformBurned: indexed ? platformBurned : 0,

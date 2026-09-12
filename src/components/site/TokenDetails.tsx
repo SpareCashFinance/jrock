@@ -3,8 +3,8 @@
 import { NetworkSolana } from "@web3icons/react";
 import { WbtcMark } from "@/components/brand/WbtcMark";
 import { Card } from "@/components/ui/card";
-import { displayValue, hasBurnTx, project } from "@/lib/config";
-import { explorerTxUrl, explorerUrl, stonkfunTokenUrl } from "@/lib/links";
+import { displayValue, hasBurnTx, holderFeePercent, project } from "@/lib/config";
+import { explorerTxUrl, explorerUrl, pumpfunTokenUrl } from "@/lib/links";
 import { shortenAddress } from "@/lib/format";
 import { HouseButton } from "@/components/ui/house-button";
 import { CopyButton } from "./CopyButton";
@@ -23,7 +23,10 @@ const rows = [
     label: "Burn transaction",
     value: hasBurnTx() ? shortenAddress(project.burnTx, 6) : "Receipt pending",
   },
-  { label: "Transfer / trading fee", value: displayValue(project.transferFee) },
+  {
+    label: "Holder rewards",
+    value: displayValue(project.transferFee, `${holderFeePercent}% of trades to holders in WBTC`),
+  },
   { label: "Holder eligibility", value: displayValue(project.eligibility) },
   { label: "Liquidity", value: displayValue(project.liquidityStatus) },
   { label: "Authority", value: displayValue(project.authorityStatus) },
@@ -51,12 +54,12 @@ export function TokenDetails() {
           <HouseButton variant="primary" href="#adopt">
             Adopt $JROCK
           </HouseButton>
-          <HouseButton href={stonkfunTokenUrl()} target="_blank">
-            stonk.fun
+          <HouseButton href={pumpfunTokenUrl()} target="_blank">
+            pump.fun
           </HouseButton>
           {explorerUrl() ? (
             <HouseButton href={explorerUrl()} target="_blank">
-              Solana Explorer
+              Solscan
             </HouseButton>
           ) : null}
           {hasBurnTx() ? (

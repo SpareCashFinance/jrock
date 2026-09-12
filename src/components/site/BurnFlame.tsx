@@ -141,14 +141,14 @@ export function BurnIncinerator({ initial }: { initial: BurnSnapshot }) {
           </p>
         </div>
         <div>
-          <p className="kicker">stonk.fun flywheel</p>
+          <p className="kicker">On-chain burns</p>
           <p className="mt-2 font-mono text-2xl text-white">
             {burn.platformBurned > 0 ? formatCompact(burn.platformBurned) : "—"}
           </p>
           <p className="mt-1 text-xs text-[var(--dim)]">
             {burn.platformCount > 0
               ? `${burn.platformCount.toLocaleString()} sweeps${last ? ` · ${last}` : ""}`
-              : "Fee sweep burns after volume"}
+              : "Extra burns after the launch buyback"}
           </p>
         </div>
         <div>

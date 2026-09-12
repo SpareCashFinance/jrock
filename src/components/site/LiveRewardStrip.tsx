@@ -24,7 +24,7 @@ export function LiveRewardStrip({ market: initial }: { market: MarketSnapshot })
         <Stat
           label="Market cap"
           value={formatUsd(market.marketCapUsd)}
-          note={market.marketCapUsd == null ? "Live after mint" : "stonk.fun"}
+          note={market.marketCapUsd == null ? "Live after mint" : "pump.fun"}
         />
         <Stat
           label="24h volume"
