@@ -59,7 +59,7 @@ export function Header() {
             </HouseButton>
           </div>
           <div className="hidden md:block">
-            <CopyButton value={project.mint} label="Copy" className="px-3 text-xs" />
+            <CopyButton value={project.mint} label="Contract" className="px-3 text-xs" />
           </div>
           <WalletControls compact />
           <AdoptButton idleLabel="Connect wallet" connectedLabel="Adopt $JROCK" compact />

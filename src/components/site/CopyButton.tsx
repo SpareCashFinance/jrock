@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { HouseButton } from "@/components/ui/house-button";
+import { copyText } from "@/lib/clipboard";
 
 type CopyButtonProps = {
   value: string;
@@ -16,19 +17,37 @@ export function CopyButton({
   className,
   emptyLabel = "Contract pending",
 }: CopyButtonProps) {
-  const [copied, setCopied] = useState(false);
+  const [status, setStatus] = useState<"idle" | "copied" | "empty" | "fail">("idle");
   const ready = Boolean(value.trim());
 
-  async function onCopy() {
-    if (!ready) return;
-    await navigator.clipboard.writeText(value);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1800);
+  function flash(next: "copied" | "empty" | "fail") {
+    setStatus(next);
+    window.setTimeout(() => setStatus("idle"), 1800);
   }
 
+  async function onCopy() {
+    if (!ready) {
+      flash("empty");
+      return;
+    }
+    const ok = await copyText(value);
+    flash(ok ? "copied" : "fail");
+  }
+
+  const text =
+    status === "copied"
+      ? "Copied"
+      : status === "fail"
+        ? "Copy failed"
+        : status === "empty"
+          ? "Mint not live"
+          : ready
+            ? label
+            : emptyLabel;
+
   return (
-    <HouseButton className={className} onClick={onCopy} disabled={!ready} aria-live="polite">
-      {ready ? (copied ? "Copied" : label) : emptyLabel}
+    <HouseButton className={className} onClick={() => void onCopy()} aria-live="polite">
+      {text}
     </HouseButton>
   );
 }
