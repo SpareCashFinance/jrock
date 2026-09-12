@@ -1,28 +1,30 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import NumberFlow from "@number-flow/react";
+import { ArrowDownUp } from "lucide-react";
 import { LiquidSurface } from "@/components/brand/LiquidSurface";
-import { BorderBeam } from "@/components/ui/border-beam";
 import { Card } from "@/components/ui/card";
 import { SpringButton } from "@/components/ui/spring-button";
 import { hasMint, project } from "@/lib/config";
 import { formatAmount } from "@/lib/format";
-import { explorerTxUrl } from "@/lib/links";
 import { WSOL_MINT } from "@/lib/solana";
 import {
+  PINNED_PAY_TOKENS,
   SOL_TOKEN,
   adoptOutputToken,
   defaultPayAmount,
   formatPreset,
   fromRawAmount,
   payPresets,
+  pinnedReceiveTokens,
   toRawAmount,
   type SwapToken,
 } from "@/lib/swap-tokens";
 import { readTokenBalance } from "@/lib/token-balance";
 import { useSolanaWallet } from "./SolanaWalletProvider";
 import { AdoptButton, WalletControls } from "./AdoptButton";
+import { SwapToast } from "./SwapToast";
 import { TokenSelect } from "./TokenSelect";
 
 const SLIPPAGE_BPS = 150;
@@ -34,6 +36,7 @@ type Quote = {
   error?: string;
   forAmount?: string;
   forMint?: string;
+  forOutMint?: string;
 };
 
 function swapErrorMessage(error: unknown) {
@@ -44,10 +47,30 @@ function swapErrorMessage(error: unknown) {
   return message;
 }
 
+function useEnrichedToken(token: SwapToken, setToken: (next: SwapToken) => void) {
+  useEffect(() => {
+    const mint = token.mint;
+    const ac = new AbortController();
+    void fetch(`/api/trade/jupiter/tokens?q=${encodeURIComponent(mint)}`, { signal: ac.signal })
+      .then((res) => res.json() as Promise<{ tokens?: SwapToken[] }>)
+      .then((data) => {
+        const match = (data.tokens ?? []).find((item) => item.mint === mint);
+        if (!match) return;
+        setToken({ ...token, ...match, icon: match.icon || token.icon });
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+      });
+    return () => ac.abort();
+    // Enrich once per mint, not on every token object change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token.mint]);
+}
+
 export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
   const solana = useSolanaWallet();
-  const output = adoptOutputToken();
   const [payToken, setPayToken] = useState<SwapToken>(SOL_TOKEN);
+  const [receiveToken, setReceiveToken] = useState<SwapToken>(adoptOutputToken);
   const [amount, setAmount] = useState(defaultPayAmount(SOL_TOKEN));
   const [balance, setBalance] = useState(0);
   const [quote, setQuote] = useState<Quote | null>(null);
@@ -56,28 +79,19 @@ export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
   const [error, setError] = useState("");
   const [signature, setSignature] = useState("");
   const [received, setReceived] = useState<number | null>(null);
+  const [toastOpen, setToastOpen] = useState(false);
 
   const amountRaw = useMemo(() => toRawAmount(amount, payToken.decimals), [amount, payToken.decimals]);
+  const receivePins = useMemo(() => pinnedReceiveTokens(), []);
 
-  useEffect(() => {
-    const mint = payToken.mint;
-    const ac = new AbortController();
-    void fetch(`/api/trade/jupiter/tokens?q=${encodeURIComponent(mint)}`, { signal: ac.signal })
-      .then((res) => res.json() as Promise<{ tokens?: SwapToken[] }>)
-      .then((data) => {
-        const match = (data.tokens ?? []).find((token) => token.mint === mint);
-        if (!match) return;
-        setPayToken((prev) =>
-          prev.mint !== mint
-            ? prev
-            : { ...prev, ...match, icon: match.icon || prev.icon },
-        );
-      })
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-      });
-    return () => ac.abort();
-  }, [payToken.mint]);
+  useEnrichedToken(payToken, (next) => {
+    setPayToken((prev) => (prev.mint === next.mint ? { ...prev, ...next, icon: next.icon || prev.icon } : prev));
+  });
+  useEnrichedToken(receiveToken, (next) => {
+    setReceiveToken((prev) =>
+      prev.mint === next.mint ? { ...prev, ...next, icon: next.icon || prev.icon } : prev,
+    );
+  });
 
   useEffect(() => {
     if (!solana.address) {
@@ -98,9 +112,10 @@ export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
   }, [payToken.mint, solana.address, solana.connection]);
 
   useEffect(() => {
-    if (!amountRaw || payToken.mint === output.mint) return;
+    if (!amountRaw || payToken.mint === receiveToken.mint) return;
     const requested = amountRaw;
     const inputMint = payToken.mint;
+    const outputMint = receiveToken.mint;
     const handle = window.setTimeout(() => {
       setQuoting(true);
       void fetch("/api/trade/jupiter/quote", {
@@ -108,7 +123,7 @@ export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           inputMint,
-          outputMint: output.mint,
+          outputMint,
           amount: requested,
           slippageBps: SLIPPAGE_BPS,
         }),
@@ -117,45 +132,81 @@ export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
         .then((data) =>
           setQuote(
             data.outAmount
-              ? { ...data, forAmount: requested, forMint: inputMint }
-              : { error: data.error || "No route yet", forAmount: requested, forMint: inputMint },
+              ? { ...data, forAmount: requested, forMint: inputMint, forOutMint: outputMint }
+              : { error: data.error || "No route yet", forAmount: requested, forMint: inputMint, forOutMint: outputMint },
           ),
         )
-        .catch(() => setQuote({ error: "Quote unavailable", forAmount: requested, forMint: inputMint }))
+        .catch(() =>
+          setQuote({ error: "Quote unavailable", forAmount: requested, forMint: inputMint, forOutMint: outputMint }),
+        )
         .finally(() => setQuoting(false));
     }, 280);
     return () => window.clearTimeout(handle);
-  }, [amountRaw, output.mint, payToken.mint]);
+  }, [amountRaw, payToken.mint, receiveToken.mint]);
 
   const liveQuote =
-    amountRaw && quote?.forAmount === amountRaw && quote.forMint === payToken.mint ? quote : null;
-  const outTokens = fromRawAmount(liveQuote?.outAmount, output.decimals);
-  const minTokens = fromRawAmount(liveQuote?.minOutAmount || liveQuote?.outAmount, output.decimals);
+    amountRaw &&
+    quote?.forAmount === amountRaw &&
+    quote.forMint === payToken.mint &&
+    quote.forOutMint === receiveToken.mint
+      ? quote
+      : null;
+  const outTokens = fromRawAmount(liveQuote?.outAmount, receiveToken.decimals);
+  const minTokens = fromRawAmount(liveQuote?.minOutAmount || liveQuote?.outAmount, receiveToken.decimals);
   const payIn = Number(amount || 0);
   const rate = outTokens != null && payIn > 0 ? outTokens / payIn : null;
   const displayBal = solana.address ? balance : 0;
-  const outputIsJrock = hasMint();
+  const outputIsJrock = hasMint() && receiveToken.mint === project.mint;
 
-  function choosePayToken(token: SwapToken) {
-    setPayToken(token);
-    setAmount(defaultPayAmount(token));
+  function resetTrade() {
     setQuote(null);
     setError("");
     setSignature("");
     setReceived(null);
+    setToastOpen(false);
   }
+
+  function choosePayToken(token: SwapToken) {
+    if (token.mint === receiveToken.mint) {
+      setReceiveToken(payToken);
+    }
+    setPayToken(token);
+    setAmount(defaultPayAmount(token));
+    resetTrade();
+  }
+
+  function chooseReceiveToken(token: SwapToken) {
+    if (token.mint === payToken.mint) {
+      setPayToken(receiveToken);
+      setAmount(defaultPayAmount(receiveToken));
+    }
+    setReceiveToken(token);
+    resetTrade();
+  }
+
+  function flipLegs() {
+    const nextPay = receiveToken;
+    const nextReceive = payToken;
+    setPayToken(nextPay);
+    setReceiveToken(nextReceive);
+    setAmount(defaultPayAmount(nextPay));
+    resetTrade();
+  }
+
+  const dismissToast = useCallback(() => setToastOpen(false), []);
 
   async function swap() {
     setError("");
     setSignature("");
     setReceived(null);
+    setToastOpen(false);
     const owner = solana.requireWallet();
     if (!owner) return;
     if (!amountRaw) {
       setError(`Enter an amount of ${payToken.symbol}.`);
       return;
     }
-    if (payToken.mint === output.mint) {
+    if (payToken.mint === receiveToken.mint) {
       setError("Pick a different asset to pay with.");
       return;
     }
@@ -167,7 +218,7 @@ export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
         body: JSON.stringify({
           owner,
           inputMint: payToken.mint,
-          outputMint: output.mint,
+          outputMint: receiveToken.mint,
           amount: amountRaw,
           slippageBps: SLIPPAGE_BPS,
         }),
@@ -197,13 +248,14 @@ export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
         const exec = (await landed.json()) as { signature?: string; outAmount?: string; error?: string };
         if (!landed.ok) throw new Error(exec.error ?? "Jupiter execute failed");
         setSignature(exec.signature || "");
-        setReceived(fromRawAmount(exec.outAmount || plan.outAmount || liveQuote?.outAmount, output.decimals));
+        setReceived(fromRawAmount(exec.outAmount || plan.outAmount || liveQuote?.outAmount, receiveToken.decimals));
       } else {
         const sig = await solana.sendSignedBase64(signed);
         setSignature(sig);
-        setReceived(fromRawAmount(plan.outAmount || liveQuote?.outAmount, output.decimals));
+        setReceived(fromRawAmount(plan.outAmount || liveQuote?.outAmount, receiveToken.decimals));
       }
       setPhase("");
+      setToastOpen(true);
     } catch (e) {
       setPhase("");
       setError(swapErrorMessage(e));
@@ -212,16 +264,18 @@ export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
 
   const receiveLabel =
     outTokens != null
-      ? `Adopt ${outTokens.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${output.symbol}`
+      ? `Adopt ${outTokens.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${receiveToken.symbol}`
       : quoting
         ? "Quoting…"
         : `Adopt with ${amount || "0"} ${payToken.symbol}`;
 
   const card = (
-    <LiquidSurface intensity="panel" radius={24} className="h-full">
-      <Card className="relative h-full overflow-hidden border-[rgba(232,210,176,0.14)] bg-[#0c1320]/70 p-4 sm:p-5">
-        <BorderBeam colorFrom="#f7931a" colorTo="#d4b46a" size={80} duration={8} />
-        <div className="flex items-center justify-between gap-3">
+    <LiquidSurface intensity="panel" radius={28} className="desk h-full">
+      <Card className="relative h-full overflow-hidden border-white/8 bg-[#0c1320]/45 p-4 sm:p-5 backdrop-blur-2xl">
+        <div className="pointer-events-none absolute -top-16 -right-10 size-40 rounded-full bg-[radial-gradient(circle,rgba(247,147,26,0.16),transparent_68%)]" />
+        <div className="pointer-events-none absolute -bottom-20 -left-8 size-44 rounded-full bg-[radial-gradient(circle,rgba(102,249,237,0.08),transparent_70%)]" />
+
+        <div className="relative flex items-center justify-between gap-3">
           <div>
             <p className="kicker">Jupiter desk</p>
             <h2 className="mt-1 text-lg font-semibold tracking-tight text-white">Adopt $JROCK</h2>
@@ -230,15 +284,22 @@ export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
             <WalletControls compact className="justify-end" />
           ) : (
             <p className="text-[11px] text-[var(--dim)]">
-              {payToken.symbol} → {output.symbol}
+              {payToken.symbol} → {receiveToken.symbol}
             </p>
           )}
         </div>
 
-        <div className="mt-4 space-y-2">
-          <label className="block rounded-xl border border-[rgba(232,210,176,0.14)] bg-[#060a12] px-3 py-2.5">
-            <span className="kicker">You pay</span>
-            <div className="mt-1 flex items-center justify-between gap-3">
+        <div className="relative mt-4 space-y-2">
+          <label className="desk-field block rounded-2xl px-3 py-3">
+            <span className="flex items-center justify-between">
+              <span className="kicker">You pay</span>
+              {solana.connected ? (
+                <span className="text-[11px] text-[var(--dim)]">
+                  {formatAmount(displayBal, displayBal >= 100 ? 2 : 4) ?? "0"} {payToken.symbol}
+                </span>
+              ) : null}
+            </span>
+            <div className="mt-1.5 flex items-center justify-between gap-3">
               <input
                 value={amount}
                 onChange={(event) => setAmount(event.target.value)}
@@ -246,13 +307,30 @@ export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
                 className="w-full bg-transparent font-mono text-2xl text-white outline-none"
                 placeholder={defaultPayAmount(payToken)}
               />
-              <TokenSelect value={payToken} excludeMint={output.mint} onChange={choosePayToken} />
+              <TokenSelect
+                title="Pay with"
+                value={payToken}
+                excludeMint={receiveToken.mint}
+                pinned={PINNED_PAY_TOKENS}
+                onChange={choosePayToken}
+              />
             </div>
           </label>
 
-          <label className="block rounded-xl border border-[rgba(247,147,26,0.28)] bg-[#0a1008] px-3 py-2.5">
+          <div className="relative z-10 -my-3 flex justify-center">
+            <button
+              type="button"
+              onClick={flipLegs}
+              aria-label="Flip pay and receive"
+              className="inline-flex size-9 items-center justify-center rounded-full border border-white/12 bg-[#0c1320]/80 text-white shadow-[0_8px_24px_rgba(0,0,0,0.35)] backdrop-blur-xl hover:bg-white/10"
+            >
+              <ArrowDownUp className="size-4" />
+            </button>
+          </div>
+
+          <label className="desk-field block rounded-2xl px-3 py-3">
             <span className="kicker">You receive</span>
-            <div className="mt-1 flex items-center justify-between gap-3">
+            <div className="mt-1.5 flex items-center justify-between gap-3">
               <p className="min-w-0 font-mono text-2xl text-white">
                 {outTokens != null ? (
                   <NumberFlow
@@ -265,21 +343,32 @@ export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
                   <span className="text-[var(--stone)]">—</span>
                 )}
               </p>
-              <span className="shrink-0 text-xs font-semibold text-[var(--orange)]">{output.symbol}</span>
+              <TokenSelect
+                title="Receive"
+                value={receiveToken}
+                excludeMint={payToken.mint}
+                pinned={receivePins}
+                onChange={chooseReceiveToken}
+              />
             </div>
           </label>
         </div>
 
         <div className="mt-3 flex flex-wrap gap-1.5">
           {payPresets(payToken).map((value) => (
-            <button key={value} type="button" className="chip" onClick={() => setAmount(String(value))}>
+            <button
+              key={value}
+              type="button"
+              className="rounded-full border border-white/8 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-white/80 hover:bg-white/10"
+              onClick={() => setAmount(String(value))}
+            >
               {formatPreset(value, payToken)}
             </button>
           ))}
           {displayBal > 0 ? (
             <button
               type="button"
-              className="chip"
+              className="rounded-full border border-white/8 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-white/80 hover:bg-white/10"
               onClick={() =>
                 setAmount(
                   Math.max(0, payToken.mint === WSOL_MINT ? displayBal - 0.02 : displayBal).toFixed(
@@ -295,14 +384,14 @@ export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
 
         <p className="mt-2 text-[11px] leading-4 text-[var(--dim)]">
           {solana.connected
-            ? `Balance ${formatAmount(displayBal, displayBal >= 100 ? 2 : 4) ?? "0"} ${payToken.symbol} · min ${minTokens != null ? formatAmount(minTokens, 2) : "—"} ${output.symbol} · 1.5% slip`
+            ? `min ${minTokens != null ? formatAmount(minTokens, 2) : "—"} ${receiveToken.symbol} · 1.5% slip`
             : `Quote before you sign · min ${minTokens != null ? formatAmount(minTokens, 2) : "—"} · 1.5% slip`}
           {rate != null ? ` · 1 ${payToken.symbol} ≈ ${formatAmount(rate, rate >= 1000 ? 0 : 2)}` : ""}
-          {` · ${liveQuote?.engine === "ultra" ? "Jupiter Ultra · Pad referral" : liveQuote?.engine === "lite" ? "Jupiter lite" : "Jupiter"}`}
+          {` · ${liveQuote?.engine === "ultra" ? "Jupiter Ultra" : liveQuote?.engine === "lite" ? "Jupiter lite" : "Jupiter"}`}
         </p>
-        {!outputIsJrock ? (
+        {!outputIsJrock && !hasMint() ? (
           <p className="mt-1 text-[11px] leading-4 text-[var(--gold)]">
-            Desk is live. Output is USDC until the $JROCK mint is published.
+            Desk is live. $JROCK will lock in as the receive asset once the mint is published.
           </p>
         ) : null}
 
@@ -321,20 +410,14 @@ export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
 
         {error ? <p className="mt-3 text-sm text-[#ff8a6a]">{error}</p> : null}
         {liveQuote?.error ? <p className="mt-3 text-sm text-[var(--dim)]">{liveQuote.error}</p> : null}
-        {signature ? (
-          <div className="mt-3 space-y-1">
-            {received != null ? (
-              <p className="text-sm text-white">
-                You received{" "}
-                <span className="font-mono text-[var(--orange)]">
-                  {formatAmount(received, received >= 1000 ? 2 : 4)} {output.symbol}
-                </span>
-              </p>
-            ) : null}
-            <a className="inline-block text-sm text-[var(--orange)]" href={explorerTxUrl(signature)}>
-              Swap landed · view on Explorer
-            </a>
-          </div>
+
+        {toastOpen && signature ? (
+          <SwapToast
+            signature={signature}
+            received={received}
+            symbol={receiveToken.symbol}
+            onDismiss={dismissToast}
+          />
         ) : null}
       </Card>
     </LiquidSurface>

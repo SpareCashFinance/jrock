@@ -177,6 +177,67 @@ a {
   outline-offset: 3px;
 }
 
+.desk :focus-visible,
+.desk-sheet :focus-visible {
+  outline: none;
+}
+
+.desk-field {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045) 0%, rgba(255, 255, 255, 0.015) 100%),
+    rgba(6, 10, 18, 0.42);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 10px 28px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(22px) saturate(160%);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
+}
+
+.desk-field:focus-within {
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 12px 32px rgba(0, 0, 0, 0.22);
+}
+
+.desk-search {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(18px) saturate(150%);
+}
+
+.desk-search:focus-within {
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.desk-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(212, 180, 106, 0.35) transparent;
+}
+
+.desk-scroll::-webkit-scrollbar {
+  width: 5px;
+}
+
+.desk-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.desk-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(232, 210, 176, 0.45), rgba(212, 180, 106, 0.22));
+}
+
+.desk-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(232, 210, 176, 0.7), rgba(212, 180, 106, 0.4));
+}
+
 .display {
   font-family: var(--font-bebas), Impact, "Arial Narrow", sans-serif;
   letter-spacing: 0.05em;

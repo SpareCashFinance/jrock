@@ -11,14 +11,14 @@ import {
 } from "@/components/ui/dialog";
 import { PINNED_PAY_TOKENS, type SwapToken } from "@/lib/swap-tokens";
 
-function TokenIcon({ token, size = 20 }: { token: SwapToken; size?: number }) {
+export function TokenIcon({ token, size = 20 }: { token: SwapToken; size?: number }) {
   const [failed, setFailed] = useState(false);
   const src = token.icon;
 
   if (!src || failed) {
     return (
       <span
-        className="inline-flex shrink-0 items-center justify-center rounded-full bg-[#1a1f2b] text-[10px] font-semibold text-[var(--gold)]"
+        className="inline-flex shrink-0 items-center justify-center rounded-full bg-white/8 text-[10px] font-semibold text-[var(--gold)]"
         style={{ width: size, height: size }}
       >
         {token.symbol.slice(0, 1)}
@@ -34,7 +34,7 @@ function TokenIcon({ token, size = 20 }: { token: SwapToken; size?: number }) {
       width={size}
       height={size}
       referrerPolicy="no-referrer"
-      className="shrink-0 rounded-full bg-[#1a1f2b] object-cover"
+      className="shrink-0 rounded-full bg-white/8 object-cover"
       onError={() => setFailed(true)}
     />
   );
@@ -43,16 +43,20 @@ function TokenIcon({ token, size = 20 }: { token: SwapToken; size?: number }) {
 export function TokenSelect({
   value,
   excludeMint,
+  pinned = PINNED_PAY_TOKENS,
+  title = "Select token",
   onChange,
 }: {
   value: SwapToken;
   excludeMint?: string;
+  pinned?: readonly SwapToken[];
+  title?: string;
   onChange: (token: SwapToken) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [catalog, setCatalog] = useState<SwapToken[]>([...PINNED_PAY_TOKENS]);
-  const [results, setResults] = useState<SwapToken[]>([...PINNED_PAY_TOKENS]);
+  const [catalog, setCatalog] = useState<SwapToken[]>([...pinned]);
+  const [results, setResults] = useState<SwapToken[]>([...pinned]);
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -86,9 +90,7 @@ export function TokenSelect({
         .then((res) => res.json() as Promise<{ tokens?: SwapToken[] }>)
         .then((data) => {
           const tokens = (data.tokens ?? []).filter((token) => token.mint !== excludeMint);
-          setResults(
-            tokens.length ? tokens : PINNED_PAY_TOKENS.filter((token) => token.mint !== excludeMint),
-          );
+          setResults(tokens.length ? tokens : pinned.filter((token) => token.mint !== excludeMint));
         })
         .catch((error: unknown) => {
           if (error instanceof DOMException && error.name === "AbortError") return;
@@ -99,7 +101,7 @@ export function TokenSelect({
       window.clearTimeout(handle);
       ac.abort();
     };
-  }, [excludeMint, open, query]);
+  }, [excludeMint, open, pinned, query]);
 
   useEffect(() => {
     if (!open) {
@@ -113,10 +115,10 @@ export function TokenSelect({
   const shown = useMemo(() => {
     const filtered = results.filter((token) => token.mint !== excludeMint).map(withCatalog);
     if (query.trim()) return filtered;
-    const pinned = PINNED_PAY_TOKENS.filter((token) => token.mint !== excludeMint).map(withCatalog);
-    const rest = filtered.filter((token) => !pinned.some((item) => item.mint === token.mint));
-    return [...pinned, ...rest];
-  }, [catalog, excludeMint, query, results]);
+    const top = pinned.filter((token) => token.mint !== excludeMint).map(withCatalog);
+    const rest = filtered.filter((token) => !top.some((item) => item.mint === token.mint));
+    return [...top, ...rest];
+  }, [catalog, excludeMint, pinned, query, results]);
 
   const display = withCatalog(value);
 
@@ -132,23 +134,21 @@ export function TokenSelect({
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen(true)}
-        className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[rgba(232,210,176,0.18)] bg-[#141c2c] px-2 py-1 text-xs font-semibold text-[var(--gold)] hover:border-[rgba(247,147,26,0.45)] hover:text-white"
+        className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/8 px-2 py-1 text-xs font-semibold text-white backdrop-blur-md hover:bg-white/12"
       >
-        <TokenIcon key={`${display.mint}-${display.icon ?? "none"}`} token={display} size={16} />
+        <TokenIcon key={`${display.mint}-${display.icon ?? "none"}`} token={display} size={18} />
         {display.symbol}
-        <ChevronDown className="size-3 opacity-70" />
+        <ChevronDown className="size-3 opacity-60" />
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="border-[rgba(232,210,176,0.16)] bg-[#0c1320] sm:max-w-sm">
+        <DialogContent className="desk-sheet border-white/10 bg-[#0c1320]/70 shadow-[0_30px_80px_rgba(0,0,0,0.45)] backdrop-blur-2xl sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Pay with</DialogTitle>
-            <DialogDescription>
-              Search Jupiter for any Solana mint, ticker, or name.
-            </DialogDescription>
+            <DialogTitle>{title}</DialogTitle>
+            <DialogDescription>Search any Solana mint, ticker, or name.</DialogDescription>
           </DialogHeader>
 
-          <label className="flex items-center gap-2 rounded-xl border border-[rgba(232,210,176,0.14)] bg-[#060a12] px-3 py-2">
+          <label className="desk-search flex items-center gap-2 rounded-2xl px-3 py-2.5">
             <Search className="size-4 text-[var(--dim)]" />
             <input
               ref={inputRef}
@@ -160,23 +160,25 @@ export function TokenSelect({
           </label>
 
           <div className="flex flex-wrap gap-1.5">
-            {PINNED_PAY_TOKENS.filter((token) => token.mint !== excludeMint).map((token) => {
-              const item = withCatalog(token);
-              return (
-                <button
-                  key={item.mint}
-                  type="button"
-                  className="chip gap-1.5"
-                  onClick={() => pick(item)}
-                >
-                  <TokenIcon key={`${item.mint}-${item.icon ?? "none"}`} token={item} size={14} />
-                  {item.symbol}
-                </button>
-              );
-            })}
+            {pinned
+              .filter((token) => token.mint !== excludeMint)
+              .map((token) => {
+                const item = withCatalog(token);
+                return (
+                  <button
+                    key={item.mint}
+                    type="button"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-white/8 bg-white/6 px-2.5 py-1 text-[11px] font-semibold text-white/85 hover:bg-white/10"
+                    onClick={() => pick(item)}
+                  >
+                    <TokenIcon key={`${item.mint}-${item.icon ?? "none"}`} token={item} size={14} />
+                    {item.symbol}
+                  </button>
+                );
+              })}
           </div>
 
-          <div className="max-h-64 overflow-y-auto">
+          <div className="desk-scroll max-h-64 overflow-y-auto pr-1">
             {loading && !shown.length ? (
               <p className="px-2 py-6 text-center text-sm text-[var(--dim)]">Searching Jupiter…</p>
             ) : shown.length ? (
@@ -187,7 +189,7 @@ export function TokenSelect({
                     key={token.mint}
                     type="button"
                     onClick={() => pick(token)}
-                    className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left hover:bg-white/5"
+                    className="flex w-full items-center gap-3 rounded-2xl px-2 py-2 text-left hover:bg-white/6"
                   >
                     <TokenIcon key={`${token.mint}-${token.icon ?? "none"}`} token={token} />
                     <span className="min-w-0 flex-1">
@@ -202,7 +204,7 @@ export function TokenSelect({
                       </span>
                       <span className="block truncate text-[11px] text-[var(--dim)]">{token.name}</span>
                     </span>
-                    {active ? <Check className="size-4 text-[var(--orange)]" /> : null}
+                    {active ? <Check className="size-4 text-[var(--gold)]" /> : null}
                   </button>
                 );
               })

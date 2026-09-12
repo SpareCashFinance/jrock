@@ -53,6 +53,16 @@ export function normalizeTokenIcon(icon?: string | null) {
 
 export const PINNED_PAY_TOKENS = [SOL_TOKEN, USDC_TOKEN] as const;
 
+export function pinnedReceiveTokens(): SwapToken[] {
+  const rock = hasMint() ? [jrockToken()] : [];
+  const seen = new Set<string>();
+  return [...rock, USDC_TOKEN, SOL_TOKEN].filter((token) => {
+    if (seen.has(token.mint)) return false;
+    seen.add(token.mint);
+    return true;
+  });
+}
+
 export function jrockDecimals() {
   return Number(process.env.NEXT_PUBLIC_JROCK_DECIMALS || 6) || 6;
 }
