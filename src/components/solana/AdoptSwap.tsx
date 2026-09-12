@@ -290,15 +290,15 @@ export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
         </div>
 
         <div className="relative mt-4 space-y-2">
-          <label className="desk-field block rounded-2xl px-3 py-3">
-            <span className="flex items-center justify-between">
-              <span className="kicker">You pay</span>
+          <div className="desk-field rounded-2xl px-3 py-3">
+            <div className="flex items-center justify-between">
+              <p className="kicker">You pay</p>
               {solana.connected ? (
-                <span className="text-[11px] text-[var(--dim)]">
+                <p className="text-[11px] text-[var(--dim)]">
                   {formatAmount(displayBal, displayBal >= 100 ? 2 : 4) ?? "0"} {payToken.symbol}
-                </span>
+                </p>
               ) : null}
-            </span>
+            </div>
             <div className="mt-1.5 flex items-center justify-between gap-3">
               <input
                 value={amount}
@@ -315,7 +315,7 @@ export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
                 onChange={choosePayToken}
               />
             </div>
-          </label>
+          </div>
 
           <div className="relative z-10 -my-3 flex justify-center">
             <button
@@ -328,8 +328,8 @@ export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
             </button>
           </div>
 
-          <label className="desk-field block rounded-2xl px-3 py-3">
-            <span className="kicker">You receive</span>
+          <div className="desk-field rounded-2xl px-3 py-3">
+            <p className="kicker">You receive</p>
             <div className="mt-1.5 flex items-center justify-between gap-3">
               <p className="min-w-0 font-mono text-2xl text-white">
                 {outTokens != null ? (
@@ -351,7 +351,7 @@ export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
                 onChange={chooseReceiveToken}
               />
             </div>
-          </label>
+          </div>
         </div>
 
         <div className="mt-3 flex flex-wrap gap-1.5">
