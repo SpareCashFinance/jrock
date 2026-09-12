@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { HouseButton } from "@/components/ui/house-button";
 import { TelegramMark, XMark } from "@/components/brand/SocialMarks";
 import { project } from "@/lib/config";
@@ -86,25 +87,139 @@ function MemeActions({ meme }: { meme: MemeCard }) {
             : null;
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap gap-2">
-        <HouseButton onClick={copyCaption} className="px-3 text-xs">
-          {flash === "caption" ? "Copied" : "Copy caption"}
+    <div className="space-y-1.5">
+      <div className="grid grid-cols-2 gap-1.5">
+        <HouseButton onClick={copyCaption} className="!h-8 !min-h-8 !px-2 !text-[10px]">
+          {flash === "caption" ? "Copied" : "Copy"}
         </HouseButton>
-        <HouseButton onClick={copyImage} className="px-3 text-xs">
-          {flash === "image" ? "Copied" : "Copy image"}
+        <HouseButton onClick={copyImage} className="!h-8 !min-h-8 !px-2 !text-[10px]">
+          {flash === "image" ? "Copied" : "Image"}
         </HouseButton>
-        <HouseButton onClick={saveImage} className="px-3 text-xs">
+        <HouseButton onClick={saveImage} className="!h-8 !min-h-8 !px-2 !text-[10px]">
           {flash === "saved" ? "Saved" : "Save"}
         </HouseButton>
-        <HouseButton href={shareMemeOnXUrl(meme.caption)} target="_blank" className="px-3 text-xs">
-          <XMark size={13} />
-          Post on X
+        <HouseButton
+          href={shareMemeOnXUrl(meme.caption)}
+          target="_blank"
+          className="!h-8 !min-h-8 !px-2 !text-[10px]"
+        >
+          <XMark size={11} />
+          Post
         </HouseButton>
       </div>
-      <p className="min-h-4 text-[11px] tracking-[0.12em] uppercase text-[var(--gold)]" aria-live="polite">
+      <p className="min-h-4 text-[10px] tracking-[0.12em] uppercase text-[var(--gold)]" aria-live="polite">
         {status}
       </p>
+    </div>
+  );
+}
+
+function MemeTile({ meme }: { meme: MemeCard }) {
+  return (
+    <article className="glass-panel flex w-[11rem] shrink-0 flex-col overflow-hidden rounded-[20px] sm:w-[12.5rem]">
+      <div className="relative bg-[#070b12]">
+        <span className="absolute left-2 top-2 z-10 rounded-full bg-[#c0392b] px-2 py-0.5 text-[9px] font-bold tracking-[0.16em] text-white">
+          {meme.stamp}
+        </span>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={meme.src}
+          alt={meme.alt}
+          width={512}
+          height={512}
+          className="aspect-square w-full object-cover"
+        />
+      </div>
+      <div className="flex flex-1 flex-col gap-2 p-3">
+        <p className="serif line-clamp-3 text-sm leading-5 text-[var(--cream)]">{meme.caption}</p>
+        <p className="text-[10px] tracking-[0.16em] uppercase text-[var(--gold)]">{project.ticker}</p>
+        <div className="mt-auto">
+          <MemeActions meme={meme} />
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function MemeCarousel({ items }: { items: MemeCard[] }) {
+  const scroller = useRef<HTMLDivElement>(null);
+  const [canPrev, setCanPrev] = useState(false);
+  const [canNext, setCanNext] = useState(false);
+  const top = items.filter((_, index) => index % 2 === 0);
+  const bottom = items.filter((_, index) => index % 2 === 1);
+
+  function syncArrows() {
+    const el = scroller.current;
+    if (!el) return;
+    setCanPrev(el.scrollLeft > 8);
+    setCanNext(el.scrollLeft + el.clientWidth < el.scrollWidth - 8);
+  }
+
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    syncArrows();
+    el.addEventListener("scroll", syncArrows, { passive: true });
+    const observer = new ResizeObserver(syncArrows);
+    observer.observe(el);
+    return () => {
+      el.removeEventListener("scroll", syncArrows);
+      observer.disconnect();
+    };
+  }, [items.length]);
+
+  function page(direction: -1 | 1) {
+    const el = scroller.current;
+    if (!el) return;
+    el.scrollBy({ left: direction * Math.round(el.clientWidth * 0.72), behavior: "smooth" });
+  }
+
+  return (
+    <div className="relative">
+      <div
+        ref={scroller}
+        data-meme-scroller
+        className="snap-x snap-mandatory overflow-x-auto overflow-y-hidden pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+      >
+        <div className="flex min-w-min flex-col gap-3">
+          <div className="flex gap-3">
+            {top.map((meme) => (
+              <div key={meme.id} className="snap-start">
+                <MemeTile meme={meme} />
+              </div>
+            ))}
+          </div>
+          {bottom.length > 0 ? (
+            <div className="flex gap-3">
+              {bottom.map((meme) => (
+                <div key={meme.id} className="snap-start">
+                  <MemeTile meme={meme} />
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </div>
+      {canPrev ? (
+        <button
+          type="button"
+          aria-label="Previous memes"
+          onClick={() => page(-1)}
+          className="absolute inset-y-0 left-0 z-10 my-auto inline-flex size-10 items-center justify-center rounded-full border border-[rgba(232,210,176,0.22)] bg-[rgba(12,19,32,0.82)] text-[var(--cream)] backdrop-blur-md hover:border-[rgba(247,147,26,0.55)] hover:text-white"
+        >
+          <ChevronLeft size={18} />
+        </button>
+      ) : null}
+      {canNext ? (
+        <button
+          type="button"
+          aria-label="Next memes"
+          onClick={() => page(1)}
+          className="absolute inset-y-0 right-0 z-10 my-auto inline-flex size-10 items-center justify-center rounded-full border border-[rgba(232,210,176,0.22)] bg-[rgba(12,19,32,0.82)] text-[var(--cream)] backdrop-blur-md hover:border-[rgba(247,147,26,0.55)] hover:text-white"
+        >
+          <ChevronRight size={18} />
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -112,9 +227,9 @@ function MemeActions({ meme }: { meme: MemeCard }) {
 export function MemeDesk() {
   return (
     <section className="section pb-16 pt-8">
-      <div className="mb-10 grid items-end gap-8 lg:grid-cols-[1.15fr_0.85fr]">
+      <div className="mb-8 grid items-end gap-8 lg:grid-cols-[1.15fr_0.85fr]">
         <div>
-          <p className="kicker">Evidence locker · free to lift</p>
+          <p className="kicker">Evidence locker · keep adding</p>
           <h1 className="display mt-3 max-w-3xl text-6xl text-white sm:text-8xl">
             Too lazy to post?
             <span className="block text-[var(--orange)]">Steal these.</span>
@@ -128,7 +243,7 @@ export function MemeDesk() {
           <ol className="serif mt-3 space-y-2 text-lg leading-6 text-[#2a2116]">
             <li>01 · Copy the caption.</li>
             <li>02 · Copy the image — or save it.</li>
-            <li>03 · Hit Post on X, then paste or attach the picture.</li>
+            <li>03 · Hit Post, then paste or attach the picture.</li>
             <li>04 · Drop extras in the kennel.</li>
           </ol>
           <p className="mt-4 text-sm leading-6 text-[#4a3b28]">
@@ -137,34 +252,9 @@ export function MemeDesk() {
         </div>
       </div>
 
-      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-        {memes.map((meme) => (
-          <article key={meme.id} className="glass-panel flex flex-col overflow-hidden rounded-[28px]">
-            <div className="relative bg-[#070b12]">
-              <span className="absolute left-3 top-3 z-10 rounded-full bg-[#c0392b] px-2.5 py-1 text-[10px] font-bold tracking-[0.18em] text-white">
-                {meme.stamp}
-              </span>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={meme.src}
-                alt={meme.alt}
-                width={1024}
-                height={1024}
-                className="aspect-square w-full object-cover"
-              />
-            </div>
-            <div className="flex flex-1 flex-col gap-4 p-5">
-              <p className="serif text-xl leading-7 text-[var(--cream)]">{meme.caption}</p>
-              <p className="text-[11px] tracking-[0.16em] uppercase text-[var(--gold)]">{project.ticker}</p>
-              <div className="mt-auto">
-                <MemeActions meme={meme} />
-              </div>
-            </div>
-          </article>
-        ))}
-      </div>
+      <MemeCarousel items={memes} />
 
-      <div className="mt-12 flex flex-wrap items-center gap-3">
+      <div className="mt-10 flex flex-wrap items-center gap-3">
         <HouseButton variant="primary" href={links.telegram} target="_blank">
           <TelegramMark size={15} />
           Dump it in the kennel
