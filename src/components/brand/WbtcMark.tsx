@@ -1,3 +1,7 @@
+"use client";
+
+import { TokenBTC } from "@web3icons/react";
+
 export function WbtcMark({
   size = 16,
   className,
@@ -5,15 +9,5 @@ export function WbtcMark({
   size?: number;
   className?: string;
 }) {
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src="/wbtc.png"
-      alt=""
-      width={size}
-      height={size}
-      className={className}
-      style={{ width: size, height: size }}
-    />
-  );
+  return <TokenBTC variant="branded" size={size} className={className} />;
 }
