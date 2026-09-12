@@ -3,5 +3,8 @@ import { project } from "@/lib/config";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = project.siteUrl;
-  return [{ url: base, lastModified: new Date() }];
+  return [
+    { url: base, lastModified: new Date() },
+    { url: `${base}/memes`, lastModified: new Date() },
+  ];
 }

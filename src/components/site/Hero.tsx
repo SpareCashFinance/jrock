@@ -57,7 +57,7 @@ export function Hero() {
             </span>
           </Magnet>
           <InteractiveHoverButton href="#adopt">Adopt the rock</InteractiveHoverButton>
-          <InteractiveHoverButton href="#tape">Watch the tape</InteractiveHoverButton>
+          <InteractiveHoverButton href="/memes">Steal these</InteractiveHoverButton>
         </div>
         <ChainMarks />
         <a href={links.stonkfun} className="inline-block text-[11px] tracking-[0.18em] uppercase text-[var(--stone)] hover:text-[var(--orange)]">

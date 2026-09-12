@@ -22,7 +22,10 @@ export function Footer() {
               {item.label}
             </a>
           ))}
-          <a href="#adopt" className="hover:text-white">
+          <a href="/memes" className="hover:text-white">
+            Memes
+          </a>
+          <a href="/#adopt" className="hover:text-white">
             Adopt
           </a>
         </div>

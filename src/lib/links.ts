@@ -70,11 +70,19 @@ export function explorerTxUrl(signature: string) {
   return `${SOLSCAN_ORIGIN}/tx/${signature}`;
 }
 
-export function shareOnXUrl() {
+export function tweetIntentUrl(text: string, pageUrl = project.siteUrl) {
   const url = new URL("https://twitter.com/intent/tweet");
-  url.searchParams.set("text", project.shareText);
-  if (project.siteUrl) url.searchParams.set("url", project.siteUrl);
+  url.searchParams.set("text", text);
+  if (pageUrl) url.searchParams.set("url", pageUrl);
   return url.toString();
+}
+
+export function shareOnXUrl() {
+  return tweetIntentUrl(project.shareText);
+}
+
+export function shareMemeOnXUrl(caption: string) {
+  return tweetIntentUrl(`${caption} ${project.ticker}`);
 }
 
 export type SocialKind = "telegram" | "x";

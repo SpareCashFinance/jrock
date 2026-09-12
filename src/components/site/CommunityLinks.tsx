@@ -22,6 +22,7 @@ export function CommunityLinks() {
             {item.label}
           </HouseButton>
         ))}
+        <HouseButton href="/memes">Steal memes</HouseButton>
         <HouseButton href={shareOnXUrl()} target="_blank">
           <XMark size={14} />
           Share on X
