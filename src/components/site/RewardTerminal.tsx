@@ -7,7 +7,7 @@ import { SlotHeadline } from "@/components/motion/SlotHeadline";
 import { BorderBeam } from "@/components/ui/border-beam";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { displayValue, project } from "@/lib/config";
+import { displayValue, holderFeePercent, project } from "@/lib/config";
 import { formatAmount, formatCount, formatUsd, shortenAddress, timeAgo } from "@/lib/format";
 import { explorerUrl } from "@/lib/links";
 import type { MarketSnapshot } from "@/lib/market";
@@ -27,7 +27,9 @@ const statusLabel: Record<MarketSnapshot["status"], string> = {
 export function RewardTerminal({ market: initial }: { market: MarketSnapshot }) {
   const market = useMarketSnapshot(initial);
   const tax =
-    market.transferFeeBps != null ? `${(market.transferFeeBps / 100).toFixed(2)}%` : displayValue(project.transferFee);
+    market.transferFeeBps != null
+      ? `${(market.transferFeeBps / 100).toFixed(2)}%`
+      : displayValue(project.transferFee, `${holderFeePercent}%`);
   const figures = [
     { label: `Total ${market.totalDistributedSymbol} distributed`, value: formatAmount(market.totalDistributed, 6), hint: market.totalDistributedSymbol },
     { label: "Pending pot", value: formatAmount(market.pendingDistributed, 6), hint: "Accrued, not paid yet" },
@@ -36,7 +38,7 @@ export function RewardTerminal({ market: initial }: { market: MarketSnapshot }) 
     { label: "24h volume", value: formatUsd(market.volume24hUsd), hint: "Official market only" },
     { label: "Market cap", value: formatUsd(market.marketCapUsd), hint: "Not a promise" },
     { label: "Liquidity", value: formatUsd(market.liquidityUsd), hint: displayValue(project.liquidityStatus, "To be confirmed") },
-    { label: "Transfer tax", value: tax, hint: "Paid to holders on transfers" },
+    { label: "Holder Rewards", value: tax, hint: "Of trades, paid to holders in WBTC" },
     { label: "Last payout", value: timeAgo(market.lastDistribution?.at) ?? "None yet", hint: market.nextRewardStatus },
   ];
 
