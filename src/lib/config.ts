@@ -14,7 +14,7 @@ export const project = {
   launchpad: "stonk.fun",
   launchpadName: "stonk.fun",
   rewardAsset: "WBTC",
-  siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "",
+  siteUrl: process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://petrock.fun",
   mint: process.env.NEXT_PUBLIC_JROCK_MINT ?? "",
   rewardMint: process.env.NEXT_PUBLIC_WBTC_MINT ?? "",
   totalSupply: process.env.NEXT_PUBLIC_TOTAL_SUPPLY ?? "",

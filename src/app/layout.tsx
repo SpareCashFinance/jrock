@@ -29,10 +29,13 @@ const title = `${project.name} (${project.ticker})`;
 const description = `${project.coreLine} A Solana memecoin on stonk.fun. Eligible holders may receive variable WBTC rewards. Independent parody. Not financial advice.`;
 
 export const metadata: Metadata = {
-  metadataBase: new URL(project.siteUrl || "https://jrock.local"),
+  metadataBase: new URL(project.siteUrl),
   title,
   description,
   applicationName: project.name,
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
     title,
     description,
