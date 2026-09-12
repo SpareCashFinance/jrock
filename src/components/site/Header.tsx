@@ -1,4 +1,5 @@
 import { project } from "@/lib/config";
+import { BrandMark } from "@/components/brand/BrandMark";
 import { AdoptButton, WalletControls } from "@/components/solana/AdoptButton";
 import { CopyButton } from "./CopyButton";
 
@@ -16,13 +17,13 @@ export function Header() {
     <header className="sticky top-[34px] z-40 px-3">
       <div className="dock mx-auto flex w-[min(1120px,calc(100%-0.5rem))] items-center justify-between gap-3 rounded-full px-3 py-2">
         <a href="#top" className="flex items-center gap-3">
-          <span className="grid h-9 w-9 place-items-center overflow-hidden rounded-full border border-[rgba(247,147,26,0.35)] bg-[#060a12]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/mascot.jpg" alt="" width={36} height={36} className="h-[78%] w-[78%] object-contain" />
-          </span>
+          <BrandMark size={36} className="border border-[rgba(247,147,26,0.35)]" />
           <span>
             <span className="display block text-2xl leading-none">{project.name}</span>
-            <span className="text-[11px] tracking-[0.22em] text-[var(--gold)]">{project.ticker}</span>
+            <span className="flex items-center gap-1.5 text-[11px] tracking-[0.22em] text-[var(--gold)]">
+              {project.ticker}
+              <BrandMark size={14} />
+            </span>
           </span>
         </a>
         <nav className="hidden items-center gap-1 text-xs font-medium text-[var(--dim)] md:flex">
