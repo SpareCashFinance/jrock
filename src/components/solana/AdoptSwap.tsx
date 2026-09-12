@@ -30,11 +30,19 @@ const SLIPPAGE_BPS = 150;
 type Quote = {
   outAmount?: string;
   minOutAmount?: string;
-  quoteResponse?: Record<string, unknown>;
+  engine?: "ultra" | "lite";
   error?: string;
   forAmount?: string;
   forMint?: string;
 };
+
+function swapErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : "Swap failed";
+  if (/expired|block height|blockhash/i.test(message)) {
+    return "That quote went stale before it landed. Tap Adopt again for a fresh one.";
+  }
+  return message;
+}
 
 export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
   const solana = useSolanaWallet();
@@ -132,7 +140,7 @@ export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
       return;
     }
     try {
-      setPhase("Building the Jupiter swap…");
+      setPhase("Building a fresh Jupiter swap…");
       const hop = await fetch("/api/trade/jupiter/prepare", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -142,7 +150,6 @@ export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
           outputMint: output.mint,
           amount: amountRaw,
           slippageBps: SLIPPAGE_BPS,
-          quoteResponse: liveQuote?.quoteResponse,
         }),
       });
       const plan = (await hop.json()) as {
@@ -150,30 +157,36 @@ export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
         requestId?: string;
         execute?: boolean;
         outAmount?: string;
+        lastValidBlockHeight?: string;
         error?: string;
       };
       if (!hop.ok || !plan.tx) throw new Error(plan.error ?? "Jupiter prepare failed");
-      setPhase("Sign in your wallet…");
+      setPhase("Approve in your wallet…");
+      const signed = await solana.signBase64(plan.tx);
+      setPhase("Landing the swap…");
       if (plan.execute && plan.requestId) {
-        const signed = await solana.signBase64(plan.tx);
         const landed = await fetch("/api/trade/jupiter/execute", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ signedTransaction: signed, requestId: plan.requestId }),
+          body: JSON.stringify({
+            signedTransaction: signed,
+            requestId: plan.requestId,
+            lastValidBlockHeight: plan.lastValidBlockHeight,
+          }),
         });
         const exec = (await landed.json()) as { signature?: string; outAmount?: string; error?: string };
         if (!landed.ok) throw new Error(exec.error ?? "Jupiter execute failed");
         setSignature(exec.signature || "");
         setReceived(fromRawAmount(exec.outAmount || plan.outAmount || liveQuote?.outAmount, output.decimals));
       } else {
-        const sig = await solana.signAndSendBase64(plan.tx);
+        const sig = await solana.sendSignedBase64(signed);
         setSignature(sig);
         setReceived(fromRawAmount(plan.outAmount || liveQuote?.outAmount, output.decimals));
       }
       setPhase("");
     } catch (e) {
       setPhase("");
-      setError(e instanceof Error ? e.message : "Swap failed");
+      setError(swapErrorMessage(e));
     }
   }
 
@@ -265,6 +278,7 @@ export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
             ? `Balance ${formatAmount(displayBal, displayBal >= 100 ? 2 : 4) ?? "0"} ${payToken.symbol} · min ${minTokens != null ? formatAmount(minTokens, 2) : "—"} ${output.symbol} · 1.5% slip`
             : `Quote before you sign · min ${minTokens != null ? formatAmount(minTokens, 2) : "—"} · 1.5% slip`}
           {rate != null ? ` · 1 ${payToken.symbol} ≈ ${formatAmount(rate, rate >= 1000 ? 0 : 2)}` : ""}
+          {` · ${liveQuote?.engine === "ultra" ? "Jupiter Ultra · Pad referral" : liveQuote?.engine === "lite" ? "Jupiter lite" : "Jupiter"}`}
         </p>
         {!outputIsJrock ? (
           <p className="mt-1 text-[11px] leading-4 text-[var(--gold)]">

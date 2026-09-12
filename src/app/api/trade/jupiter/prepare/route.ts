@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+export const maxDuration = 30;
+
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as {
@@ -8,7 +10,6 @@ export async function POST(req: Request) {
       outputMint?: string;
       amount?: string;
       slippageBps?: number;
-      quoteResponse?: Record<string, unknown>;
     };
     if (!body.owner || !body.inputMint || !body.outputMint || !body.amount) {
       return NextResponse.json({ error: "Missing Jupiter swap fields" }, { status: 400 });
@@ -23,7 +24,6 @@ export async function POST(req: Request) {
       outputMint: body.outputMint,
       amount: body.amount,
       slippageBps: body.slippageBps,
-      quoteResponse: body.quoteResponse,
     });
     return NextResponse.json(plan);
   } catch (e) {

@@ -5,7 +5,7 @@ import { WalletReadyState, type WalletName } from "@solana/wallet-adapter-base";
 import { ConnectionProvider, WalletProvider, useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { PhantomWalletAdapter } from "@solana/wallet-adapter-phantom";
 import { SolflareWalletAdapter } from "@solana/wallet-adapter-solflare";
-import { clusterApiUrl, VersionedTransaction } from "@solana/web3.js";
+import { clusterApiUrl, type Connection } from "@solana/web3.js";
 import {
   Dialog,
   DialogContent,
@@ -173,7 +173,7 @@ function rankWallet(state: WalletReadyState) {
 
 export function useSolanaWallet() {
   const ui = useContext(SolanaWalletUi);
-  const { publicKey, connected, connecting, disconnect, sendTransaction, signTransaction, wallet } = useWallet();
+  const { publicKey, connected, connecting, disconnect, signTransaction, wallet } = useWallet();
   const { connection } = useConnection();
   const openModal = ui?.openModal ?? (() => undefined);
   const address = publicKey?.toBase58() ?? "";
@@ -190,21 +190,22 @@ export function useSolanaWallet() {
     return encodeTx(signed);
   }
 
-  async function signAndSendBase64(b64: string) {
+  async function sendSignedBase64(b64: string) {
     if (!publicKey) throw new Error("Connect a Solana wallet first");
     const tx = decodeTx(b64);
-    const latest = await connection.getLatestBlockhash("confirmed");
-    if (tx instanceof VersionedTransaction) {
-      const signature = await sendTransaction(tx, connection);
-      await connection.confirmTransaction({ signature, ...latest }, "confirmed");
-      return signature;
-    }
-    tx.feePayer = publicKey;
-    tx.recentBlockhash = latest.blockhash;
-    tx.lastValidBlockHeight = latest.lastValidBlockHeight;
-    const signature = await sendTransaction(tx, connection);
-    await connection.confirmTransaction({ signature, ...latest }, "confirmed");
+    const raw = tx.serialize();
+    const signature = await connection.sendRawTransaction(raw, {
+      skipPreflight: false,
+      maxRetries: 4,
+      preflightCommitment: "processed",
+    });
+    await waitForSignature(connection, signature);
     return signature;
+  }
+
+  async function signAndSendBase64(b64: string) {
+    const signed = await signBase64(b64);
+    return sendSignedBase64(signed);
   }
 
   return {
@@ -216,7 +217,28 @@ export function useSolanaWallet() {
     openModal,
     requireWallet,
     signBase64,
+    sendSignedBase64,
     signAndSendBase64,
     connection,
   };
+}
+
+async function waitForSignature(connection: Connection, signature: string) {
+  const deadline = Date.now() + 45_000;
+  while (Date.now() < deadline) {
+    const { value } = await connection.getSignatureStatuses([signature], {
+      searchTransactionHistory: true,
+    });
+    const status = value[0];
+    if (status?.err) throw new Error("Swap failed on-chain.");
+    if (status?.confirmationStatus === "confirmed" || status?.confirmationStatus === "finalized") {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 400));
+  }
+  const { value } = await connection.getSignatureStatuses([signature], {
+    searchTransactionHistory: true,
+  });
+  if (value[0] && !value[0].err) return;
+  throw new Error("Swap sent. Confirmation is slow — check Explorer before retrying.");
 }
