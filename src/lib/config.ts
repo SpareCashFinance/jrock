@@ -16,7 +16,9 @@ export const project = {
   rewardAsset: "WBTC",
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://petrock.fun",
   mint: process.env.NEXT_PUBLIC_JROCK_MINT ?? "",
-  rewardMint: process.env.NEXT_PUBLIC_WBTC_MINT ?? "",
+  rewardMint:
+    process.env.NEXT_PUBLIC_WBTC_MINT?.trim() ||
+    "3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh",
   totalSupply: process.env.NEXT_PUBLIC_TOTAL_SUPPLY ?? "",
   burnPercent: Number(process.env.NEXT_PUBLIC_BURN_PERCENT || 60) || 60,
   burnTx: (process.env.NEXT_PUBLIC_BURN_TX ?? "").trim(),
