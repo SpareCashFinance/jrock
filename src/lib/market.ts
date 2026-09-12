@@ -153,14 +153,14 @@ export async function getMarketSnapshot(): Promise<MarketSnapshot> {
     if (tokenHit.status === 429 || rewardHit.status === 429) {
       return emptySnapshot(
         "unavailable",
-        "stonk.fun is rate-limiting reads. The terminal will retry on the next refresh.",
+        "Market data is rate-limiting reads. The terminal will retry on the next refresh.",
       );
     }
 
     if (tokenHit.status === 404) {
       return emptySnapshot(
         "awaiting_index",
-        "Mint is set. Waiting for stonk.fun to adopt the pool into GET /tokens/{mint}.",
+        "Mint is set. Waiting for the official pump.fun market to index $JROCK.",
       );
     }
 
@@ -177,7 +177,7 @@ export async function getMarketSnapshot(): Promise<MarketSnapshot> {
     if (!token) {
       return emptySnapshot(
         "awaiting_index",
-        "Mint is set. stonk.fun has not returned a token record yet.",
+        "Mint is set. The official market has not returned a token record yet.",
       );
     }
 
@@ -196,7 +196,7 @@ export async function getMarketSnapshot(): Promise<MarketSnapshot> {
       return {
         ...emptySnapshot(
           "standard_mode",
-          "This mint is live on stonk.fun as a standard fee coin, not a reward coin. Holder WBTC distributions will not appear unless it launches in reward mode.",
+          "This mint is live as a standard fee coin, not a reward coin. Holder WBTC distributions will not appear unless reward mode is on.",
         ),
         mode: "standard",
         priceUsd: num(market?.priceUsd),
@@ -250,7 +250,7 @@ export async function getMarketSnapshot(): Promise<MarketSnapshot> {
       status: noPayouts ? "no_distribution" : "live",
       message: noPayouts
         ? "Pool is live. No verified distribution yet — the terminal lights up when the first on-chain payout is confirmed."
-        : "Verified figures from stonk.fun. Amounts can change and are not a promise of future rewards.",
+        : "Verified on-chain figures. Amounts can change and are not a promise of future rewards.",
       mint,
       rewardMint,
       rewardSymbol: symbol,

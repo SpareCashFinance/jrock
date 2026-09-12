@@ -100,7 +100,7 @@ export function Mascot({
     >
       <CircularText
         pathId={ringId}
-        text="THE PET ROCK THAT PAYS IN BITCOIN • JROCK • WBTC • STONK.FUN"
+        text="THE PET ROCK THAT PAYS IN BITCOIN • JROCK • WBTC • PUMP.FUN"
         className="pointer-events-none absolute inset-0 text-[rgba(232,210,176,0.42)]"
       />
       <div
