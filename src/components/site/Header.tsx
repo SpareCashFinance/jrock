@@ -51,9 +51,11 @@ export function Header() {
               className="size-8 sm:size-9"
             />
           ))}
-          <HouseButton href="/memes" className="px-3 text-xs md:hidden">
-            Memes
-          </HouseButton>
+          <div className="md:hidden">
+            <HouseButton href="/memes" className="px-3 text-xs">
+              Memes
+            </HouseButton>
+          </div>
           <div className="hidden md:block">
             <CopyButton value={project.mint} label="Copy" className="px-3 text-xs" />
           </div>
