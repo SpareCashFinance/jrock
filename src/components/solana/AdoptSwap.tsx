@@ -217,7 +217,7 @@ export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
                 ) : hasMint() ? (
                   <span className="text-[var(--stone)]">—</span>
                 ) : (
-                  <span className="text-[var(--stone)]">Mint pending</span>
+                  <span className="text-[var(--stone)]">Opens at launch</span>
                 )}
               </p>
               <span className="shrink-0 text-xs font-semibold text-[var(--orange)]">{project.ticker}</span>

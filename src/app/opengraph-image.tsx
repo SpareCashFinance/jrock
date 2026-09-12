@@ -24,14 +24,17 @@ export default async function Image() {
         }}
       >
         <div style={{ display: "flex", flexDirection: "column", width: 640 }}>
-          <div style={{ fontSize: 22, letterSpacing: 6, color: "#d4b46a" }}>
-            $JROCK · SOLANA · STONK.FUN
+          <div style={{ fontSize: 20, letterSpacing: 6, color: "#d4b46a" }}>
+            PETROCK.FUN · $JROCK · SOLANA
           </div>
           <div style={{ fontSize: 72, fontWeight: 800, lineHeight: 0.95, marginTop: 18 }}>
             JAMIE’S PET ROCK
           </div>
-          <div style={{ fontSize: 36, color: "#f7931a", marginTop: 16 }}>
+          <div style={{ fontSize: 34, color: "#f7931a", marginTop: 16 }}>
             The pet rock that pays in Bitcoin.
+          </div>
+          <div style={{ fontSize: 22, color: "#e8d2b0", marginTop: 28 }}>
+            Adopt on Jupiter. Get fed WBTC.
           </div>
         </div>
         <div

@@ -14,6 +14,7 @@ import { CommunityLinks } from "./CommunityLinks";
 import { RiskDisclosure } from "./RiskDisclosure";
 import { Footer } from "./Footer";
 import { PriceTape } from "./PriceTape";
+import { MobileAdoptBar } from "./MobileAdoptBar";
 import type { MarketSnapshot } from "@/lib/market";
 import type { PriceTapeSnapshot } from "@/lib/tape";
 
@@ -29,7 +30,7 @@ export function Home({
       <BitcoinRain />
       <PriceTape initial={tape} />
       <Header />
-      <main>
+      <main className="pb-20 md:pb-0">
         <Hero />
         <AdoptDesk />
         <LiveRewardStrip market={market} />
@@ -44,6 +45,7 @@ export function Home({
         <RiskDisclosure />
       </main>
       <Footer />
+      <MobileAdoptBar />
     </>
   );
 }

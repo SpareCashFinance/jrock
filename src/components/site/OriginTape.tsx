@@ -110,7 +110,19 @@ export function OriginTape() {
             {captions[caption]}
           </motion.p>
         </AnimatePresence>
-        <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
+        {muted ? (
+          <button
+            type="button"
+            onClick={toggleMute}
+            className="absolute inset-0 z-10 grid place-items-center bg-[#060a12]/35"
+          >
+            <span className="btn btn-primary px-5 text-sm">
+              <Volume2 className="size-4" />
+              Unmute
+            </span>
+          </button>
+        ) : null}
+        <div className="absolute bottom-3 left-3 right-3 z-20 flex items-center justify-between">
           <HouseButton className="min-h-9 px-3 text-[11px]" onClick={togglePlay}>
             {playing ? <Pause className="size-4" /> : <Play className="size-4" />}
             {playing ? "Hold tape" : "Play tape"}
