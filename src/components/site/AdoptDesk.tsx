@@ -4,7 +4,7 @@ import { OriginTape } from "./OriginTape";
 export function AdoptDesk() {
   return (
     <section id="adopt" className="section py-6">
-      <div className="grid items-stretch gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,400px)]">
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,400px)]">
         <div className="min-w-0">
           <OriginTape />
         </div>

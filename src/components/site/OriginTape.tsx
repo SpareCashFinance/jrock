@@ -84,16 +84,16 @@ export function OriginTape() {
     <div
       ref={stageRef}
       id="tape"
-      className="cardboard relative flex h-full flex-col overflow-hidden rounded-[28px] p-3 sm:p-4"
+      className="cardboard relative flex flex-col overflow-hidden rounded-[28px] p-3 sm:p-4"
     >
       <div className="mb-3 flex items-center justify-between px-1 text-[11px] tracking-[0.2em] uppercase">
         <span>Exhibit A · Origin tape</span>
         <span>01:14</span>
       </div>
-      <div className="tape-scanlines relative min-h-0 flex-1 overflow-hidden rounded-[20px] bg-black shadow-[inset_0_0_0_1px_rgba(0,0,0,0.35)]">
+      <div className="tape-scanlines relative overflow-hidden rounded-[20px] bg-black shadow-[inset_0_0_0_1px_rgba(0,0,0,0.35)]">
         <video
           ref={videoRef}
-          className="aspect-video h-full w-full object-cover lg:aspect-auto lg:min-h-[280px]"
+          className="aspect-video h-auto w-full object-contain object-center"
           poster="/media/pet-rock-poster.jpg?v=3512"
           playsInline
           loop
