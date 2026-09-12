@@ -14,15 +14,15 @@ const nav = [
 
 export function Header() {
   return (
-    <header className="sticky top-[34px] z-40 px-3">
-      <div className="dock mx-auto flex w-[min(1120px,calc(100%-0.5rem))] items-center justify-between gap-3 rounded-full px-3 py-2">
-        <a href="#top" className="flex items-center gap-3">
-          <BrandMark size={36} className="border border-[rgba(247,147,26,0.35)]" />
-          <span>
-            <span className="display block text-2xl leading-none">{project.name}</span>
-            <span className="flex items-center gap-1.5 text-[11px] tracking-[0.22em] text-[var(--gold)]">
+    <header className="sticky z-40 px-3" style={{ top: "var(--tape-h)" }}>
+      <div className="dock mx-auto flex w-[min(1120px,calc(100%-0.5rem))] items-center justify-between gap-2 rounded-full px-2 py-1.5 sm:gap-3 sm:px-3 sm:py-2">
+        <a href="#top" className="flex min-w-0 items-center gap-2 sm:gap-3">
+          <BrandMark size={32} className="shrink-0 border border-[rgba(247,147,26,0.35)] sm:h-9 sm:w-9" />
+          <span className="min-w-0">
+            <span className="display hidden text-2xl leading-none sm:block">{project.name}</span>
+            <span className="flex items-center gap-1.5 text-[11px] tracking-[0.18em] text-[var(--gold)] sm:tracking-[0.22em]">
               {project.ticker}
-              <BrandMark size={14} />
+              <BrandMark size={14} className="hidden sm:inline-block" />
             </span>
           </span>
         </a>
@@ -33,10 +33,12 @@ export function Header() {
             </a>
           ))}
         </nav>
-        <div className="flex items-center gap-2">
-          <CopyButton value={project.mint} label="Copy" className="hidden px-3 text-xs sm:inline-flex" />
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <div className="hidden md:block">
+            <CopyButton value={project.mint} label="Copy" className="px-3 text-xs" />
+          </div>
           <WalletControls compact />
-          <AdoptButton idleLabel="Connect wallet" connectedLabel="Adopt $JROCK" />
+          <AdoptButton idleLabel="Connect wallet" connectedLabel="Adopt $JROCK" compact />
         </div>
       </div>
     </header>

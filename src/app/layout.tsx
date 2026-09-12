@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Bebas_Neue, Geist, Geist_Mono, Newsreader } from "next/font/google";
 import { Providers } from "@/components/Providers";
 import { project } from "@/lib/config";
@@ -27,6 +27,12 @@ const newsreader = Newsreader({
 
 const title = `${project.name} (${project.ticker})`;
 const description = `${project.coreLine} A Solana memecoin on stonk.fun. Eligible holders may receive variable WBTC rewards. Independent parody. Not financial advice.`;
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(project.siteUrl),

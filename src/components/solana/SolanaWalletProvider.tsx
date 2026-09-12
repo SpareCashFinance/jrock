@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { WalletReadyState, type WalletName } from "@solana/wallet-adapter-base";
 import { ConnectionProvider, WalletProvider, useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { PhantomWalletAdapter } from "@solana/wallet-adapter-phantom";
@@ -46,6 +46,23 @@ function SolanaWalletModalHost({ children }: { children: ReactNode }) {
   );
 }
 
+function isPhone() {
+  return typeof navigator !== "undefined" && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+}
+
+function browseInWallet(name: string) {
+  const href = window.location.href;
+  if (name === "Phantom") {
+    window.location.assign(
+      `https://phantom.app/ul/browse/${encodeURIComponent(href)}?ref=${encodeURIComponent(window.location.origin)}`,
+    );
+    return;
+  }
+  if (name === "Solflare") {
+    window.location.assign(`https://solflare.com/ul/v1/browse/${encodeURIComponent(href)}`);
+  }
+}
+
 function SolanaWalletModal({
   open,
   onOpenChange,
@@ -53,24 +70,38 @@ function SolanaWalletModal({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { wallets, select, wallet, connected, disconnect, connecting } = useWallet();
+  const { wallets, select, wallet, connected, disconnect, connecting, connect } = useWallet();
+  const pending = useRef<WalletName | null>(null);
   const listed = wallets
     .filter((item) => item.readyState !== WalletReadyState.Unsupported)
     .slice()
     .sort((a, b) => rankWallet(a.readyState) - rankWallet(b.readyState));
 
+  useEffect(() => {
+    if (!pending.current || !wallet || wallet.adapter.name !== pending.current) return;
+    pending.current = null;
+    void connect()
+      .catch(() => undefined)
+      .finally(() => onOpenChange(false));
+  }, [wallet, connect, onOpenChange]);
+
   async function pick(name: WalletName, readyState: WalletReadyState, url: string) {
     if (readyState === WalletReadyState.NotDetected) {
+      if (isPhone()) {
+        browseInWallet(name);
+        return;
+      }
       window.open(url, "_blank", "noreferrer");
       return;
     }
     try {
       if (wallet?.adapter.name === name && !connected) {
-        await wallet.adapter.connect();
-      } else {
-        select(name);
+        await connect();
+        onOpenChange(false);
+        return;
       }
-      onOpenChange(false);
+      pending.current = name;
+      select(name);
     } catch {
       /* wallet adapter surfaces its own errors */
     }

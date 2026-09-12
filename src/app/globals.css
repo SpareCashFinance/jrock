@@ -184,6 +184,13 @@ a {
   line-height: 0.95;
 }
 
+@media (max-width: 640px) {
+  .display {
+    letter-spacing: 0.02em;
+    word-spacing: 0.05em;
+  }
+}
+
 .serif {
   font-family: var(--font-newsreader), Georgia, serif;
 }
@@ -324,6 +331,13 @@ a {
   color: var(--gold);
 }
 
+@media (max-width: 640px) {
+  .kicker {
+    letter-spacing: 0.1em;
+    word-spacing: 0.08em;
+  }
+}
+
 .chip {
   display: inline-flex;
   align-items: center;
@@ -379,8 +393,13 @@ a {
   opacity: 0.35;
 }
 
+:root {
+  --tape-h: calc(34px + env(safe-area-inset-top, 0px));
+}
+
 .price-tape {
-  height: 34px;
+  height: var(--tape-h);
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 .price-tape-track {

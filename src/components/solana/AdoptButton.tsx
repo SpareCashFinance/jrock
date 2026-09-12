@@ -17,11 +17,13 @@ export function AdoptButton({
   connectedLabel = "Adopt $JROCK",
   idleLabel = "Connect wallet",
   shine = false,
+  compact = false,
 }: {
   className?: string;
   connectedLabel?: string;
   idleLabel?: string;
   shine?: boolean;
+  compact?: boolean;
 }) {
   const { connected, connecting, openModal } = useSolanaWallet();
   const mounted = useSyncExternalStore(
@@ -49,11 +51,18 @@ export function AdoptButton({
   return (
     <HouseButton
       variant="primary"
-      className={cn(shine ? "h-11 px-5" : "px-3 text-xs", className)}
+      className={cn(shine ? "h-11 px-5" : "min-h-9 px-2.5 text-xs sm:px-3", className)}
       onClick={onClick}
     >
       <NetworkSolana variant="branded" size={16} />
-      {label}
+      {compact ? (
+        <>
+          <span className="sm:hidden">{connected ? "Adopt" : connecting ? "…" : "Connect"}</span>
+          <span className="hidden sm:inline">{label}</span>
+        </>
+      ) : (
+        label
+      )}
     </HouseButton>
   );
 }
