@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import NumberFlow from "@number-flow/react";
 import { ArrowDownUp } from "lucide-react";
+import { BrandMark } from "@/components/brand/BrandMark";
 import { LiquidSurface } from "@/components/brand/LiquidSurface";
 import { Card } from "@/components/ui/card";
 import { SpringButton } from "@/components/ui/spring-button";
@@ -275,15 +276,23 @@ export function AdoptSwap({ embedded = false }: { embedded?: boolean }) {
         <div className="pointer-events-none absolute -top-16 -right-10 size-40 rounded-full bg-[radial-gradient(circle,rgba(247,147,26,0.16),transparent_68%)]" />
         <div className="pointer-events-none absolute -bottom-20 -left-8 size-44 rounded-full bg-[radial-gradient(circle,rgba(102,249,237,0.08),transparent_70%)]" />
 
-        <div className="relative flex items-center justify-between gap-3">
-          <div>
-            <p className="kicker">Jupiter desk</p>
-            <h2 className="mt-1 text-lg font-semibold tracking-tight text-white">Adopt $JROCK</h2>
+        <div className="relative flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <BrandMark
+              size={40}
+              className="shrink-0 border border-[rgba(247,147,26,0.35)] sm:h-11 sm:w-11"
+            />
+            <div className="min-w-0">
+              <p className="kicker">Jupiter desk</p>
+              <h2 className="display mt-1.5 text-[2rem] leading-none text-white sm:text-[2.35rem]">
+                Adopt <span className="text-[var(--orange)]">$JROCK</span>
+              </h2>
+            </div>
           </div>
-          {solana.connected ? <WalletControls compact className="justify-end" /> : null}
+          {solana.connected ? <WalletControls compact className="justify-end pt-1" /> : null}
         </div>
 
-        <div className="relative mt-4 space-y-2">
+        <div className="relative mt-5 space-y-2">
           <div className="desk-field rounded-2xl px-3 py-3">
             <div className="flex items-center justify-between">
               <p className="kicker">You pay</p>
