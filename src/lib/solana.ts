@@ -6,6 +6,7 @@ export function publicSolanaRpcUrl() {
   return process.env.NEXT_PUBLIC_SOLANA_RPC_URL?.trim() || "https://api.mainnet-beta.solana.com";
 }
 
+/** Paid RPC only. Keyed URLs stay on the server behind /api/solana/rpc. */
 export function serverSolanaRpcUrl() {
   return process.env.SOLANA_RPC_URL?.trim() || publicSolanaRpcUrl();
 }
