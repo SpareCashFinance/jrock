@@ -1,5 +1,6 @@
 import { project } from "@/lib/config";
 import { shareOnXUrl, visibleLinks } from "@/lib/links";
+import { BrandMark } from "@/components/brand/BrandMark";
 import { HouseButton } from "@/components/ui/house-button";
 import { CopyButton } from "./CopyButton";
 
@@ -22,7 +23,7 @@ export function CommunityLinks() {
       </div>
       <p className="serif mt-6 max-w-xl text-xl text-[var(--cream)]">
         “Jamie said Bitcoin was a pet rock. Mine pays me in WBTC.{" "}
-        <span className="emoji">🪨</span>”
+        <BrandMark size={22} />”
       </p>
     </section>
   );

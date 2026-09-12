@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { TokenBTC } from "@web3icons/react";
+import { BrandMark } from "@/components/brand/BrandMark";
 import { formatPct, formatUsdPrice } from "@/lib/format";
 import { usePriceTape } from "@/lib/tape-client";
 import type { PriceTapeSnapshot, TapeQuote } from "@/lib/tape";
@@ -40,7 +41,7 @@ function TapeSequence({ tape }: { tape: PriceTapeSnapshot }) {
           <span className="px-5 tracking-[0.22em] text-[var(--orange)]">Live tape</span>
           <QuoteCell quote={tape.btc} mark={<TokenBTC variant="branded" size={14} />} />
           <span className="text-[var(--stone)]">•</span>
-          <QuoteCell quote={tape.jrock} mark={<span className="emoji" aria-hidden>🪨</span>} />
+          <QuoteCell quote={tape.jrock} mark={<BrandMark size={16} />} />
           <span className="px-5 text-[var(--stone)]">•</span>
         </span>
       ))}
