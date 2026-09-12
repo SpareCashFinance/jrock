@@ -49,6 +49,14 @@ export function formatCount(value: number | null | undefined) {
   return new Intl.NumberFormat("en-US").format(value);
 }
 
+export function formatCompact(value: number | null | undefined) {
+  if (value == null || !Number.isFinite(value)) return null;
+  return new Intl.NumberFormat("en-US", {
+    notation: "compact",
+    maximumFractionDigits: value >= 1000 ? 1 : 2,
+  }).format(value);
+}
+
 export function timeAgo(iso: string | null | undefined) {
   if (!iso) return null;
   const then = new Date(iso).getTime();

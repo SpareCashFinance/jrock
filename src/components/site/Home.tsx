@@ -13,22 +13,25 @@ import { TokenDetails } from "./TokenDetails";
 import { CommunityLinks } from "./CommunityLinks";
 import { RiskDisclosure } from "./RiskDisclosure";
 import { Footer } from "./Footer";
-import { PriceTape } from "./PriceTape";
+import { SiteTapes } from "./SiteTapes";
 import { MobileAdoptBar } from "./MobileAdoptBar";
+import type { BurnSnapshot } from "@/lib/burn";
 import type { MarketSnapshot } from "@/lib/market";
 import type { PriceTapeSnapshot } from "@/lib/tape";
 
 export function Home({
   market,
   tape,
+  burn,
 }: {
   market: MarketSnapshot;
   tape: PriceTapeSnapshot;
+  burn: BurnSnapshot;
 }) {
   return (
     <>
       <BitcoinRain />
-      <PriceTape initial={tape} />
+      <SiteTapes tape={tape} burn={burn} />
       <Header />
       <main className="pb-20 md:pb-0">
         <Hero />
@@ -37,7 +40,7 @@ export function Home({
         <ExhibitTape />
         <LoreSection />
         <RewardExplainer />
-        <BurnReceipt />
+        <BurnReceipt burn={burn} />
         <RewardTerminal market={market} />
         <TrainYourRock />
         <TokenDetails />

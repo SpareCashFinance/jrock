@@ -1,11 +1,13 @@
 import { hasBurnTx, project } from "@/lib/config";
 import { explorerTxUrl } from "@/lib/links";
 import { HouseButton } from "@/components/ui/house-button";
+import type { BurnSnapshot } from "@/lib/burn";
 import { CopyButton } from "./CopyButton";
+import { BurnIncinerator } from "./BurnFlame";
 
 const remaining = Math.max(0, 100 - project.burnPercent);
 
-export function BurnReceipt() {
+export function BurnReceipt({ burn }: { burn: BurnSnapshot }) {
   const filed = hasBurnTx();
 
   return (
@@ -17,9 +19,13 @@ export function BurnReceipt() {
       </h2>
       <p className="mt-4 max-w-2xl text-sm leading-6 text-[var(--dim)]">
         At launch we buy {project.burnPercent}% of {project.ticker} supply and send it to the
-        burn. That leaves about {remaining}% in circulation. Same reward pot. Smaller float.
-        Variable WBTC. Not a promise.
+        burn. After that, stonk.fun’s fee sweep keeps buying and burning on its own. Same
+        reward pot. Smaller float. Variable WBTC. Not a promise.
       </p>
+
+      <div className="mt-8">
+        <BurnIncinerator initial={burn} />
+      </div>
 
       <div className="cardboard mt-8 rounded-[32px] p-3 sm:p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2 px-2 text-[11px] tracking-[0.2em] uppercase">
@@ -31,9 +37,9 @@ export function BurnReceipt() {
           <div className="pointer-events-none absolute inset-0 opacity-[0.14] [background-image:linear-gradient(rgba(247,147,26,0.14)_1px,transparent_1px),linear-gradient(90deg,rgba(247,147,26,0.14)_1px,transparent_1px)] [background-size:28px_28px]" />
           <div className="relative">
             <div className="flex flex-wrap gap-2">
-              <span className="chip">{project.burnPercent}% of supply</span>
-              <span className="chip">Purchased at launch</span>
-              <span className="chip">{remaining}% remains</span>
+              <span className="chip">{project.burnPercent}% launch burn</span>
+              <span className="chip">stonk.fun flywheel</span>
+              <span className="chip">{remaining}% remains after launch</span>
             </div>
 
             {filed ? (

@@ -3,7 +3,8 @@ import { BitcoinRain } from "@/components/brand/BitcoinRain";
 import { Footer } from "@/components/site/Footer";
 import { Header } from "@/components/site/Header";
 import { MemeDesk } from "@/components/site/MemeDesk";
-import { PriceTape } from "@/components/site/PriceTape";
+import { SiteTapes } from "@/components/site/SiteTapes";
+import { getBurnSnapshot } from "@/lib/burn";
 import { project } from "@/lib/config";
 import { getPriceTape } from "@/lib/tape";
 
@@ -33,11 +34,11 @@ export const metadata: Metadata = {
 };
 
 export default async function MemesPage() {
-  const tape = await getPriceTape();
+  const [tape, burn] = await Promise.all([getPriceTape(), getBurnSnapshot()]);
   return (
     <>
       <BitcoinRain />
-      <PriceTape initial={tape} />
+      <SiteTapes tape={tape} burn={burn} />
       <Header />
       <main>
         <MemeDesk />

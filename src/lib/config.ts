@@ -90,3 +90,24 @@ export function hasMint() {
 export function hasBurnTx() {
   return project.burnTx.length > 0;
 }
+
+const DEFAULT_LAUNCH_SUPPLY = 1_000_000_000;
+
+/** LaunchLab default is 1B. Override with NEXT_PUBLIC_TOTAL_SUPPLY (1B, 1,000,000,000, etc). */
+export function initialSupply() {
+  const raw = project.totalSupply.trim().replace(/,/g, "").toUpperCase();
+  if (!raw) return DEFAULT_LAUNCH_SUPPLY;
+  const match = raw.match(/^([0-9]*\.?[0-9]+)\s*([KMB])?$/);
+  if (!match) {
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0 ? n : DEFAULT_LAUNCH_SUPPLY;
+  }
+  const n = Number(match[1]);
+  if (!Number.isFinite(n) || n <= 0) return DEFAULT_LAUNCH_SUPPLY;
+  const unit = match[2];
+  return n * (unit === "B" ? 1e9 : unit === "M" ? 1e6 : unit === "K" ? 1e3 : 1);
+}
+
+export function plannedLaunchBurn() {
+  return (initialSupply() * project.burnPercent) / 100;
+}
