@@ -35,13 +35,20 @@ async function fetchMeme(src: string) {
   return response.blob();
 }
 
-function padRow(row: MemeCard[], target: number) {
-  if (row.length === 0) return row;
+function padRow(row: MemeCard[], target: number, borrow: MemeCard[]) {
+  if (row.length === 0 || row.length >= target) return row;
   const next = [...row];
+  const pool = borrow.length > 0 ? borrow : row.slice(1);
   let index = 0;
-  while (next.length < target) {
-    next.push(row[index % row.length]);
+  while (next.length < target && pool.length > 0) {
+    const candidate = pool[index % pool.length];
+    const first = next[0];
+    const last = next[next.length - 1];
+    if (candidate.id !== first.id && candidate.id !== last.id) {
+      next.push(candidate);
+    }
     index += 1;
+    if (index > pool.length * 3) break;
   }
   return next;
 }
@@ -170,14 +177,11 @@ function MemeCarousel({ items }: { items: MemeCard[] }) {
   const hover = useRef(false);
   const rolling = useRef(true);
   const [held, setHeld] = useState(false);
-  const top = padRow(
-    items.filter((_, index) => index % 2 === 0),
-    Math.ceil(items.length / 2),
-  );
-  const bottom = padRow(
-    items.filter((_, index) => index % 2 === 1),
-    Math.ceil(items.length / 2),
-  );
+  const evens = items.filter((_, index) => index % 2 === 0);
+  const odds = items.filter((_, index) => index % 2 === 1);
+  const width = Math.max(evens.length, odds.length);
+  const top = padRow(evens, width, odds);
+  const bottom = padRow(odds, width, evens);
 
   useEffect(() => {
     const el = scroller.current;
