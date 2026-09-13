@@ -280,4 +280,20 @@ export const memes: MemeCard[] = [
     alt: "X-ray of the rock showing a glowing skeleton, Bitcoin tie, and sneakers",
     caption: "X-ray confirmed. Still a rock. Still Bitcoin.",
   },
+  {
+    id: "oath",
+    stamp: "35",
+    src: "/memes/35-oath.jpg",
+    file: "jrock-oath.jpg",
+    alt: "The rock in a black robe raising one hand and holding a paper like a sworn statement",
+    caption: "The rock swears. Bitcoin does something.",
+  },
+  {
+    id: "gm",
+    stamp: "36",
+    src: "/memes/36-gm.jpg",
+    file: "jrock-gm.jpg",
+    alt: "The rock holding a steaming coffee mug that says GM",
+    caption: "GM. The rock already drank yours.",
+  },
 ];
