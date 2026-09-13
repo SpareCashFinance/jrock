@@ -35,22 +35,15 @@ async function fetchMeme(src: string) {
   return response.blob();
 }
 
-function padRow(row: MemeCard[], target: number, borrow: MemeCard[]) {
-  if (row.length === 0 || row.length >= target) return row;
-  const next = [...row];
-  const pool = borrow.length > 0 ? borrow : row.slice(1);
-  let index = 0;
-  while (next.length < target && pool.length > 0) {
-    const candidate = pool[index % pool.length];
-    const first = next[0];
-    const last = next[next.length - 1];
-    if (candidate.id !== first.id && candidate.id !== last.id) {
-      next.push(candidate);
-    }
-    index += 1;
-    if (index > pool.length * 3) break;
-  }
-  return next;
+function splitTape(items: MemeCard[]) {
+  const top = items.filter((_, index) => index % 2 === 0);
+  const bottom = items.filter((_, index) => index % 2 === 1);
+  return {
+    top,
+    bottom,
+    topFill: Math.max(0, bottom.length - top.length),
+    bottomFill: Math.max(0, top.length - bottom.length),
+  };
 }
 
 function MemeActions({ meme }: { meme: MemeCard }) {
@@ -162,12 +155,34 @@ function MemeTile({ meme }: { meme: MemeCard }) {
   );
 }
 
-function MemeRow({ items, copy }: { items: MemeCard[]; copy: number }) {
+function MemeRow({
+  items,
+  copy,
+  fill,
+}: {
+  items: MemeCard[];
+  copy: number;
+  fill: number;
+}) {
+  const half = (pass: number) => (
+    <>
+      {items.map((meme, index) => (
+        <MemeTile key={`${copy}-${pass}-${meme.id}-${index}`} meme={meme} />
+      ))}
+      {Array.from({ length: fill }, (_, index) => (
+        <div
+          key={`${copy}-${pass}-gap-${index}`}
+          className="w-[12.5rem] shrink-0"
+          aria-hidden
+        />
+      ))}
+    </>
+  );
+
   return (
     <div className="flex gap-3">
-      {items.map((meme, index) => (
-        <MemeTile key={`${copy}-${meme.id}-${index}`} meme={meme} />
-      ))}
+      {half(0)}
+      {half(1)}
     </div>
   );
 }
@@ -177,11 +192,7 @@ function MemeCarousel({ items }: { items: MemeCard[] }) {
   const hover = useRef(false);
   const rolling = useRef(true);
   const [held, setHeld] = useState(false);
-  const evens = items.filter((_, index) => index % 2 === 0);
-  const odds = items.filter((_, index) => index % 2 === 1);
-  const width = Math.max(evens.length, odds.length);
-  const top = padRow(evens, width, odds);
-  const bottom = padRow(odds, width, evens);
+  const { top, bottom, topFill, bottomFill } = splitTape(items);
 
   useEffect(() => {
     const el = scroller.current;
@@ -262,8 +273,8 @@ function MemeCarousel({ items }: { items: MemeCard[] }) {
           className="overflow-x-auto overflow-y-hidden pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
         >
           <div className="flex min-w-min flex-col gap-3">
-            <MemeRow items={[...top, ...top]} copy={0} />
-            {bottom.length > 0 ? <MemeRow items={[...bottom, ...bottom]} copy={1} /> : null}
+            <MemeRow items={top} copy={0} fill={topFill} />
+            {bottom.length > 0 ? <MemeRow items={bottom} copy={1} fill={bottomFill} /> : null}
           </div>
         </div>
         <div className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-[#060a12] to-transparent sm:w-14" />
