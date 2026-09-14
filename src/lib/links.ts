@@ -68,6 +68,10 @@ export function explorerTxUrl(signature: string) {
   return `${SOLSCAN_ORIGIN}/tx/${signature}`;
 }
 
+export function explorerAccountUrl(address: string) {
+  return address ? `${SOLSCAN_ORIGIN}/account/${address}` : "";
+}
+
 export function tweetIntentUrl(text: string, pageUrl = project.siteUrl) {
   const url = new URL("https://twitter.com/intent/tweet");
   url.searchParams.set("text", text);

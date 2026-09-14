@@ -9,6 +9,7 @@ import { CopyButton } from "./CopyButton";
 const nav: { href: string; label: string; show?: string }[] = [
   { href: "/#adopt", label: "Adopt" },
   { href: "/memes", label: "Memes" },
+  { href: "/lotto", label: "Lotto" },
   { href: "/#tape", label: "The tape" },
   { href: "/#burn", label: "Burn" },
   { href: "/#rewards", label: "Rewards", show: "lg" },

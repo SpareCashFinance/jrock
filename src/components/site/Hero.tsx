@@ -58,6 +58,7 @@ export function Hero() {
           </Magnet>
           <InteractiveHoverButton href="#adopt">Adopt the rock</InteractiveHoverButton>
           <InteractiveHoverButton href="/memes">Steal these</InteractiveHoverButton>
+          <InteractiveHoverButton href="/lotto">Kennel lotto</InteractiveHoverButton>
         </div>
         <ChainMarks />
         <a href={links.pumpfun} className="inline-block text-[11px] tracking-[0.18em] uppercase text-[var(--stone)] hover:text-[var(--orange)]">

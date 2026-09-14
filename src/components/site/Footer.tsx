@@ -25,6 +25,9 @@ export function Footer() {
           <a href="/memes" className="hover:text-white">
             Memes
           </a>
+          <a href="/lotto" className="hover:text-white">
+            Lotto
+          </a>
           <a href="/#adopt" className="hover:text-white">
             Adopt
           </a>
