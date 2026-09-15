@@ -47,15 +47,15 @@ export function Hero() {
           “{project.quote}”
         </p>
         <div className="flex flex-wrap gap-3">
+          <InteractiveHoverButton href="/lotto">Kennel lotto</InteractiveHoverButton>
           <Magnet>
             <span
               onMouseEnter={() => setDropping(true)}
               onMouseLeave={() => setDropping(false)}
             >
-              <InteractiveHoverButton href="/lotto">Kennel lotto</InteractiveHoverButton>
+              <InteractiveHoverButton href="#adopt">Adopt the rock</InteractiveHoverButton>
             </span>
           </Magnet>
-          <InteractiveHoverButton href="#adopt">Adopt the rock</InteractiveHoverButton>
           <InteractiveHoverButton href="/memes">Steal these</InteractiveHoverButton>
         </div>
         <ChainMarks />
