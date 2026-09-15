@@ -41,6 +41,7 @@ import { TelegramMark, XMark } from "@/components/brand/SocialMarks";
 import { useCountdown, useLottoSnapshot, type RefreshLottoOpts } from "@/lib/lotto-client";
 
 const PRESETS = [1, 2, 5, 10];
+const PURCHASE_PAGE_SIZE = 20;
 
 type SlipReceipt = {
   slips: number;
@@ -580,6 +581,22 @@ function WalletBook({ tape, you }: { tape: LottoSnapshot; you: string }) {
 }
 
 function PurchaseLog({ tape, you }: { tape: LottoSnapshot; you: string }) {
+  const [page, setPage] = useState(0);
+  const newestFirst = useMemo(() => {
+    const chronological = [...tape.entries].sort((a, b) => a.slot - b.slot || a.signature.localeCompare(b.signature));
+    const running = new Map<string, number>();
+    const totals = new Map<string, number>();
+    for (const row of chronological) {
+      const next = (running.get(row.wallet) ?? 0) + row.tickets;
+      running.set(row.wallet, next);
+      totals.set(row.signature, next);
+    }
+    return chronological
+      .slice()
+      .reverse()
+      .map((row) => ({ row, walletTotal: totals.get(row.signature) ?? row.tickets }));
+  }, [tape.entries]);
+
   if (tape.entries.length === 0) {
     return (
       <div className="glass-panel mt-8 rounded-[28px] p-6">
@@ -588,12 +605,19 @@ function PurchaseLog({ tape, you }: { tape: LottoSnapshot; you: string }) {
       </div>
     );
   }
-  const ordered = [...tape.entries].sort((a, b) => a.slot - b.slot);
-  const totals = new Map<string, number>();
+
+  const pages = Math.max(1, Math.ceil(newestFirst.length / PURCHASE_PAGE_SIZE));
+  const current = Math.min(page, pages - 1);
+  const visible = newestFirst.slice(current * PURCHASE_PAGE_SIZE, current * PURCHASE_PAGE_SIZE + PURCHASE_PAGE_SIZE);
+  const from = current * PURCHASE_PAGE_SIZE + 1;
+  const to = current * PURCHASE_PAGE_SIZE + visible.length;
+
   return (
     <div className="glass-panel mt-8 overflow-hidden rounded-[28px]">
       <div className="border-b border-[rgba(232,210,176,0.1)] px-5 py-4">
-        <p className="kicker">Every purchase · {formatCount(tape.entries.length)} buys on the book</p>
+        <p className="kicker">
+          Latest buys · {from}–{to} of {formatCount(tape.entries.length)}
+        </p>
       </div>
       <div className="hidden border-b border-[rgba(232,210,176,0.08)] px-5 py-2 text-[10px] tracking-[0.16em] uppercase text-[var(--stone)] sm:grid sm:grid-cols-[0.7fr_minmax(0,1.3fr)_0.7fr_0.7fr_0.7fr] sm:gap-3">
         <span>Slips</span>
@@ -603,9 +627,7 @@ function PurchaseLog({ tape, you }: { tape: LottoSnapshot; you: string }) {
         <span>Wallet total</span>
       </div>
       <div className="divide-y divide-[rgba(232,210,176,0.08)]">
-        {ordered.map((row) => {
-          const running = (totals.get(row.wallet) ?? 0) + row.tickets;
-          totals.set(row.wallet, running);
+        {visible.map(({ row, walletTotal }) => {
           const inner = (
             <>
               <span className="font-mono text-[var(--gold)]">{slipRange(row.slot, row.tickets)}</span>
@@ -615,7 +637,7 @@ function PurchaseLog({ tape, you }: { tape: LottoSnapshot; you: string }) {
               </span>
               <span>{formatAmount(row.lamports / 1_000_000_000, 4)} SOL</span>
               <span>
-                {formatCount(running)} total
+                {formatCount(walletTotal)} total
               </span>
             </>
           );
@@ -636,6 +658,27 @@ function PurchaseLog({ tape, you }: { tape: LottoSnapshot; you: string }) {
           );
         })}
       </div>
+      {pages > 1 ? (
+        <div className="flex items-center justify-between gap-3 border-t border-[rgba(232,210,176,0.1)] px-5 py-3">
+          <HouseButton
+            className="px-3 text-xs disabled:opacity-40"
+            disabled={current <= 0}
+            onClick={() => setPage(Math.max(0, current - 1))}
+          >
+            Newer
+          </HouseButton>
+          <p className="text-[11px] tracking-[0.16em] uppercase text-[var(--gold)]">
+            Page {current + 1} / {pages}
+          </p>
+          <HouseButton
+            className="px-3 text-xs disabled:opacity-40"
+            disabled={current >= pages - 1}
+            onClick={() => setPage(Math.min(pages - 1, current + 1))}
+          >
+            Older
+          </HouseButton>
+        </div>
+      ) : null}
     </div>
   );
 }
