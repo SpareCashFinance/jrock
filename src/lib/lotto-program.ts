@@ -222,7 +222,7 @@ export function openRoundIx(payer: PublicKey, currentRound: number) {
     keys: [
       { pubkey: payer, isSigner: true, isWritable: true },
       { pubkey: config, isSigner: false, isWritable: false },
-      { pubkey: previous, isSigner: false, isWritable: false },
+      { pubkey: previous, isSigner: false, isWritable: true },
       { pubkey: round, isSigner: false, isWritable: true },
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     ],

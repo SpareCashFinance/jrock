@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   PublicKey,
   SystemProgram,
@@ -8,13 +9,6 @@ import {
   TransactionInstruction,
 } from "@solana/web3.js";
 import { Dices, Trophy, Users } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { HouseButton } from "@/components/ui/house-button";
 import { project } from "@/lib/config";
 import { formatAmount, formatCount, shortenAddress } from "@/lib/format";
@@ -28,9 +22,7 @@ import {
   slipPotLamports,
   slipTotalLamports,
   verifyDraw,
-  verifyProgramDraw,
   winnerIndexFromBlockhash,
-  winnerIndexFromSlotHash,
   slipRange,
   type LottoPostedWin,
   type LottoSnapshot,
@@ -41,7 +33,7 @@ import { TelegramMark, XMark } from "@/components/brand/SocialMarks";
 import { LottoMachine } from "@/components/site/LottoMachine";
 import { useCountdown, useLottoSnapshot, type RefreshLottoOpts } from "@/lib/lotto-client";
 
-const PRESETS = [1, 2, 5, 10];
+const PRESETS = [1, 2, 5, 10, 20];
 const PURCHASE_PAGE_SIZE = 20;
 
 type SlipReceipt = {
@@ -54,18 +46,20 @@ function ixDataFromText(value: string) {
   return new TextEncoder().encode(value) as unknown as Buffer;
 }
 
-function ClockBox({ label, value }: { label: string; value: number }) {
+function ClockBox({ label, value, ready }: { label: string; value: number; ready: boolean }) {
   return (
     <div className="glass-panel min-w-[4.5rem] rounded-2xl px-3 py-3 text-center">
-      <p className="display text-4xl text-white sm:text-5xl">{String(value).padStart(2, "0")}</p>
+      <p className="display text-4xl text-white sm:text-5xl" suppressHydrationWarning>
+        {ready ? String(value).padStart(2, "0") : "—"}
+      </p>
       <p className="mt-1 text-[10px] tracking-[0.16em] uppercase text-[var(--gold)]">{label}</p>
     </div>
   );
 }
 
-export function LottoDesk() {
+export function LottoDesk({ initial }: { initial?: LottoSnapshot }) {
   const solana = useSolanaWallet();
-  const { tape, reload } = useLottoSnapshot();
+  const { tape, reload } = useLottoSnapshot(initial);
   const [count, setCount] = useState(1);
   const [phase, setPhase] = useState("");
   const [error, setError] = useState("");
@@ -109,19 +103,25 @@ export function LottoDesk() {
               </p>
             </div>
             <div className="mt-6 flex flex-wrap gap-2">
-              <ClockBox label="Days" value={clock.days} />
-              <ClockBox label="Hours" value={clock.hours} />
-              <ClockBox label="Minutes" value={clock.minutes} />
-              <ClockBox label="Seconds" value={clock.seconds} />
+              <ClockBox label="Days" value={clock.days} ready={clock.ready} />
+              <ClockBox label="Hours" value={clock.hours} ready={clock.ready} />
+              <ClockBox label="Minutes" value={clock.minutes} ready={clock.ready} />
+              <ClockBox label="Seconds" value={clock.seconds} ready={clock.ready} />
             </div>
             <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <Stat label="In the pot" value={`${formatAmount(tape.engine === "program" ? tape.potSol : tape.roundSol, 4) ?? "0"} SOL`} />
+              <Stat
+                label="Prize pool"
+                value={`${formatAmount((tape.engine === "program" ? tape.split.claimableLamports : tape.roundLamports) / 1_000_000_000, 4) ?? "0"} SOL`}
+              />
               <Stat label="Winner 85%" value={`${formatAmount(tape.split.winnerLamports / 1_000_000_000, 4) ?? "0"} SOL`} />
               <Stat label="Next seed 15%" value={`${formatAmount(tape.split.carryLamports / 1_000_000_000, 4) ?? "0"} SOL`} />
               <Stat label="Your slips" value={formatCount(yours) ?? "0"} />
             </div>
             <p className="mt-3 text-xs tracking-[0.14em] uppercase text-[var(--gold)]">
               {formatCount(tape.totalTickets) ?? "0"} slips sold
+              {tape.split.rentLamports > 0
+                ? ` · account holds ${formatAmount(tape.potSol, 4)} SOL including ${formatAmount(tape.split.rentLamports / 1_000_000_000, 4)} SOL rent, which is not prize money`
+                : ""}
               {tape.split.seedLamports > 0
                 ? ` · ${formatAmount(tape.split.seedLamports / 1_000_000_000, 4)} SOL rolled in from last round`
                 : ""}
@@ -133,6 +133,7 @@ export function LottoDesk() {
             <WinnerCard title="This block picked" draw={tape.draw} jackpotLamports={tape.split.winnerLamports} />
           ) : null}
           {tape.last && !tape.draw ? <WinnerCard title="Last rock picked" draw={tape.last} /> : null}
+          <ChainStatusCard tape={tape} />
           <ProofCard tape={tape} />
         </div>
 
@@ -194,38 +195,58 @@ function SlipReceiptDialog({
   receipt: SlipReceipt | null;
   onClose: () => void;
 }) {
-  const slips = receipt?.slips ?? 0;
-  return (
-    <Dialog open={Boolean(receipt)} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent
-        showCloseButton
-        className="glass-panel max-w-md gap-4 border border-[rgba(232,210,176,0.16)] bg-[#0c1320] p-6 text-[var(--cream)] sm:max-w-md sm:p-8"
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    if (!receipt || !mounted) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [receipt, mounted, onClose]);
+
+  if (!mounted || !receipt) return null;
+  const slips = receipt.slips;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[80] grid place-items-center bg-black/70 p-4"
+      role="presentation"
+      onClick={onClose}
+    >
+      <div
+        id="lotto-slip-receipt"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="lotto-slip-receipt-title"
+        className="relative w-full max-w-md rounded-[28px] border border-[rgba(232,210,176,0.16)] bg-[#0c1320] p-6 text-[var(--cream)] shadow-[0_24px_80px_rgba(0,0,0,0.55)] sm:p-8"
+        onClick={(event) => event.stopPropagation()}
       >
-        <DialogHeader className="gap-3">
-          <p className="kicker">Slip filed</p>
-          <DialogTitle className="display text-4xl leading-none text-white sm:text-5xl">Congratulations.</DialogTitle>
-          <DialogDescription className="serif text-lg text-[var(--cream)] sm:text-xl">
-            Your purchase is confirmed for {formatCount(slips)} {slips === 1 ? "slip" : "slips"}.
-          </DialogDescription>
-        </DialogHeader>
-        {receipt ? (
-          <p className="display text-3xl text-[var(--gold)]">{formatAmount(receipt.paidSol, 4)} SOL</p>
-        ) : null}
-        {receipt?.signature ? (
+        <p className="kicker">Slip filed</p>
+        <h2 id="lotto-slip-receipt-title" className="display mt-2 text-4xl leading-none text-white sm:text-5xl">
+          Congratulations.
+        </h2>
+        <p className="serif mt-3 text-lg text-[var(--cream)] sm:text-xl">
+          Your purchase is confirmed for {formatCount(slips)} {slips === 1 ? "slip" : "slips"}.
+        </p>
+        <p className="display mt-4 text-3xl text-[var(--gold)]">{formatAmount(receipt.paidSol, 4)} SOL</p>
+        {receipt.signature ? (
           <a
             href={explorerTxUrl(receipt.signature)}
             target="_blank"
             rel="noreferrer"
-            className="text-sm text-[var(--gold)] hover:text-[var(--orange)]"
+            className="mt-3 inline-block text-sm text-[var(--gold)] hover:text-[var(--orange)]"
           >
             See the filing on Solscan · {shortenAddress(receipt.signature, 4)}
           </a>
         ) : null}
-        <HouseButton variant="primary" className="w-full" onClick={onClose}>
+        <HouseButton variant="primary" className="mt-6 w-full" onClick={onClose}>
           Back to the kennel
         </HouseButton>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -234,6 +255,52 @@ function Stat({ label, value }: { label: string; value: string }) {
     <div className="rounded-2xl border border-[rgba(232,210,176,0.12)] bg-[#080d16] px-4 py-3">
       <p className="text-[10px] tracking-[0.16em] uppercase text-[var(--gold)]">{label}</p>
       <p className="display mt-1 text-3xl text-white">{value}</p>
+    </div>
+  );
+}
+
+function ChainStatusCard({ tape }: { tape: LottoSnapshot }) {
+  const program = tape.engine === "program" && tape.programId;
+  const rows = [
+    ["Network", "Solana mainnet-beta"],
+    ["Program", tape.programId || "Not posted"],
+    ["This round", tape.pot || "Not open"],
+    ["Build", "Source is public. Explorer verification is not filed yet."],
+    ["Upgrade", "Upgradeable. Authority is a single kennel wallet."],
+    ["Randomness", "Solana SlotHashes after close. Interim. Not a VRF."],
+  ] as const;
+  return (
+    <div className="glass-panel rounded-[28px] p-5 sm:p-7">
+      <p className="kicker">On-chain status</p>
+      <h2 className="display mt-2 text-4xl text-white sm:text-5xl">What is actually live.</h2>
+      <dl className="mt-5 space-y-3 text-sm">
+        {rows.map(([label, value]) => (
+          <div key={label} className="grid gap-1 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-baseline">
+            <dt className="text-[10px] tracking-[0.16em] uppercase text-[var(--gold)]">{label}</dt>
+            <dd className="break-all font-mono text-[12px] text-[var(--cream)]">{value}</dd>
+          </div>
+        ))}
+      </dl>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {program ? (
+          <HouseButton href={explorerAccountUrl(tape.programId)} target="_blank">
+            Program
+          </HouseButton>
+        ) : null}
+        {tape.pot ? (
+          <HouseButton href={explorerAccountUrl(tape.pot)} target="_blank">
+            Round account
+          </HouseButton>
+        ) : null}
+        {tape.configPda ? (
+          <HouseButton href={explorerAccountUrl(tape.configPda)} target="_blank">
+            Config
+          </HouseButton>
+        ) : null}
+        <HouseButton href="/lotto/verify" className="px-3 text-xs">
+          Independent check
+        </HouseButton>
+      </div>
     </div>
   );
 }
@@ -280,17 +347,16 @@ function WinnerCard({
 
 function ProofCard({ tape }: { tape: LottoSnapshot }) {
   const [local, setLocal] = useState("");
-  const [server, setServer] = useState("");
   const program = tape.engine === "program";
   const slipPrice = formatAmount(tape.ticketPriceSol, 3) ?? "0.05";
   const steps = program
     ? [
         `Buy 1 to 20 slips at a time. You pay ${slipPrice} SOL each. 1% is a kennel fee. The rest goes in the pot.`,
         "A buy only counts while this round is still open.",
-        "Every slip gets a number, in the order it was bought. Buy again and your numbers continue.",
-        "When time is up, Solana locks a future block. Nobody can swap that pick after the fact.",
-        "That block is hashed. The leftover number picks one slip. That wallet wins.",
-        "Winner takes 85% of the pot. 15% stays to seed the next round. Anyone can press the finish buttons.",
+        "Every slip gets a number, in the order it was bought, from 0 up. Buy again and your numbers continue.",
+        "When time is up, anyone can close sales. The program then locks one future Solana slot (clock.slot + lag). That pick cannot be swapped for a different slot later.",
+        "Settle hashes that SlotHashes entry with the round id and slip count, then takes the remainder into 0..tickets-1. This is not a VRF. If SlotHashes expires, settle can fail until a later upgrade.",
+        "Winner takes 85% of the prize pool after rent. 15% stays to seed the next round. Anyone can press the finish buttons.",
       ]
     : [
         "Send the slip price to the pot. 1% is a kennel fee. The rest is your ticket.",
@@ -302,22 +368,34 @@ function ProofCard({ tape }: { tape: LottoSnapshot }) {
       ];
 
   async function checkHere() {
-    if (!tape.draw) {
-      setLocal(
-        program
-          ? "No winner yet. Sales have to close, then someone hits Settle after Solana posts the draw block."
-          : "No winner yet. The clock has to finish, then we wait one extra minute for a Solana block.",
-      );
+    if (program) {
+      try {
+        const params = new URLSearchParams();
+        if (tape.currentRound != null) params.set("round", String(tape.currentRound));
+        if (tape.pot) params.set("pda", tape.pot);
+        const response = await fetch(`/api/lotto/independent?${params}`, { cache: "no-store" });
+        const independent = (await response.json()) as Awaited<
+          ReturnType<(typeof import("@/lib/lotto-verify"))["verifyRoundIndependent"]>
+        > & { error?: string };
+        if (!response.ok) throw new Error(independent.error || "Public Solana RPC did not answer.");
+        if (independent.matches == null) {
+          setLocal(
+            `Solana shows round ${independent.roundId} ${independent.status}, ${independent.totalTickets} slips, prize pool ${independent.ledger.distributablePotLamports / 1_000_000_000} SOL. No settled winner to recompute yet.`,
+          );
+          return;
+        }
+        setLocal(
+          independent.matches
+            ? `Independent RPC check: slip ${independent.computedWinnerIndex} matches the round account.`
+            : `Independent RPC check failed. Chain has slip ${independent.storedWinnerIndex}. This page recomputed ${independent.computedWinnerIndex}. Do not trust this draw.`,
+        );
+      } catch (err) {
+        setLocal(err instanceof Error ? err.message : "Public Solana RPC did not answer.");
+      }
       return;
     }
-    if (program) {
-      const math = await winnerIndexFromSlotHash(tape.draw.blockhash, tape.round, tape.slips.length);
-      const ok = await verifyProgramDraw(tape.draw, tape.slips, tape.round);
-      setLocal(
-        ok
-          ? `It checks. Slip ${math.index} is the winner.`
-          : `It does not match. This page got slip ${math.index}. The tape says ${tape.draw.winnerIndex}. Do not trust this draw.`,
-      );
+    if (!tape.draw) {
+      setLocal("No winner yet. The clock has to finish, then we wait one extra minute for a Solana block.");
       return;
     }
     const math = await winnerIndexFromBlockhash(tape.draw.blockhash, tape.slips.length);
@@ -329,15 +407,9 @@ function ProofCard({ tape }: { tape: LottoSnapshot }) {
     );
   }
 
-  async function checkServer() {
-    const res = await fetch("/api/lotto/verify", { cache: "no-store" });
-    const next = (await res.json()) as { ok?: boolean; error?: string };
-    setServer(next.ok ? "Solana agrees with this page." : next.error || "Solana did not match this page.");
-  }
-
   return (
     <div className="glass-panel rounded-[28px] p-5 sm:p-7">
-      <p className="kicker">Fair draw · the rock does not pick</p>
+      <p className="kicker">Disclosed draw · the rock does not pick</p>
       <h2 className="display mt-2 text-4xl text-white sm:text-5xl">How a winner happens.</h2>
       <ol className="serif mt-5 space-y-3 text-lg text-[var(--cream)]">
         {steps.map((step, index) => (
@@ -372,7 +444,7 @@ function ProofCard({ tape }: { tape: LottoSnapshot }) {
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
         <HouseButton onClick={() => void checkHere()}>Check this draw</HouseButton>
-        <HouseButton onClick={() => void checkServer()}>Ask Solana again</HouseButton>
+        <HouseButton href="/lotto/verify">Independent page</HouseButton>
         {tape.pot ? (
           <HouseButton href={explorerAccountUrl(tape.pot)} target="_blank">
             See the pot
@@ -385,7 +457,6 @@ function ProofCard({ tape }: { tape: LottoSnapshot }) {
         ) : null}
       </div>
       {local ? <p className="mt-3 text-sm text-[var(--gold)]">{local}</p> : null}
-      {server ? <p className="mt-2 text-sm text-[var(--gold)]">{server}</p> : null}
       <details className="mt-5">
         <summary className="cursor-pointer text-[11px] tracking-[0.16em] uppercase text-[var(--stone)] hover:text-[var(--gold)]">
           Nerd receipts
@@ -393,7 +464,7 @@ function ProofCard({ tape }: { tape: LottoSnapshot }) {
         <div className="mt-3 space-y-2 text-xs leading-6 text-[var(--dim)]">
           <p>
             {program
-              ? "On-chain program draw. The round account holds the pot. After settle, hash the slot hash with the round id and slip count."
+              ? "On-chain program draw. INTERIM SlotHashes after close, not a VRF. After settle, hash the slot hash with the round id and slip count. Range is 0..tickets-1."
               : "Wallet-pot draw. Match every slip on Solscan, then hash the draw block."}
           </p>
           <p className="break-all font-mono text-[11px] text-[var(--stone)]">

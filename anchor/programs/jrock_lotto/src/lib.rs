@@ -462,3 +462,57 @@ pub enum LottoError {
     #[msg("Math overflow.")]
     Overflow,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn fee_is_one_percent_inside_the_posted_price() {
+        let amount = 50_000_000u64 * 2;
+        let fee = amount * SLIP_FEE_BPS / SHARE_DENOM;
+        assert_eq!(fee, 1_000_000);
+        assert_eq!(amount - fee, 99_000_000);
+    }
+
+    #[test]
+    fn claim_split_keeps_the_division_remainder_in_the_seed() {
+        let claimable = 99_000_000u64;
+        let payout = claimable * WINNER_SHARE_BPS / SHARE_DENOM;
+        let seed = claimable - payout;
+        assert_eq!(payout, 84_150_000);
+        assert_eq!(seed, 14_850_000);
+        assert_eq!(payout + seed, claimable);
+    }
+
+    #[test]
+    fn winner_index_always_lands_in_0_to_n_minus_one() {
+        let count = 2u32;
+        for random in [0u64, 1, 2, u64::MAX] {
+            let index = (random % count as u64) as u32;
+            assert!(index < count);
+        }
+    }
+
+    #[test]
+    fn maps_a_ticket_index_to_the_owning_wallet() {
+        let buyers = [
+            Buyer {
+                wallet: Pubkey::from([1u8; 32]),
+                tickets: 1,
+                from_index: 0,
+            },
+            Buyer {
+                wallet: Pubkey::from([2u8; 32]),
+                tickets: 1,
+                from_index: 1,
+            },
+        ];
+        let winner_index = 1u32;
+        let winner = buyers
+            .iter()
+            .find(|row| winner_index >= row.from_index && winner_index < row.from_index + row.tickets)
+            .unwrap();
+        assert_eq!(winner.wallet, buyers[1].wallet);
+    }
+}

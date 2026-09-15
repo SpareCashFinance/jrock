@@ -6,9 +6,10 @@ import { LottoDesk } from "@/components/site/LottoDesk";
 import { SiteTapes } from "@/components/site/SiteTapes";
 import { getBurnSnapshot } from "@/lib/burn";
 import { project } from "@/lib/config";
+import { getLottoSnapshot } from "@/lib/lotto-chain";
 import { getPriceTape } from "@/lib/tape";
 
-export const revalidate = 15;
+export const dynamic = "force-dynamic";
 
 const title = `Kennel lotto | ${project.name}`;
 const description =
@@ -34,14 +35,14 @@ export const metadata: Metadata = {
 };
 
 export default async function LottoPage() {
-  const [tape, burn] = await Promise.all([getPriceTape(), getBurnSnapshot()]);
+  const [tape, burn, lotto] = await Promise.all([getPriceTape(), getBurnSnapshot(), getLottoSnapshot(true)]);
   return (
     <>
       <BitcoinRain />
       <SiteTapes tape={tape} burn={burn} />
       <Header />
       <main>
-        <LottoDesk />
+        <LottoDesk initial={lotto} />
       </main>
       <Footer />
     </>

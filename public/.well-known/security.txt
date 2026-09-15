@@ -1,0 +1,7 @@
+Contact: https://t.me/Jamiespetrock
+Contact: https://x.com/petrockbtc
+Expires: 2027-09-14T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://petrock.fun/.well-known/security.txt
+Policy: https://petrock.fun/lotto/verify
+Acknowledgments: https://github.com/SpareCashFinance/jrock

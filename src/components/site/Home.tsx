@@ -17,6 +17,7 @@ import { Footer } from "./Footer";
 import { SiteTapes } from "./SiteTapes";
 import { MobileAdoptBar } from "./MobileAdoptBar";
 import type { BurnSnapshot } from "@/lib/burn";
+import type { LottoSnapshot } from "@/lib/lotto";
 import type { MarketSnapshot } from "@/lib/market";
 import type { PriceTapeSnapshot } from "@/lib/tape";
 
@@ -24,10 +25,12 @@ export function Home({
   market,
   tape,
   burn,
+  lotto,
 }: {
   market: MarketSnapshot;
   tape: PriceTapeSnapshot;
   burn: BurnSnapshot;
+  lotto?: LottoSnapshot;
 }) {
   return (
     <>
@@ -37,7 +40,7 @@ export function Home({
       <main className="pb-20 md:pb-0">
         <Hero />
         <AdoptDesk />
-        <LottoJackpotFrame />
+        <LottoJackpotFrame initial={lotto} />
         <LiveRewardStrip market={market} />
         <ExhibitTape />
         <LoreSection />

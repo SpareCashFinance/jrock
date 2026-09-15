@@ -4,14 +4,15 @@ import NumberFlow from "@number-flow/react";
 import { HouseButton } from "@/components/ui/house-button";
 import { LottoClip } from "@/components/site/LottoClip";
 import { formatCount } from "@/lib/format";
+import type { LottoSnapshot } from "@/lib/lotto";
 import { useCountdown, useLottoSnapshot } from "@/lib/lotto-client";
 
 function pad(value: number) {
   return String(value).padStart(2, "0");
 }
 
-export function LottoJackpotFrame() {
-  const { tape } = useLottoSnapshot();
+export function LottoJackpotFrame({ initial }: { initial?: LottoSnapshot }) {
+  const { tape } = useLottoSnapshot(initial);
   const clock = useCountdown(tape.endsAt);
   const jackpot = tape.split.winnerLamports / 1_000_000_000;
   const live = tape.status === "open" && !clock.done;
@@ -50,7 +51,7 @@ export function LottoJackpotFrame() {
                 <span className="text-white">{formatCount(tape.totalTickets) ?? "0"}</span> slips
               </span>
               <span>
-                {clock.done ? "closed" : `${clock.days}d ${pad(clock.hours)}h ${pad(clock.minutes)}m`}
+                {!clock.ready ? "…" : clock.done ? "closed" : `${clock.days}d ${pad(clock.hours)}h ${pad(clock.minutes)}m`}
               </span>
               <span>{tape.ticketPriceSol} SOL a slip</span>
             </div>

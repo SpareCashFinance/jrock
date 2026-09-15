@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { emptyLottoSnapshot, type LottoSnapshot } from "@/lib/lotto";
 
 const POLL_MS = 4_000;
@@ -76,13 +76,14 @@ export async function refreshLotto(opts: RefreshLottoOpts = {}) {
   return tape ?? emptyLottoSnapshot("Loading the kennel pot.");
 }
 
-export function useLottoSnapshot() {
+export function useLottoSnapshot(initial?: LottoSnapshot) {
   const [tape, setTape] = useState<LottoSnapshot>(
-    () => latest ?? emptyLottoSnapshot("Loading the kennel pot."),
+    () => initial ?? latest ?? emptyLottoSnapshot("Loading the kennel pot."),
   );
 
   useEffect(() => {
     listeners.add(setTape);
+    if (initial && !latest) emit(initial);
     if (latest) setTape(latest);
     startPolling();
     const onVisible = () => {
@@ -99,17 +100,28 @@ export function useLottoSnapshot() {
   return { tape, reload: refreshLotto };
 }
 
+function useClientReady() {
+  return useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+}
+
 export function useCountdown(iso: string) {
-  const [now, setNow] = useState(() => Date.now());
+  const client = useClientReady();
+  const [now, setNow] = useState<number | null>(null);
   useEffect(() => {
+    setNow(Date.now());
     const id = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(id);
-  }, []);
+  }, [iso]);
   const end = Date.parse(iso);
-  const left = Math.max(0, (Number.isFinite(end) ? end : 0) - now);
+  const left = now == null ? 0 : Math.max(0, (Number.isFinite(end) ? end : 0) - now);
   const total = Math.floor(left / 1000);
   return {
-    done: left <= 0,
+    ready: client && now != null,
+    done: client && now != null && left <= 0,
     days: Math.floor(total / 86400),
     hours: Math.floor((total % 86400) / 3600),
     minutes: Math.floor((total % 3600) / 60),

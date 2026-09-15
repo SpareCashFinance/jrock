@@ -45,6 +45,10 @@ next-env.d.ts
 /tmp-frames
 /tmp-lotto-so
 src/app/globals.jrock.bak.css
+.cursor/
+
+# never commit the live initializer (loads a local deployer keypair)
+scripts/initialize-lotto.mjs
 
 # solana / anchor
 anchor/target

@@ -1,8 +1,9 @@
-import { project } from "@/lib/config";
+import { hasMint, project } from "@/lib/config";
 import { socialLinks } from "@/lib/links";
 import { BrandMark } from "@/components/brand/BrandMark";
 import { SocialIconLink } from "@/components/brand/SocialMarks";
 import { AdoptButton, WalletControls } from "@/components/solana/AdoptButton";
+import { hasLottoProgram, lottoProgramId } from "@/lib/lotto-program";
 import { CopyButton } from "./CopyButton";
 
 const nav: { href: string; label: string }[] = [
@@ -46,7 +47,12 @@ export function Header() {
             />
           ))}
         </div>
-        <CopyButton value={project.mint} label="Contract" className="ml-auto shrink-0 px-3 text-xs" />
+        <CopyButton
+          value={hasMint() ? project.mint : hasLottoProgram() ? lottoProgramId() : ""}
+          label={hasMint() ? "Contract" : "Lotto program"}
+          emptyLabel="No program posted"
+          className="ml-auto shrink-0 px-3 text-xs"
+        />
         <WalletControls compact />
         <AdoptButton
           idleLabel="Connect wallet"

@@ -1,3 +1,6 @@
+import { EMPTY_LEDGER } from "./lotto-ledger";
+import { hasLottoProgram, lottoProgramId } from "./lotto-program";
+
 export const MEMO_PROGRAM_ID = "MemoSq4gqABAXKb96QnTrNe2EtkZ";
 export const LOTTO_MEMO_PREFIX = "jrock-lotto";
 export const LOTTO_PROOF_VERSION = "jrock-lotto-v2";
@@ -28,8 +31,8 @@ export const PROGRAM_LOTTO_RULES = {
   ticket: "Each buy instruction files 1 to 20 slips into the current round PDA. The posted slip price is paid in full. 1% is the kennel fee; 99% goes into the pot. Repeat buys append a new row.",
   window: "A buy counts only while the round is Open and the chain clock is before end_ts.",
   order: "Slips are contiguous ranges. from_index is the first slip of that buy; later buys from the same wallet append.",
-  entropy: "After close_sales, entropy_slot = clock.slot + lag_slots. settle reads that exact SlotHashes entry.",
-  formula: "winnerIndex = first 8 big-endian bytes of sha256(slot_hash || round_id_le || ticket_count_le) modulo ticket_count.",
+  entropy: "INTERIM. After close_sales, entropy_slot = clock.slot + lag_slots. settle reads that exact SlotHashes entry. Not a VRF. If the slot ages out of SlotHashes, settle can fail. A closer chooses the moment of close, which chooses the slot.",
+  formula: "winnerIndex = first 8 big-endian bytes of sha256(slot_hash || round_id_le || ticket_count_le) modulo ticket_count (range 0..ticket_count-1). Tiny modulo bias exists.",
   payout: "claim pays 85% of the round pot minus rent to the winner. 15% stays on the round and rolls into the next open_round. Anyone can crank.",
 } as const;
 
@@ -152,6 +155,7 @@ export type LottoSnapshot = {
   wallets: LottoWalletBook[];
   split: LottoSplit;
   posted: LottoPostedWin[];
+  ledger?: import("./lotto-ledger").LottoLedger;
 };
 
 function envNumber(key: string, fallback: number) {
@@ -430,12 +434,13 @@ export async function buildProof(input: {
 }
 
 export function emptyLottoSnapshot(message: string): LottoSnapshot {
+  const programmed = hasLottoProgram();
   const clock = lottoRoundAt();
   const startsAt = new Date(clock.startsAt).toISOString();
   const endsAt = new Date(clock.endsAt).toISOString();
   return {
     pot: lottoPot(),
-    round: clock.round,
+    round: programmed ? 0 : clock.round,
     startsAt,
     endsAt,
     ticketPriceSol: lottoTicketSol(),
@@ -447,16 +452,16 @@ export function emptyLottoSnapshot(message: string): LottoSnapshot {
     entries: [],
     slips: [],
     totalTickets: 0,
-    status: hasLottoPot() ? "open" : "awaiting_pot",
+    status: programmed ? "awaiting_round" : hasLottoPot() ? "open" : "awaiting_pot",
     draw: null,
     last: null,
     proof: {
-      version: LOTTO_PROOF_VERSION,
+      version: programmed ? LOTTO_PROGRAM_PROOF_VERSION : LOTTO_PROOF_VERSION,
       pot: lottoPot(),
-      round: clock.round,
+      round: programmed ? 0 : clock.round,
       startsAt,
       endsAt,
-      entropyAfter: new Date(clock.drawAfter).toISOString(),
+      entropyAfter: programmed ? "slot pending" : new Date(clock.drawAfter).toISOString(),
       ticketPriceLamports: lottoTicketLamports(),
       ticketCount: 0,
       bookHash: "",
@@ -465,17 +470,18 @@ export function emptyLottoSnapshot(message: string): LottoSnapshot {
       sha256: null,
       winnerIndex: null,
       winner: null,
-      rules: LOTTO_RULES,
+      rules: programmed ? PROGRAM_LOTTO_RULES : LOTTO_RULES,
     },
     message,
-    engine: "wallet",
-    currentRound: clock.round,
+    engine: programmed ? "program" : "wallet",
+    currentRound: programmed ? 0 : clock.round,
     entropySlot: null,
-    programId: "",
+    programId: programmed ? lottoProgramId() : "",
     configPda: "",
     feeWallet: lottoFeeWallet(),
     wallets: [],
     split: splitClaimable(0, 0),
     posted: [],
+    ledger: EMPTY_LEDGER,
   };
 }

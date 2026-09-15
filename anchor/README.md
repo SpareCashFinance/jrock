@@ -13,7 +13,7 @@ Program id: `FvQfcJYAcRFEDeq8rS19MNXTZfeiCxcSN5nmfA6RdWuC`
 5. `claim` — pays 85% of the pot (minus rent) to the winner. 15% stays on the round account.
 6. `open_round` — starts the next round after a claim or void, and moves the leftover 15% into the new pot.
 
-Anyone can crank close, settle, claim, and open. Settle must happen within a few minutes of the entropy slot or SlotHashes forgets it.
+Anyone can crank close, settle, claim, and open. Settle must happen within a few minutes of the entropy slot or SlotHashes forgets it. This is an interim SlotHashes design, not a VRF. Full spec: `docs/lotto-fairness.md`. Independent check: `node scripts/verify-lotto.mjs`.
 
 ## Deploy
 

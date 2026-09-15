@@ -28,6 +28,7 @@ import {
   type LottoSplit,
 } from "@/lib/lotto";
 import { lottoProgramId, type OnchainConfig, type OnchainRound } from "@/lib/lotto-program";
+import { buildLedger } from "@/lib/lotto-ledger";
 
 const SIG_PAGE = 100;
 const SIG_PAGES = 15;
@@ -203,15 +204,37 @@ async function firstFinalizedBlockAfter(rpc: Connection, unixMs: number) {
   return found;
 }
 
-function rentExemptLamports(dataLen: number) {
-  return (dataLen + 128) * 5080;
+const rentCache = new Map<number, number>();
+
+async function rentExemptLamports(rpc: Connection, dataLen: number) {
+  const hit = rentCache.get(dataLen);
+  if (hit != null) return hit;
+  const rent = await rpc.getMinimumBalanceForRentExemption(dataLen, "confirmed").catch(() => (dataLen + 128) * 5080);
+  rentCache.set(dataLen, rent);
+  return rent;
 }
 
-function splitFromAccount(lamports: number, dataLen: number, ticketLamportsSold: number): LottoSplit {
-  const rent = rentExemptLamports(dataLen);
-  const split = splitClaimable(Math.max(0, lamports - rent), ticketLamportsSold);
-  split.rentLamports = rent;
-  return split;
+function rentEstimate(dataLen: number) {
+  return rentCache.get(dataLen) ?? (dataLen + 128) * 5080;
+}
+
+function splitFromAccount(lamports: number, dataLen: number, ticketLamportsSold: number, ticketCount = 0, ticketPrice = 0, roundId = 0): LottoSplit {
+  const rent = rentEstimate(dataLen);
+  const ledger = buildLedger({
+    accountBalanceLamports: lamports,
+    rentExemptReserveLamports: rent,
+    ticketCount,
+    ticketPriceLamports: ticketPrice,
+    currentRound: roundId,
+  });
+  return {
+    rentLamports: ledger.rentExemptReserveLamports,
+    claimableLamports: ledger.distributablePotLamports,
+    ticketLamports: ticketLamportsSold,
+    seedLamports: ledger.priorRoundSeedLamports + ledger.donationsOrUnexpectedDepositsLamports,
+    winnerLamports: ledger.winnerPayoutLamports,
+    carryLamports: ledger.nextRoundSeedLamports,
+  };
 }
 
 function postedFromRound(
@@ -224,20 +247,20 @@ function postedFromRound(
   verified: boolean,
 ): LottoPostedWin {
   const sold = slipPotLamports(ticketPrice, round.ticketCount);
-  let split = splitFromAccount(lamports, dataLen, sold);
+  let split = splitFromAccount(lamports, dataLen, sold, round.ticketCount, ticketPrice, round.roundId);
   if (round.status === "claimed") {
-    const leftover = Math.max(0, lamports - rentExemptLamports(dataLen));
+    const leftover = Math.max(0, lamports - rentEstimate(dataLen));
     if (leftover > 1_000) {
       const claimable = Math.floor((leftover * 100) / 15);
       split = splitClaimable(claimable, sold);
-      split.rentLamports = rentExemptLamports(dataLen);
+      split.rentLamports = rentEstimate(dataLen);
     } else {
       split = splitClaimable(sold, sold);
-      split.rentLamports = rentExemptLamports(dataLen);
+      split.rentLamports = rentEstimate(dataLen);
       payoutKnown = false;
     }
   } else if (round.status === "void") {
-    split = splitFromAccount(lamports, dataLen, 0);
+    split = splitFromAccount(lamports, dataLen, 0, 0, ticketPrice, round.roundId);
   }
   const settled = round.status === "settled" || round.status === "claimed";
   return {
@@ -270,6 +293,7 @@ async function loadPostedRounds(
   const keys = [];
   for (let id = 0; id <= max; id += 1) keys.push(roundPda(id)[0]);
   const infos = await rpc.getMultipleAccountsInfo(keys, "confirmed");
+  if (infos[0]?.data) await rentExemptLamports(rpc, infos[0].data.length);
   const posted: LottoPostedWin[] = [];
   for (let i = 0; i < infos.length; i += 1) {
     const info = infos[i];
@@ -285,7 +309,7 @@ async function loadPostedRounds(
         info.lamports,
         info.data.length,
         ticketPrice,
-        round.status === "settled" || (round.status === "claimed" && info.lamports - rentExemptLamports(info.data.length) > 1_000),
+        round.status === "settled" || (round.status === "claimed" && info.lamports - rentEstimate(info.data.length) > 1_000),
         draw?.verified ?? false,
       ),
     );
@@ -378,8 +402,18 @@ async function getProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | null
     empty.potLamports = previous?.lamports ?? 0;
     empty.potSol = (previous?.lamports ?? 0) / 1_000_000_000;
     empty.split = previous
-      ? splitFromAccount(previous.lamports, previous.dataLen, 0)
+      ? splitFromAccount(previous.lamports, previous.dataLen, 0, 0, config.ticketLamports, previous.round.roundId)
       : splitClaimable(0, 0);
+    if (previous) {
+      await rentExemptLamports(rpc, previous.dataLen);
+      empty.ledger = buildLedger({
+        accountBalanceLamports: previous.lamports,
+        rentExemptReserveLamports: rentEstimate(previous.dataLen),
+        ticketCount: 0,
+        ticketPriceLamports: config.ticketLamports,
+        currentRound: previous.round.roundId,
+      });
+    }
     empty.proof.version = LOTTO_PROGRAM_PROOF_VERSION;
     empty.proof.rules = PROGRAM_LOTTO_RULES;
     empty.proof.pot = roundPk.toBase58();
@@ -415,7 +449,22 @@ async function getProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | null
     message = "No slips. Crank Open next round. Any leftover seed rolls forward.";
   }
   const draw = await drawFromRound(round, config.ticketLamports);
-  const split = splitFromAccount(balance, roundInfo.data.length, roundLamports);
+  const rent = await rentExemptLamports(rpc, roundInfo.data.length);
+  const ledger = buildLedger({
+    accountBalanceLamports: balance,
+    rentExemptReserveLamports: rent,
+    ticketCount: round.ticketCount,
+    ticketPriceLamports: config.ticketLamports,
+    currentRound: round.roundId,
+  });
+  const split = splitFromAccount(
+    balance,
+    roundInfo.data.length,
+    roundLamports,
+    round.ticketCount,
+    config.ticketLamports,
+    round.roundId,
+  );
   return {
     pot: roundPk.toBase58(),
     round: round.roundId,
@@ -444,6 +493,7 @@ async function getProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | null
     wallets: walletsFromEntries(entries, round.ticketCount),
     split,
     posted,
+    ledger,
   };
 }
 
