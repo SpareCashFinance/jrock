@@ -1,0 +1,27 @@
+name: Build lotto program
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Solana
+        run: |
+          sh -c "$(curl -sSfL https://release.anza.xyz/v2.1.21/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
+
+      - name: Build SBF
+        working-directory: anchor
+        run: cargo-build-sbf --manifest-path programs/jrock_lotto/Cargo.toml
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jrock_lotto
+          path: |
+            anchor/target/deploy/jrock_lotto.so
+            anchor/target/deploy/jrock_lotto-keypair.json
+          if-no-files-found: error
