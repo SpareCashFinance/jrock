@@ -13,10 +13,13 @@ import { project } from "@/lib/config";
 import { formatAmount, formatCount, shortenAddress } from "@/lib/format";
 import { explorerAccountUrl, explorerTxUrl, links } from "@/lib/links";
 import {
+  DRAW_LAG_SECONDS,
   MEMO_PROGRAM_ID,
   emptyLottoSnapshot,
   hasLottoPot,
   lottoMemo,
+  verifyDraw,
+  winnerIndexFromBlockhash,
   type LottoSnapshot,
 } from "@/lib/lotto";
 import { useSolanaWallet } from "@/components/solana/SolanaWalletProvider";
@@ -95,8 +98,8 @@ export function LottoDesk() {
           <span className="block text-[var(--orange)]">lotto.</span>
         </h1>
         <p className="serif mt-5 max-w-xl text-xl text-[var(--cream)] sm:text-2xl">
-          Buy a slip in SOL. When the clock dies, the next finalized Solana blockhash picks the winner. The rock does
-          not roll dice in a back room.
+          Buy a slip in SOL. Sales die with the clock. {DRAW_LAG_SECONDS} seconds later a finalized Solana blockhash is
+          hashed. That number modulo the book is the winner. The rock does not pick.
         </p>
       </div>
 
@@ -128,20 +131,7 @@ export function LottoDesk() {
 
           {tape.draw ? <WinnerCard title="This block picked" draw={tape.draw} /> : null}
           {tape.last && !tape.draw ? <WinnerCard title="Last rock picked" draw={tape.last} /> : null}
-
-          <div className="glass-panel rounded-[28px] p-5 sm:p-7">
-            <p className="kicker">How the rock picks</p>
-            <ol className="serif mt-4 space-y-3 text-lg text-[var(--cream)]">
-              <li>01 · Each slip is a SOL transfer into the pot. 1 price = 1 slip.</li>
-              <li>02 · Sales stop when the clock hits zero, plus 15 seconds.</li>
-              <li>03 · We take the first finalized Solana block after that time.</li>
-              <li>04 · Winner = decode(blockhash) modulo slips. Anyone can check the slot.</li>
-            </ol>
-            <p className="mt-4 text-sm leading-6 text-[var(--dim)]">
-              This is entertainment, not a casino and not a yield. The pot wallet pays the winning slip. Verify the
-              block on Solscan. {project.ticker} is a parody memecoin and can go to zero.
-            </p>
-          </div>
+          <ProofCard tape={tape} />
         </div>
 
         <BuyCard
@@ -189,7 +179,7 @@ function WinnerCard({ title, draw }: { title: string; draw: NonNullable<LottoSna
       <p className="kicker">{title}</p>
       <p className="display mt-2 text-4xl text-[var(--orange)]">{shortenAddress(draw.winner, 6)}</p>
       <p className="mt-2 text-sm text-[var(--dim)]">
-        Slip {draw.winnerIndex} · slot {formatCount(draw.slot)}
+        Slip {draw.winnerIndex} · slot {formatCount(draw.slot)} · {draw.verified ? "proof checks" : "proof failed"}
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
         <HouseButton href={explorerAccountUrl(draw.winner)} target="_blank">
@@ -202,7 +192,70 @@ function WinnerCard({ title, draw }: { title: string; draw: NonNullable<LottoSna
           Winning slip
         </HouseButton>
       </div>
-      <p className="mt-4 break-all font-mono text-[11px] text-[var(--stone)]">{draw.blockhash}</p>
+      <p className="mt-4 break-all font-mono text-[11px] text-[var(--stone)]">blockhash {draw.blockhash}</p>
+      <p className="mt-1 break-all font-mono text-[11px] text-[var(--stone)]">sha256 {draw.hash}</p>
+    </div>
+  );
+}
+
+function ProofCard({ tape }: { tape: LottoSnapshot }) {
+  const [local, setLocal] = useState<string>("");
+  const [server, setServer] = useState<string>("");
+
+  async function checkHere() {
+    if (!tape.draw) {
+      setLocal("No draw yet. The clock and the 60-second lag have to finish first.");
+      return;
+    }
+    const math = await winnerIndexFromBlockhash(tape.draw.blockhash, tape.slips.length);
+    const ok = await verifyDraw(tape.draw, tape.slips);
+    setLocal(
+      ok
+        ? `Local math matches. sha256(blockhash) % ${tape.slips.length} = slip ${math.index}.`
+        : `Local math disagrees. Got slip ${math.index}, tape says ${tape.draw.winnerIndex}. Do not trust this draw.`,
+    );
+  }
+
+  async function checkServer() {
+    const res = await fetch("/api/lotto/verify", { cache: "no-store" });
+    const next = (await res.json()) as { ok?: boolean; error?: string };
+    setServer(next.ok ? "Fresh chain read agrees with the posted proof." : next.error || "The proof did not recompute.");
+  }
+
+  return (
+    <div className="glass-panel rounded-[28px] p-5 sm:p-7">
+      <p className="kicker">Provable random · {tape.proof.version}</p>
+      <ol className="serif mt-4 space-y-3 text-lg text-[var(--cream)]">
+        <li>01 · {tape.proof.rules.ticket}</li>
+        <li>02 · {tape.proof.rules.window}</li>
+        <li>03 · {tape.proof.rules.order}</li>
+        <li>04 · {tape.proof.rules.entropy}</li>
+        <li>05 · {tape.proof.rules.formula}</li>
+      </ol>
+      <p className="mt-4 text-sm leading-6 text-[var(--dim)]">
+        Open the pot on Solscan and match every slip. Open the slot and match the blockhash. Hash it. Modulo the book.
+        If that is not the posted winner, the tape is lying. The kennel still has to send the pot — randomness is
+        public, payout is a transfer. {project.ticker} is entertainment and can go to zero.
+      </p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <HouseButton onClick={() => void checkHere()}>Check the math here</HouseButton>
+        <HouseButton onClick={() => void checkServer()}>Re-read the chain</HouseButton>
+        {tape.pot ? (
+          <HouseButton href={explorerAccountUrl(tape.pot)} target="_blank">
+            Pot on Solscan
+          </HouseButton>
+        ) : null}
+        {tape.proof.slot ? (
+          <HouseButton href={`https://solscan.io/block/${tape.proof.slot}`} target="_blank">
+            Entropy block
+          </HouseButton>
+        ) : null}
+      </div>
+      {local ? <p className="mt-3 text-sm text-[var(--gold)]">{local}</p> : null}
+      {server ? <p className="mt-2 text-sm text-[var(--gold)]">{server}</p> : null}
+      <p className="mt-4 font-mono text-[11px] text-[var(--stone)]">
+        book {tape.proof.bookHash || "empty"} · slips {tape.proof.ticketCount} · entropy after {tape.proof.entropyAfter}
+      </p>
     </div>
   );
 }
@@ -295,7 +348,9 @@ function EntryTable({ tape, you }: { tape: LottoSnapshot; you: string }) {
   return (
     <div className="glass-panel mt-8 overflow-hidden rounded-[28px]">
       <div className="border-b border-[rgba(232,210,176,0.1)] px-5 py-4">
-        <p className="kicker">The book · {formatCount(tape.totalTickets)} slips</p>
+        <p className="kicker">
+          The book · {formatCount(tape.totalTickets)} slips · sorted by slot then signature
+        </p>
       </div>
       <div className="divide-y divide-[rgba(232,210,176,0.08)]">
         {tape.entries.map((row) => (
@@ -310,7 +365,7 @@ function EntryTable({ tape, you }: { tape: LottoSnapshot; you: string }) {
           >
             <span className="font-mono">{shortenAddress(row.wallet, 5)}</span>
             <span className="text-xs tracking-[0.14em] uppercase text-[var(--gold)]">
-              {row.tickets} {row.tickets === 1 ? "slip" : "slips"}
+              slot {row.slot} · {row.tickets} {row.tickets === 1 ? "slip" : "slips"}
             </span>
           </a>
         ))}
