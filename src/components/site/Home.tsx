@@ -36,8 +36,8 @@ export function Home({
       <Header />
       <main className="pb-20 md:pb-0">
         <Hero />
-        <LottoJackpotFrame />
         <AdoptDesk />
+        <LottoJackpotFrame />
         <LiveRewardStrip market={market} />
         <ExhibitTape />
         <LoreSection />
