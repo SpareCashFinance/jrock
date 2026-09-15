@@ -40,6 +40,7 @@ Do not describe this draw as fully trustless, cryptographically fair, or verifie
 
 - Site: https://petrock.fun/lotto/verify
 - CLI: `node scripts/verify-lotto.mjs [roundId|roundPda]`
+- Audit findings: `docs/lotto-audit.md` (launch decision: FAIL for a trustless production lottery)
 
 Both read public mainnet RPC and recompute from account bytes. They do not trust the lotto tape API.
 

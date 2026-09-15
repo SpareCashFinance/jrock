@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { assertLedgerConserved, buildLedger, ownerForTicket, winnerPayoutLamports } from "./lotto-ledger.ts";
+import { assertLedgerConserved, buildLedger, kennelFeeLamports, ownerForTicket, winnerPayoutLamports } from "./lotto-ledger.ts";
 
 test("round 0 two 0.05 SOL slips match mainnet snapshot", () => {
   const ledger = buildLedger({
@@ -33,6 +33,26 @@ test("remainder after 85% floor stays in next seed", () => {
   assert.equal(ledger.winnerPayoutLamports, 84);
   assert.equal(ledger.nextRoundSeedLamports, 15);
   assert.ok(assertLedgerConserved(ledger));
+});
+
+test("live round 0 nine 0.05 SOL slips match production independent API", () => {
+  const ledger = buildLedger({
+    accountBalanceLamports: 459_754_480,
+    rentExemptReserveLamports: 14_254_480,
+    ticketCount: 9,
+    ticketPriceLamports: 50_000_000,
+    currentRound: 0,
+  });
+  assert.equal(ledger.ticketGrossLamports, 450_000_000);
+  assert.equal(ledger.kennelFeeLamports, 4_500_000);
+  assert.equal(ledger.distributablePotLamports, 445_500_000);
+  assert.equal(ledger.winnerPayoutLamports, 378_675_000);
+  assert.equal(ledger.nextRoundSeedLamports, 66_825_000);
+  assert.ok(assertLedgerConserved(ledger));
+});
+
+test("twenty slips keep 1% inside the posted price", () => {
+  assert.equal(kennelFeeLamports(20 * 50_000_000), 10_000_000);
 });
 
 test("ticket 0 and last ticket map to the owning wallet", () => {
