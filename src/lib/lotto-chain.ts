@@ -9,6 +9,7 @@ import {
   buildProof,
   emptyLottoSnapshot,
   hasLottoPot,
+  lottoFeeWallet,
   lottoPot,
   lottoRoundAt,
   lottoTicketLamports,
@@ -364,6 +365,7 @@ async function getProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | null
   empty.pot = roundPk.toBase58();
   empty.programId = lottoProgramId();
   empty.configPda = configPk.toBase58();
+  empty.feeWallet = config.authority;
   const previous = await getPreviousRound(rpc, config);
   const last = previous ? await drawFromRound(previous.round, config.ticketLamports) : null;
   const posted = await loadPostedRounds(rpc, config.currentRound, config.ticketLamports);
@@ -436,6 +438,7 @@ async function getProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | null
     entropySlot: round.entropySlot || null,
     programId: lottoProgramId(),
     configPda: configPk.toBase58(),
+    feeWallet: config.authority,
     wallets: walletsFromEntries(entries, round.ticketCount),
     split,
     posted,
@@ -546,6 +549,7 @@ export async function getLottoSnapshot(fresh = false): Promise<LottoSnapshot> {
     entropySlot: draw?.slot ?? null,
     programId: "",
     configPda: "",
+    feeWallet: lottoFeeWallet(),
     wallets: walletsFromEntries(sortEntries(currentEntries), slips.length),
     split: splitClaimable(roundLamports, roundLamports),
     posted: last

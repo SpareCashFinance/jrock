@@ -18,6 +18,8 @@ import {
   emptyLottoSnapshot,
   hasLottoPot,
   lottoMemo,
+  slipFeeLamports,
+  slipTotalLamports,
   verifyDraw,
   verifyProgramDraw,
   winnerIndexFromBlockhash,
@@ -31,6 +33,10 @@ import { useSolanaWallet } from "@/components/solana/SolanaWalletProvider";
 import { TelegramMark, XMark } from "@/components/brand/SocialMarks";
 
 const PRESETS = [1, 2, 5, 10];
+
+function ixDataFromText(value: string) {
+  return new TextEncoder().encode(value) as unknown as Buffer;
+}
 
 function useCountdown(iso: string) {
   const [now, setNow] = useState(() => Date.now());
@@ -75,7 +81,6 @@ export function LottoDesk() {
         : 0,
     [solana.address, tape.entries],
   );
-  const cost = count * tape.ticketPriceSol;
 
   const load = useCallback(async () => {
     const res = await fetch("/api/lotto", { cache: "no-store" });
@@ -104,7 +109,7 @@ export function LottoDesk() {
         </h1>
         <p className="serif mt-5 max-w-xl text-xl text-[var(--cream)] sm:text-2xl">
           {tape.engine === "program"
-            ? "Buy a slip in SOL. The round account holds the pot. The winner takes 85%. Fifteen percent stays to seed the next rock."
+            ? "Buy a slip in SOL. Ticket money goes in the pot. A 1% kennel fee is paid on every slip. The winner takes 85%. Fifteen percent stays to seed the next rock."
             : `Buy a slip in SOL. Sales die with the clock. ${DRAW_LAG_SECONDS} seconds later a finalized Solana blockhash is hashed. That number modulo the book is the winner. The rock does not pick.`}
         </p>
       </div>
@@ -153,7 +158,6 @@ export function LottoDesk() {
           tape={tape}
           count={count}
           setCount={setCount}
-          cost={cost}
           canBuy={canBuy}
           potReady={potReady}
           phase={phase}
@@ -297,7 +301,7 @@ function ProofCard({ tape }: { tape: LottoSnapshot }) {
       </ol>
       <p className="mt-4 text-sm leading-6 text-[var(--dim)]">
         {tape.engine === "program"
-          ? "The round account is the pot. Winner takes 85%. Fifteen percent rolls into the next round. Open it on Solscan. Match the buyers. After settle, hash the slot hash with the round id and slip count. If that is not the posted winner, the tape is lying."
+          ? "The round account is the pot. Winner takes 85%. Fifteen percent rolls into the next round. Each slip also pays a 1% kennel fee to the program authority. Open the pot on Solscan. Match the buyers. After settle, hash the slot hash with the round id and slip count. If that is not the posted winner, the tape is lying."
           : "Open the pot on Solscan and match every slip. Open the slot and match the blockhash. Hash it. Modulo the book. If that is not the posted winner, the tape is lying. The kennel still has to send the pot — randomness is public, payout is a transfer."}{" "}
         {project.ticker} is entertainment and can go to zero.
       </p>
@@ -333,7 +337,6 @@ function BuyCard({
   tape,
   count,
   setCount,
-  cost,
   canBuy,
   potReady,
   phase,
@@ -343,7 +346,6 @@ function BuyCard({
   tape: LottoSnapshot;
   count: number;
   setCount: (n: number) => void;
-  cost: number;
   canBuy: boolean;
   potReady: boolean;
   phase: string;
@@ -351,6 +353,9 @@ function BuyCard({
   onBuy: () => void;
 }) {
   const solana = useSolanaWallet();
+  const subtotalLamports = count * tape.ticketLamports;
+  const feeLamports = slipFeeLamports(tape.ticketLamports, count);
+  const totalLamports = slipTotalLamports(tape.ticketLamports, count);
   return (
     <div className="glass-panel rounded-[28px] p-5 sm:p-6">
       <div className="flex items-center gap-2">
@@ -360,7 +365,7 @@ function BuyCard({
       <p className="display mt-3 text-5xl text-white">
         {formatAmount(tape.ticketPriceSol, 3)} <span className="text-2xl text-[var(--gold)]">SOL</span>
       </p>
-      <p className="mt-1 text-xs tracking-[0.14em] uppercase text-[var(--dim)]">per slip · one price, one chance</p>
+      <p className="mt-1 text-xs tracking-[0.14em] uppercase text-[var(--dim)]">per slip · plus 1% kennel fee</p>
       <div className="mt-5 flex flex-wrap gap-2">
         {PRESETS.map((n) => (
           <button
@@ -374,7 +379,10 @@ function BuyCard({
         ))}
       </div>
       <p className="serif mt-5 text-xl text-[var(--cream)]">
-        {count} × {formatAmount(tape.ticketPriceSol, 3)} = {formatAmount(cost, 3)} SOL
+        {count} × {formatAmount(tape.ticketPriceSol, 3)} = {formatAmount(subtotalLamports / 1_000_000_000, 4)} SOL
+      </p>
+      <p className="mt-1 text-sm text-[var(--gold)]">
+        + 1% fee {formatAmount(feeLamports / 1_000_000_000, 4)} SOL · total {formatAmount(totalLamports / 1_000_000_000, 4)} SOL
       </p>
       {tape.split.winnerLamports > 0 ? (
         <p className="mt-2 text-sm text-[var(--gold)]">
@@ -627,6 +635,7 @@ async function buyWithWallet(
     const from = new PublicKey(owner);
     const pot = new PublicKey(tape.pot);
     const { blockhash, lastValidBlockHeight } = await solana.connection.getLatestBlockhash("confirmed");
+    const fee = slipFeeLamports(tape.ticketLamports, count);
     const tx = new Transaction({ feePayer: from, blockhash, lastValidBlockHeight });
     tx.add(
       SystemProgram.transfer({
@@ -637,9 +646,18 @@ async function buyWithWallet(
       new TransactionInstruction({
         keys: [{ pubkey: from, isSigner: true, isWritable: false }],
         programId: new PublicKey(MEMO_PROGRAM_ID),
-          data: Buffer.from(lottoMemo(tape.round, count)),
+        data: ixDataFromText(lottoMemo(tape.round, count)),
       }),
     );
+    if (tape.feeWallet && fee > 0) {
+      tx.add(
+        SystemProgram.transfer({
+          fromPubkey: from,
+          toPubkey: new PublicKey(tape.feeWallet),
+          lamports: fee,
+        }),
+      );
+    }
     const encoded = (await import("@/lib/tx")).encodeTx(tx);
     setPhase("Filing on Solana…");
     await solana.signAndSendBase64(encoded);
@@ -694,9 +712,13 @@ async function buyWithProgram(
     return;
   }
   const tickets = Math.min(20, Math.max(1, count));
+  if (!tape.feeWallet) {
+    setError("Kennel fee wallet is not posted.");
+    return;
+  }
   await sendProgramIx(
     solana,
-    (payer) => buyIxForRound(payer, tape.currentRound, tickets),
+    (payer) => buyIxForRound(payer, tape.currentRound, tickets, new PublicKey(tape.feeWallet)),
     setPhase,
     setError,
     reload,

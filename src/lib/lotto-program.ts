@@ -61,29 +61,46 @@ export function lottoProgramKey() {
 }
 
 export function configPda(program = lottoProgramKey()) {
-  return PublicKey.findProgramAddressSync([Buffer.from("config")], program);
+  return PublicKey.findProgramAddressSync([textBytes("config")], program);
 }
 
 export function roundPda(roundId: number, program = lottoProgramKey()) {
-  const id = Buffer.alloc(8);
-  id.writeBigUInt64LE(BigInt(roundId));
-  return PublicKey.findProgramAddressSync([Buffer.from("round"), id], program);
+  return PublicKey.findProgramAddressSync([textBytes("round"), u64le(roundId)], program);
+}
+
+function textBytes(value: string) {
+  return new TextEncoder().encode(value);
 }
 
 function disc(values: readonly number[]) {
-  return Buffer.from(values);
+  return Uint8Array.from(values);
+}
+
+function concat(parts: Uint8Array[]) {
+  const total = parts.reduce((sum, part) => sum + part.length, 0);
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const part of parts) {
+    out.set(part, offset);
+    offset += part.length;
+  }
+  return out;
 }
 
 function u64le(value: number | bigint) {
-  const buf = Buffer.alloc(8);
-  buf.writeBigUInt64LE(BigInt(value));
-  return buf;
+  const out = new Uint8Array(8);
+  new DataView(out.buffer).setBigUint64(0, BigInt(value), true);
+  return out;
 }
 
 function i64le(value: number) {
-  const buf = Buffer.alloc(8);
-  buf.writeBigInt64LE(BigInt(value));
-  return buf;
+  const out = new Uint8Array(8);
+  new DataView(out.buffer).setBigInt64(0, BigInt(value), true);
+  return out;
+}
+
+function viewAt(data: Uint8Array, offset: number, length: number) {
+  return new DataView(data.buffer, data.byteOffset + offset, length);
 }
 
 function matches(bytes: Uint8Array, expected: readonly number[]) {
@@ -95,17 +112,23 @@ function readPubkey(data: Uint8Array, offset: number) {
 }
 
 function readU64(data: Uint8Array, offset: number) {
-  const view = Buffer.from(data.slice(offset, offset + 8));
-  return Number(view.readBigUInt64LE(0));
+  return Number(viewAt(data, offset, 8).getBigUint64(0, true));
 }
 
 function readI64(data: Uint8Array, offset: number) {
-  const view = Buffer.from(data.slice(offset, offset + 8));
-  return Number(view.readBigInt64LE(0));
+  return Number(viewAt(data, offset, 8).getBigInt64(0, true));
 }
 
 function readU32(data: Uint8Array, offset: number) {
-  return Buffer.from(data.slice(offset, offset + 4)).readUInt32LE(0);
+  return viewAt(data, offset, 4).getUint32(0, true);
+}
+
+function ixData(bytes: Uint8Array) {
+  return bytes as unknown as Buffer;
+}
+
+function toHex(data: Uint8Array) {
+  return [...data].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 const STATUS = ["open", "closed", "settled", "claimed", "void"] as const;
@@ -143,7 +166,7 @@ export function decodeRound(data: Uint8Array): OnchainRound | null {
   o += 4;
   const winner = readPubkey(data, o);
   o += 32;
-  const entropyHash = Buffer.from(data.slice(o, o + 32)).toString("hex");
+  const entropyHash = toHex(data.slice(o, o + 32));
   o += 32;
   const status = STATUS[data[o] ?? 0] ?? "open";
   o += 1;
@@ -185,7 +208,7 @@ export function initializeIx(authority: PublicKey, ticketLamports: number, round
       { pubkey: round, isSigner: false, isWritable: true },
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     ],
-    data: Buffer.concat([disc(IX.initialize), u64le(ticketLamports), i64le(roundSecs), u64le(lagSlots)]),
+    data: ixData(concat([disc(IX.initialize), u64le(ticketLamports), i64le(roundSecs), u64le(lagSlots)])),
   });
 }
 
@@ -203,11 +226,11 @@ export function openRoundIx(payer: PublicKey, currentRound: number) {
       { pubkey: round, isSigner: false, isWritable: true },
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     ],
-    data: disc(IX.openRound),
+    data: ixData(disc(IX.openRound)),
   });
 }
 
-export function buyIxForRound(buyer: PublicKey, currentRound: number, tickets: number) {
+export function buyIxForRound(buyer: PublicKey, currentRound: number, tickets: number, feeWallet: PublicKey) {
   const program = lottoProgramKey();
   const [config] = configPda(program);
   const [round] = roundPda(currentRound, program);
@@ -218,8 +241,9 @@ export function buyIxForRound(buyer: PublicKey, currentRound: number, tickets: n
       { pubkey: config, isSigner: false, isWritable: false },
       { pubkey: round, isSigner: false, isWritable: true },
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      { pubkey: feeWallet, isSigner: false, isWritable: true },
     ],
-    data: Buffer.concat([disc(IX.buy), Buffer.from([tickets])]),
+    data: ixData(concat([disc(IX.buy), Uint8Array.from([tickets])])),
   });
 }
 
@@ -233,7 +257,7 @@ export function closeSalesIx(currentRound: number) {
       { pubkey: config, isSigner: false, isWritable: true },
       { pubkey: round, isSigner: false, isWritable: true },
     ],
-    data: disc(IX.closeSales),
+    data: ixData(disc(IX.closeSales)),
   });
 }
 
@@ -248,7 +272,7 @@ export function settleIx(currentRound: number) {
       { pubkey: round, isSigner: false, isWritable: true },
       { pubkey: SLOT_HASHES, isSigner: false, isWritable: false },
     ],
-    data: disc(IX.settle),
+    data: ixData(disc(IX.settle)),
   });
 }
 
@@ -263,7 +287,7 @@ export function claimIx(currentRound: number, winner: PublicKey) {
       { pubkey: round, isSigner: false, isWritable: true },
       { pubkey: winner, isSigner: false, isWritable: true },
     ],
-    data: disc(IX.claim),
+    data: ixData(disc(IX.claim)),
   });
 }
 

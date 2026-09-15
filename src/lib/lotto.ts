@@ -5,6 +5,8 @@ export const LOTTO_PROGRAM_PROOF_VERSION = "jrock-lotto-v3";
 export const DRAW_LAG_SECONDS = 60;
 export const LOTTO_WINNER_SHARE = 0.85;
 export const LOTTO_CARRY_SHARE = 0.15;
+export const LOTTO_SLIP_FEE_BPS = 1;
+export const LOTTO_SLIP_FEE_DENOM = 100;
 
 const DEFAULT_GENESIS = "2026-09-14T00:00:00.000Z";
 const DEFAULT_ROUND_MS = 72 * 60 * 60 * 1000;
@@ -12,7 +14,7 @@ const DEFAULT_TICKET_SOL = 0.05;
 
 export const LOTTO_RULES = {
   version: LOTTO_PROOF_VERSION,
-  ticket: "Count floor(lamports / ticket_price) for each successful SOL transfer into the pot.",
+  ticket: "Count floor(lamports / ticket_price) for each successful SOL transfer into the pot. A 1% kennel fee is paid on top of the ticket.",
   window: "A transfer counts only if its blockTime is >= round start and < round end.",
   order: "Sort entries by slot ascending, then signature ascending. Expand each entry into that many slips.",
   entropy: `First finalized Solana block whose blockTime is >= round end + ${DRAW_LAG_SECONDS}s.`,
@@ -22,7 +24,7 @@ export const LOTTO_RULES = {
 
 export const PROGRAM_LOTTO_RULES = {
   version: LOTTO_PROGRAM_PROOF_VERSION,
-  ticket: "Each buy instruction files 1 to 20 slips into the current round PDA. Repeat buys append a new row.",
+  ticket: "Each buy instruction files 1 to 20 slips into the current round PDA. Ticket SOL goes into the pot. A 1% kennel fee is paid to the program authority. Repeat buys append a new row.",
   window: "A buy counts only while the round is Open and the chain clock is before end_ts.",
   order: "Slips are contiguous ranges. from_index is the first slip of that buy; later buys from the same wallet append.",
   entropy: "After close_sales, entropy_slot = clock.slot + lag_slots. settle reads that exact SlotHashes entry.",
@@ -145,6 +147,7 @@ export type LottoSnapshot = {
   entropySlot: number | null;
   programId: string;
   configPda: string;
+  feeWallet: string;
   wallets: LottoWalletBook[];
   split: LottoSplit;
   posted: LottoPostedWin[];
@@ -161,6 +164,20 @@ export function lottoPot() {
 
 export function hasLottoPot() {
   return lottoPot().length >= 32;
+}
+
+export function lottoFeeWallet() {
+  return (process.env.NEXT_PUBLIC_LOTTO_FEE_WALLET ?? "").trim();
+}
+
+export function slipFeeLamports(ticketLamports: number, tickets: number) {
+  const sold = Math.max(0, Math.floor(ticketLamports)) * Math.max(0, Math.floor(tickets));
+  return Math.floor((sold * LOTTO_SLIP_FEE_BPS) / LOTTO_SLIP_FEE_DENOM);
+}
+
+export function slipTotalLamports(ticketLamports: number, tickets: number) {
+  const sold = Math.max(0, Math.floor(ticketLamports)) * Math.max(0, Math.floor(tickets));
+  return sold + slipFeeLamports(ticketLamports, tickets);
 }
 
 export function lottoTicketSol() {
@@ -228,6 +245,15 @@ function toHex(bytes: Uint8Array) {
   return [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
+function hexToBytes(hex: string) {
+  const clean = hex.trim();
+  const out = new Uint8Array(Math.floor(clean.length / 2));
+  for (let i = 0; i < out.length; i += 1) {
+    out[i] = Number.parseInt(clean.slice(i * 2, i * 2 + 2), 16) || 0;
+  }
+  return out;
+}
+
 export async function sha256Bytes(data: Uint8Array) {
   const bytes = new Uint8Array(data.byteLength);
   bytes.set(data);
@@ -258,14 +284,18 @@ export async function winnerIndexFromBlockhash(blockhash: string, ticketCount: n
 }
 
 export async function winnerIndexFromSlotHash(slotHashHex: string, roundId: number, ticketCount: number) {
-  const slotHash = Uint8Array.from(Buffer.from(slotHashHex, "hex"));
-  const roundBuf = Buffer.alloc(8);
-  roundBuf.writeBigUInt64LE(BigInt(roundId));
-  const countBuf = Buffer.alloc(4);
-  countBuf.writeUInt32LE(ticketCount);
-  const digest = await sha256Bytes(Uint8Array.from(Buffer.concat([Buffer.from(slotHash), roundBuf, countBuf])));
+  const slotHash = hexToBytes(slotHashHex);
+  const roundBuf = new Uint8Array(8);
+  new DataView(roundBuf.buffer).setBigUint64(0, BigInt(roundId), true);
+  const countBuf = new Uint8Array(4);
+  new DataView(countBuf.buffer).setUint32(0, ticketCount, true);
+  const payload = new Uint8Array(slotHash.length + roundBuf.length + countBuf.length);
+  payload.set(slotHash, 0);
+  payload.set(roundBuf, slotHash.length);
+  payload.set(countBuf, slotHash.length + roundBuf.length);
+  const digest = await sha256Bytes(payload);
   const hash = toHex(digest);
-  const random = Buffer.from(digest.subarray(0, 8)).readBigUInt64BE(0);
+  const random = new DataView(digest.buffer, digest.byteOffset, 8).getBigUint64(0, false);
   if (ticketCount <= 0) return { hash, random: random.toString(16), value: random, index: 0 };
   return { hash, random: random.toString(16), value: random, index: Number(random % BigInt(ticketCount)) };
 }
@@ -437,6 +467,7 @@ export function emptyLottoSnapshot(message: string): LottoSnapshot {
     entropySlot: null,
     programId: "",
     configPda: "",
+    feeWallet: lottoFeeWallet(),
     wallets: [],
     split: splitClaimable(0, 0),
     posted: [],

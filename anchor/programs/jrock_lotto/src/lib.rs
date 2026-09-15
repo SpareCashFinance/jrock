@@ -9,6 +9,7 @@ pub const MAX_BUYERS: usize = 64;
 pub const MAX_TICKETS_PER_BUY: u8 = 20;
 pub const WINNER_SHARE_BPS: u64 = 85;
 pub const SHARE_DENOM: u64 = 100;
+pub const SLIP_FEE_BPS: u64 = 1;
 
 #[program]
 pub mod jrock_lotto {
@@ -81,38 +82,59 @@ pub mod jrock_lotto {
     pub fn buy(ctx: Context<Buy>, tickets: u8) -> Result<()> {
         require!(tickets >= 1 && tickets <= MAX_TICKETS_PER_BUY, LottoError::BadTicketCount);
         let clock = Clock::get()?;
-        let config = &ctx.accounts.config;
-        let round = &mut ctx.accounts.round;
-        require!(round.status == RoundStatus::Open, LottoError::SalesClosed);
-        require!(clock.unix_timestamp < round.end_ts, LottoError::SalesClosed);
+        require!(ctx.accounts.round.status == RoundStatus::Open, LottoError::SalesClosed);
+        require!(clock.unix_timestamp < ctx.accounts.round.end_ts, LottoError::SalesClosed);
+        require!(ctx.accounts.round.buyers.len() < MAX_BUYERS, LottoError::BookFull);
 
         let add = tickets as u32;
-        require!(round.buyers.len() < MAX_BUYERS, LottoError::BookFull);
-        let from_index = round.ticket_count;
-        round.buyers.push(Buyer {
-            wallet: ctx.accounts.buyer.key(),
-            tickets: add,
-            from_index,
-        });
-        round.ticket_count = round
-            .ticket_count
-            .checked_add(add)
-            .ok_or(LottoError::Overflow)?;
-
-        let amount = config
+        let from_index = ctx.accounts.round.ticket_count;
+        let buyer_key = ctx.accounts.buyer.key();
+        let amount = ctx
+            .accounts
+            .config
             .ticket_lamports
             .checked_mul(tickets as u64)
             .ok_or(LottoError::Overflow)?;
+        let fee = amount
+            .checked_mul(SLIP_FEE_BPS)
+            .ok_or(LottoError::Overflow)?
+            / SHARE_DENOM;
+
+        {
+            let round = &mut ctx.accounts.round;
+            round.buyers.push(Buyer {
+                wallet: buyer_key,
+                tickets: add,
+                from_index,
+            });
+            round.ticket_count = round
+                .ticket_count
+                .checked_add(add)
+                .ok_or(LottoError::Overflow)?;
+        }
+
         transfer(
             CpiContext::new(
                 ctx.accounts.system_program.to_account_info(),
                 Transfer {
                     from: ctx.accounts.buyer.to_account_info(),
-                    to: round.to_account_info(),
+                    to: ctx.accounts.round.to_account_info(),
                 },
             ),
             amount,
         )?;
+        if fee > 0 {
+            transfer(
+                CpiContext::new(
+                    ctx.accounts.system_program.to_account_info(),
+                    Transfer {
+                        from: ctx.accounts.buyer.to_account_info(),
+                        to: ctx.accounts.fee_wallet.to_account_info(),
+                    },
+                ),
+                fee,
+            )?;
+        }
         Ok(())
     }
 
@@ -313,6 +335,8 @@ pub struct Buy<'info> {
     )]
     pub round: Account<'info, Round>,
     pub system_program: Program<'info, System>,
+    #[account(mut, address = config.authority)]
+    pub fee_wallet: SystemAccount<'info>,
 }
 
 #[derive(Accounts)]
