@@ -1,13 +1,13 @@
 # jrock_lotto
 
-On-chain kennel lotto for `$JROCK`. The round account holds the pot. The winner takes 85%. Fifteen percent stays and rolls into the next round. Each slip also pays a 1% kennel fee to `qbjbLafSNGq27fYFiF1RKhb9BREk1zFWWS8H6Drj8co`.
+On-chain kennel lotto for `$JROCK`. The round account holds the pot. The winner takes 85%. Fifteen percent stays and rolls into the next round. 1% of each 0.05 SOL slip is the kennel fee to `qbjbLafSNGq27fYFiF1RKhb9BREk1zFWWS8H6Drj8co`; 99% goes in the pot.
 
 Program id: `FvQfcJYAcRFEDeq8rS19MNXTZfeiCxcSN5nmfA6RdWuC`
 
 ## What it does
 
 1. `initialize` — authority sets ticket price, round length, and slot lag, and opens round 0.
-2. `buy` — 1 to 20 slips. Ticket SOL moves into the round account. A 1% kennel fee is paid to `qbjbLafSNGq27fYFiF1RKhb9BREk1zFWWS8H6Drj8co`.
+2. `buy` — 1 to 20 slips. Buyer pays the posted slip price. 1% is the kennel fee to `qbjbLafSNGq27fYFiF1RKhb9BREk1zFWWS8H6Drj8co`. 99% moves into the round account.
 3. `close_sales` — after `end_ts`. If nobody bought, the round is void. Otherwise it locks `entropy_slot = now + lag`.
 4. `settle` — reads that exact SlotHashes entry and picks `sha256(slot_hash || round_id || ticket_count) % slips`.
 5. `claim` — pays 85% of the pot (minus rent) to the winner. 15% stays on the round account.

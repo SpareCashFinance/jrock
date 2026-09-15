@@ -14,6 +14,7 @@ import {
   lottoRoundAt,
   lottoTicketLamports,
   makeDrawFromBlock,
+  slipPotLamports,
   slipsFromEntries,
   sortEntries,
   splitClaimable,
@@ -85,7 +86,7 @@ function transferIntoPot(tx: { meta?: unknown; transaction?: unknown }, pot: str
     lamports += amount;
     from = info.source || from;
   }
-  if (!from || from === pot || lamports < lottoTicketLamports()) return null;
+  if (!from || from === pot || lamports < slipPotLamports(lottoTicketLamports(), 1)) return null;
   return { from, lamports };
 }
 
@@ -129,7 +130,8 @@ async function loadEntries(
       if (!tx) return;
       const paid = transferIntoPot(tx, pot.toBase58());
       if (!paid) return;
-      const tickets = Math.floor(paid.lamports / price);
+      const unit = slipPotLamports(price, 1) || price;
+      const tickets = Math.floor(paid.lamports / unit);
       if (tickets <= 0) return;
       entries.push({
         wallet: paid.from,
@@ -221,7 +223,7 @@ function postedFromRound(
   payoutKnown: boolean,
   verified: boolean,
 ): LottoPostedWin {
-  const sold = round.ticketCount * ticketPrice;
+  const sold = slipPotLamports(ticketPrice, round.ticketCount);
   let split = splitFromAccount(lamports, dataLen, sold);
   if (round.status === "claimed") {
     const leftover = Math.max(0, lamports - rentExemptLamports(dataLen));
@@ -396,7 +398,7 @@ async function getProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | null
   const startsAt = new Date(round.startTs * 1000).toISOString();
   const endsAt = new Date(round.endTs * 1000).toISOString();
   const balance = roundInfo.lamports;
-  const roundLamports = slips.length * config.ticketLamports;
+  const roundLamports = slipPotLamports(config.ticketLamports, slips.length);
   let status: LottoSnapshot["status"] = "open";
   let message = "Buy a slip on-chain. The round account holds the pot. Winner takes 85%. Fifteen percent seeds the next rock.";
   if (round.status === "closed") {
@@ -481,7 +483,7 @@ export async function getLottoSnapshot(fresh = false): Promise<LottoSnapshot> {
 
   const slips = slipsFromEntries(currentEntries);
   const lastSlips = slipsFromEntries(lastEntries);
-  const roundLamports = slips.length * price;
+  const roundLamports = slipPotLamports(price, slips.length);
   let status: LottoSnapshot["status"] = "open";
   let draw: LottoDraw | null = null;
   let last: LottoDraw | null = null;

@@ -15,7 +15,7 @@ const DEFAULT_TICKET_SOL = 0.05;
 
 export const LOTTO_RULES = {
   version: LOTTO_PROOF_VERSION,
-  ticket: "Count floor(lamports / ticket_price) for each successful SOL transfer into the pot. A 1% kennel fee is paid on top of the ticket.",
+  ticket: "Count floor(lamports / ticket_price) for each successful SOL transfer into the pot. 1% of each slip is the kennel fee; the rest is the ticket.",
   window: "A transfer counts only if its blockTime is >= round start and < round end.",
   order: "Sort entries by slot ascending, then signature ascending. Expand each entry into that many slips.",
   entropy: `First finalized Solana block whose blockTime is >= round end + ${DRAW_LAG_SECONDS}s.`,
@@ -25,7 +25,7 @@ export const LOTTO_RULES = {
 
 export const PROGRAM_LOTTO_RULES = {
   version: LOTTO_PROGRAM_PROOF_VERSION,
-  ticket: "Each buy instruction files 1 to 20 slips into the current round PDA. Ticket SOL goes into the pot. A 1% kennel fee is paid to the posted fee wallet. Repeat buys append a new row.",
+  ticket: "Each buy instruction files 1 to 20 slips into the current round PDA. The posted slip price is paid in full. 1% is the kennel fee; 99% goes into the pot. Repeat buys append a new row.",
   window: "A buy counts only while the round is Open and the chain clock is before end_ts.",
   order: "Slips are contiguous ranges. from_index is the first slip of that buy; later buys from the same wallet append.",
   entropy: "After close_sales, entropy_slot = clock.slot + lag_slots. settle reads that exact SlotHashes entry.",
@@ -177,9 +177,13 @@ export function slipFeeLamports(ticketLamports: number, tickets: number) {
   return Math.floor((sold * LOTTO_SLIP_FEE_BPS) / LOTTO_SLIP_FEE_DENOM);
 }
 
-export function slipTotalLamports(ticketLamports: number, tickets: number) {
+export function slipPotLamports(ticketLamports: number, tickets: number) {
   const sold = Math.max(0, Math.floor(ticketLamports)) * Math.max(0, Math.floor(tickets));
-  return sold + slipFeeLamports(ticketLamports, tickets);
+  return sold - slipFeeLamports(ticketLamports, tickets);
+}
+
+export function slipTotalLamports(ticketLamports: number, tickets: number) {
+  return Math.max(0, Math.floor(ticketLamports)) * Math.max(0, Math.floor(tickets));
 }
 
 export function lottoTicketSol() {

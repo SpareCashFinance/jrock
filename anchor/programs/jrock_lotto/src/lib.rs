@@ -100,6 +100,8 @@ pub mod jrock_lotto {
             .checked_mul(SLIP_FEE_BPS)
             .ok_or(LottoError::Overflow)?
             / SHARE_DENOM;
+        let pot = amount.checked_sub(fee).ok_or(LottoError::Overflow)?;
+        require!(pot > 0, LottoError::BadConfig);
 
         {
             let round = &mut ctx.accounts.round;
@@ -122,7 +124,7 @@ pub mod jrock_lotto {
                     to: ctx.accounts.round.to_account_info(),
                 },
             ),
-            amount,
+            pot,
         )?;
         if fee > 0 {
             transfer(

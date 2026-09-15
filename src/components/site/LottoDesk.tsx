@@ -19,6 +19,7 @@ import {
   hasLottoPot,
   lottoMemo,
   slipFeeLamports,
+  slipPotLamports,
   slipTotalLamports,
   verifyDraw,
   verifyProgramDraw,
@@ -109,7 +110,7 @@ export function LottoDesk() {
         </h1>
         <p className="serif mt-5 max-w-xl text-xl text-[var(--cream)] sm:text-2xl">
           {tape.engine === "program"
-            ? "Buy a slip in SOL. Ticket money goes in the pot. A 1% kennel fee is paid on every slip. The winner takes 85%. Fifteen percent stays to seed the next rock."
+            ? "Buy a slip in SOL. One price. 1% of that price is the kennel fee. The rest goes in the pot. The winner takes 85%. Fifteen percent stays to seed the next rock."
             : `Buy a slip in SOL. Sales die with the clock. ${DRAW_LAG_SECONDS} seconds later a finalized Solana blockhash is hashed. That number modulo the book is the winner. The rock does not pick.`}
         </p>
       </div>
@@ -301,7 +302,7 @@ function ProofCard({ tape }: { tape: LottoSnapshot }) {
       </ol>
       <p className="mt-4 text-sm leading-6 text-[var(--dim)]">
         {tape.engine === "program"
-          ? "The round account is the pot. Winner takes 85%. Fifteen percent rolls into the next round. Each slip also pays a 1% kennel fee. Open the pot on Solscan. Match the buyers. After settle, hash the slot hash with the round id and slip count. If that is not the posted winner, the tape is lying."
+          ? "The round account is the pot. Winner takes 85%. Fifteen percent rolls into the next round. 1% of each slip price is the kennel fee; 99% hits the pot. Open the pot on Solscan. Match the buyers. After settle, hash the slot hash with the round id and slip count. If that is not the posted winner, the tape is lying."
           : "Open the pot on Solscan and match every slip. Open the slot and match the blockhash. Hash it. Modulo the book. If that is not the posted winner, the tape is lying. The kennel still has to send the pot — randomness is public, payout is a transfer."}{" "}
         {project.ticker} is entertainment and can go to zero.
       </p>
@@ -365,7 +366,7 @@ function BuyCard({
       <p className="display mt-3 text-5xl text-white">
         {formatAmount(tape.ticketPriceSol, 3)} <span className="text-2xl text-[var(--gold)]">SOL</span>
       </p>
-      <p className="mt-1 text-xs tracking-[0.14em] uppercase text-[var(--dim)]">per slip · plus 1% kennel fee</p>
+      <p className="mt-1 text-xs tracking-[0.14em] uppercase text-[var(--dim)]">per slip · 1% kennel fee inside the price</p>
       <div className="mt-5 flex flex-wrap gap-2">
         {PRESETS.map((n) => (
           <button
@@ -382,7 +383,8 @@ function BuyCard({
         {count} × {formatAmount(tape.ticketPriceSol, 3)} = {formatAmount(subtotalLamports / 1_000_000_000, 4)} SOL
       </p>
       <p className="mt-1 text-sm text-[var(--gold)]">
-        + 1% fee {formatAmount(feeLamports / 1_000_000_000, 4)} SOL · total {formatAmount(totalLamports / 1_000_000_000, 4)} SOL
+        {formatAmount((subtotalLamports - feeLamports) / 1_000_000_000, 4)} SOL in the pot · 1% fee{" "}
+        {formatAmount(feeLamports / 1_000_000_000, 4)} SOL · you pay {formatAmount(totalLamports / 1_000_000_000, 4)} SOL
       </p>
       {tape.split.winnerLamports > 0 ? (
         <p className="mt-2 text-sm text-[var(--gold)]">
@@ -641,7 +643,7 @@ async function buyWithWallet(
       SystemProgram.transfer({
         fromPubkey: from,
         toPubkey: pot,
-        lamports: count * tape.ticketLamports,
+        lamports: slipPotLamports(tape.ticketLamports, count),
       }),
       new TransactionInstruction({
         keys: [{ pubkey: from, isSigner: true, isWritable: false }],

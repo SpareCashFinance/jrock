@@ -12,7 +12,7 @@ export const revalidate = 15;
 
 const title = `Kennel lotto | ${project.name}`;
 const description =
-  "Buy a $JROCK kennel slip in SOL. Each slip pays a 1% kennel fee. Winner takes 85% of the pot. Fifteen percent stays to seed the next round.";
+  "Buy a $JROCK kennel slip in SOL. 1% of the slip price is the kennel fee. Winner takes 85% of the pot. Fifteen percent stays to seed the next round.";
 
 export const metadata: Metadata = {
   title,
