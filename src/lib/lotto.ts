@@ -7,6 +7,7 @@ export const LOTTO_WINNER_SHARE = 0.85;
 export const LOTTO_CARRY_SHARE = 0.15;
 export const LOTTO_SLIP_FEE_BPS = 1;
 export const LOTTO_SLIP_FEE_DENOM = 100;
+export const DEFAULT_LOTTO_FEE_WALLET = "qbjbLafSNGq27fYFiF1RKhb9BREk1zFWWS8H6Drj8co";
 
 const DEFAULT_GENESIS = "2026-09-14T00:00:00.000Z";
 const DEFAULT_ROUND_MS = 72 * 60 * 60 * 1000;
@@ -24,7 +25,7 @@ export const LOTTO_RULES = {
 
 export const PROGRAM_LOTTO_RULES = {
   version: LOTTO_PROGRAM_PROOF_VERSION,
-  ticket: "Each buy instruction files 1 to 20 slips into the current round PDA. Ticket SOL goes into the pot. A 1% kennel fee is paid to the program authority. Repeat buys append a new row.",
+  ticket: "Each buy instruction files 1 to 20 slips into the current round PDA. Ticket SOL goes into the pot. A 1% kennel fee is paid to the posted fee wallet. Repeat buys append a new row.",
   window: "A buy counts only while the round is Open and the chain clock is before end_ts.",
   order: "Slips are contiguous ranges. from_index is the first slip of that buy; later buys from the same wallet append.",
   entropy: "After close_sales, entropy_slot = clock.slot + lag_slots. settle reads that exact SlotHashes entry.",
@@ -167,7 +168,8 @@ export function hasLottoPot() {
 }
 
 export function lottoFeeWallet() {
-  return (process.env.NEXT_PUBLIC_LOTTO_FEE_WALLET ?? "").trim();
+  const raw = (process.env.NEXT_PUBLIC_LOTTO_FEE_WALLET ?? "").trim();
+  return raw.length >= 32 ? raw : DEFAULT_LOTTO_FEE_WALLET;
 }
 
 export function slipFeeLamports(ticketLamports: number, tickets: number) {

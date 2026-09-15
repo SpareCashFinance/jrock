@@ -301,7 +301,7 @@ function ProofCard({ tape }: { tape: LottoSnapshot }) {
       </ol>
       <p className="mt-4 text-sm leading-6 text-[var(--dim)]">
         {tape.engine === "program"
-          ? "The round account is the pot. Winner takes 85%. Fifteen percent rolls into the next round. Each slip also pays a 1% kennel fee to the program authority. Open the pot on Solscan. Match the buyers. After settle, hash the slot hash with the round id and slip count. If that is not the posted winner, the tape is lying."
+          ? "The round account is the pot. Winner takes 85%. Fifteen percent rolls into the next round. Each slip also pays a 1% kennel fee. Open the pot on Solscan. Match the buyers. After settle, hash the slot hash with the round id and slip count. If that is not the posted winner, the tape is lying."
           : "Open the pot on Solscan and match every slip. Open the slot and match the blockhash. Hash it. Modulo the book. If that is not the posted winner, the tape is lying. The kennel still has to send the pot — randomness is public, payout is a transfer."}{" "}
         {project.ticker} is entertainment and can go to zero.
       </p>

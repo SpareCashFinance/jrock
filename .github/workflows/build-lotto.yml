@@ -21,7 +21,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: jrock_lotto
-          path: |
-            anchor/target/deploy/jrock_lotto.so
-            anchor/target/deploy/jrock_lotto-keypair.json
+          path: anchor/target/deploy/jrock_lotto.so
           if-no-files-found: error

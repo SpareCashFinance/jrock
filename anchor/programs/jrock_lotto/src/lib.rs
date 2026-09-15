@@ -10,6 +10,7 @@ pub const MAX_TICKETS_PER_BUY: u8 = 20;
 pub const WINNER_SHARE_BPS: u64 = 85;
 pub const SHARE_DENOM: u64 = 100;
 pub const SLIP_FEE_BPS: u64 = 1;
+pub const FEE_WALLET: Pubkey = pubkey!("qbjbLafSNGq27fYFiF1RKhb9BREk1zFWWS8H6Drj8co");
 
 #[program]
 pub mod jrock_lotto {
@@ -335,7 +336,7 @@ pub struct Buy<'info> {
     )]
     pub round: Account<'info, Round>,
     pub system_program: Program<'info, System>,
-    #[account(mut, address = config.authority)]
+    #[account(mut, address = FEE_WALLET)]
     pub fee_wallet: SystemAccount<'info>,
 }
 

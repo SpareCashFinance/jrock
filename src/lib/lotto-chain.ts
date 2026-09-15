@@ -365,7 +365,7 @@ async function getProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | null
   empty.pot = roundPk.toBase58();
   empty.programId = lottoProgramId();
   empty.configPda = configPk.toBase58();
-  empty.feeWallet = config.authority;
+  empty.feeWallet = lottoFeeWallet();
   const previous = await getPreviousRound(rpc, config);
   const last = previous ? await drawFromRound(previous.round, config.ticketLamports) : null;
   const posted = await loadPostedRounds(rpc, config.currentRound, config.ticketLamports);
@@ -438,7 +438,7 @@ async function getProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | null
     entropySlot: round.entropySlot || null,
     programId: lottoProgramId(),
     configPda: configPk.toBase58(),
-    feeWallet: config.authority,
+    feeWallet: lottoFeeWallet(),
     wallets: walletsFromEntries(entries, round.ticketCount),
     split,
     posted,
