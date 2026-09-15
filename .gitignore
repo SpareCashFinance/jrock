@@ -45,4 +45,10 @@ next-env.d.ts
 /tmp-frames
 src/app/globals.jrock.bak.css
 
+# solana / anchor
+anchor/target
+anchor/.anchor
+anchor/test-ledger
+**/*-keypair.json
+
 .vercel

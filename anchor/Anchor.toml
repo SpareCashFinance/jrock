@@ -1,0 +1,22 @@
+[toolchain]
+anchor_version = "0.31.1"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+jrock_lotto = "FvQfcJYAcRFEDeq8rS19MNXTZfeiCxcSN5nmfA6RdWuC"
+
+[programs.devnet]
+jrock_lotto = "FvQfcJYAcRFEDeq8rS19MNXTZfeiCxcSN5nmfA6RdWuC"
+
+[programs.mainnet]
+jrock_lotto = "FvQfcJYAcRFEDeq8rS19MNXTZfeiCxcSN5nmfA6RdWuC"
+
+[provider]
+cluster = "mainnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "echo skip"

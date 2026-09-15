@@ -1,8 +1,11 @@
 import "server-only";
 
 import { Connection, PublicKey } from "@solana/web3.js";
+import { configPda, decodeConfig, decodeRound, hasLottoProgram, roundPda } from "@/lib/lotto-program";
 import { serverSolanaRpcUrl } from "@/lib/solana";
 import {
+  LOTTO_PROGRAM_PROOF_VERSION,
+  PROGRAM_LOTTO_RULES,
   buildProof,
   emptyLottoSnapshot,
   hasLottoPot,
@@ -13,10 +16,12 @@ import {
   slipsFromEntries,
   sortEntries,
   verifyDraw,
+  winnerIndexFromSlotHash,
   type LottoDraw,
   type LottoEntry,
   type LottoSnapshot,
 } from "@/lib/lotto";
+import type { OnchainConfig, OnchainRound } from "@/lib/lotto-program";
 
 const SIG_PAGE = 100;
 const SIG_PAGES = 15;
@@ -191,8 +196,149 @@ async function firstFinalizedBlockAfter(rpc: Connection, unixMs: number) {
   return found;
 }
 
+function entriesFromRound(round: OnchainRound, ticketLamports: number): LottoEntry[] {
+  return round.buyers.map((row) => ({
+    wallet: row.wallet,
+    tickets: row.tickets,
+    lamports: row.tickets * ticketLamports,
+    signature: `${row.fromIndex}:${row.wallet}`,
+    slot: row.fromIndex,
+    at: new Date(round.startTs * 1000).toISOString(),
+  }));
+}
+
+async function drawFromRound(round: OnchainRound, ticketLamports: number): Promise<LottoDraw | null> {
+  if (round.status !== "settled" && round.status !== "claimed") return null;
+  const slips = slipsFromEntries(entriesFromRound(round, ticketLamports));
+  const slip = slips[round.winnerIndex];
+  const entropy = await winnerIndexFromSlotHash(round.entropyHash, round.roundId, slips.length);
+  const draw: LottoDraw = {
+    slot: round.entropySlot,
+    blockTime: 0,
+    blockhash: round.entropyHash,
+    hash: entropy.hash,
+    random: entropy.random,
+    winnerIndex: round.winnerIndex,
+    winner: round.winner,
+    winningSignature: slip?.signature ?? "",
+    verified: entropy.index === round.winnerIndex && slip?.wallet === round.winner,
+  };
+  return draw;
+}
+
+function programProofInput(round: OnchainRound, pot: string, slips: ReturnType<typeof slipsFromEntries>, draw: LottoDraw | null, ticketLamports: number) {
+  return buildProof({
+    pot,
+    round: round.roundId,
+    startsAt: new Date(round.startTs * 1000).toISOString(),
+    endsAt: new Date(round.endTs * 1000).toISOString(),
+    entropyAfter: `slot ${round.entropySlot || "pending"}`,
+    ticketLamports,
+    slips,
+    draw,
+    version: LOTTO_PROGRAM_PROOF_VERSION,
+    rules: PROGRAM_LOTTO_RULES,
+  });
+}
+
+async function getPreviousRound(rpc: Connection, config: OnchainConfig) {
+  if (config.currentRound <= 0) return null;
+  const [prevPk] = roundPda(config.currentRound - 1);
+  const info = await rpc.getAccountInfo(prevPk, "finalized");
+  if (!info?.data) return null;
+  return decodeRound(info.data);
+}
+
+async function getProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | null> {
+  if (!hasLottoProgram()) return null;
+  const [configPk] = configPda();
+  const configInfo = await rpc.getAccountInfo(configPk, "finalized");
+  if (!configInfo?.data) return null;
+  const config = decodeConfig(configInfo.data);
+  if (!config) return null;
+  const [roundPk] = roundPda(config.currentRound);
+  const roundInfo = await rpc.getAccountInfo(roundPk, "finalized");
+  const empty = emptyLottoSnapshot(
+    "The on-chain round is not open yet. Anyone can crank Open next round.",
+  );
+  empty.engine = "program";
+  empty.currentRound = config.currentRound;
+  empty.ticketLamports = config.ticketLamports;
+  empty.ticketPriceSol = config.ticketLamports / 1_000_000_000;
+  empty.pot = roundPk.toBase58();
+  const previous = await getPreviousRound(rpc, config);
+  const last = previous ? await drawFromRound(previous, config.ticketLamports) : null;
+  if (!roundInfo?.data) {
+    empty.status = "awaiting_round";
+    empty.last = last;
+    empty.proof.version = LOTTO_PROGRAM_PROOF_VERSION;
+    empty.proof.rules = PROGRAM_LOTTO_RULES;
+    empty.proof.pot = roundPk.toBase58();
+    empty.message =
+      previous?.status === "claimed"
+        ? "Last round is paid. Anyone can crank Open next round."
+        : previous?.status === "void"
+          ? "Last round had no slips. Anyone can crank Open next round."
+          : empty.message;
+    return empty;
+  }
+  const round = decodeRound(roundInfo.data);
+  if (!round) return empty;
+  const entries = entriesFromRound(round, config.ticketLamports);
+  const slips = slipsFromEntries(entries);
+  const startsAt = new Date(round.startTs * 1000).toISOString();
+  const endsAt = new Date(round.endTs * 1000).toISOString();
+  const balance = roundInfo.lamports;
+  const roundLamports = slips.length * config.ticketLamports;
+  let status: LottoSnapshot["status"] = "open";
+  let message = "Buy a slip on-chain. The round account holds the pot. Anyone can crank the draw and the claim.";
+  if (round.status === "closed") {
+    status = "awaiting_block";
+    message = `Sales are closed. Wait until slot ${round.entropySlot} lands in SlotHashes, then crank Settle within a few minutes.`;
+  } else if (round.status === "settled") {
+    status = "drawn";
+    message = "The program picked a winner. Anyone can crank Claim. The pot pays that wallet directly.";
+  } else if (round.status === "claimed") {
+    status = "claimed";
+    message = "This round is paid. Crank Open next round.";
+  } else if (round.status === "void") {
+    status = "void";
+    message = "No slips. Crank Open next round.";
+  }
+  const draw = await drawFromRound(round, config.ticketLamports);
+  return {
+    pot: roundPk.toBase58(),
+    round: round.roundId,
+    startsAt,
+    endsAt,
+    ticketPriceSol: config.ticketLamports / 1_000_000_000,
+    ticketLamports: config.ticketLamports,
+    potLamports: balance,
+    potSol: balance / 1_000_000_000,
+    roundLamports,
+    roundSol: roundLamports / 1_000_000_000,
+    entries,
+    slips,
+    totalTickets: round.ticketCount,
+    status,
+    draw,
+    last: draw ? null : last,
+    proof: await programProofInput(round, roundPk.toBase58(), slips, draw, config.ticketLamports),
+    message,
+    engine: "program",
+    currentRound: config.currentRound,
+    entropySlot: round.entropySlot || null,
+  };
+}
+
 export async function getLottoSnapshot(fresh = false): Promise<LottoSnapshot> {
   if (!fresh && cache && Date.now() - cache.at < CACHE_MS) return cache.data;
+  const rpc = connection();
+  const programmed = await getProgramSnapshot(rpc).catch(() => null);
+  if (programmed) {
+    cache = { at: Date.now(), data: programmed };
+    return programmed;
+  }
   const potKey = lottoPot();
   if (!hasLottoPot() || !looksLikePot(potKey)) {
     const empty = emptyLottoSnapshot(
@@ -202,7 +348,6 @@ export async function getLottoSnapshot(fresh = false): Promise<LottoSnapshot> {
     return empty;
   }
 
-  const rpc = connection();
   const pot = new PublicKey(potKey);
   const now = Date.now();
   const current = lottoRoundAt(now);
@@ -285,6 +430,9 @@ export async function getLottoSnapshot(fresh = false): Promise<LottoSnapshot> {
       draw,
     }),
     message,
+    engine: "wallet",
+    currentRound: current.round,
+    entropySlot: draw?.slot ?? null,
   };
   cache = { at: Date.now(), data };
   return data;

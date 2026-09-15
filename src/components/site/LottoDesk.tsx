@@ -19,9 +19,12 @@ import {
   hasLottoPot,
   lottoMemo,
   verifyDraw,
+  verifyProgramDraw,
   winnerIndexFromBlockhash,
+  winnerIndexFromSlotHash,
   type LottoSnapshot,
 } from "@/lib/lotto";
+import { buyIxForRound, claimIx, closeSalesIx, openRoundIx, settleIx } from "@/lib/lotto-program";
 import { useSolanaWallet } from "@/components/solana/SolanaWalletProvider";
 import { TelegramMark, XMark } from "@/components/brand/SocialMarks";
 
@@ -61,7 +64,7 @@ export function LottoDesk() {
   const [phase, setPhase] = useState("");
   const [error, setError] = useState("");
   const clock = useCountdown(tape.endsAt);
-  const potReady = hasLottoPot() && tape.pot.length >= 32;
+  const potReady = tape.pot.length >= 32 && (tape.engine === "program" || hasLottoPot());
   const canBuy = potReady && tape.status === "open" && !clock.done;
   const yours = useMemo(
     () =>
@@ -98,8 +101,9 @@ export function LottoDesk() {
           <span className="block text-[var(--orange)]">lotto.</span>
         </h1>
         <p className="serif mt-5 max-w-xl text-xl text-[var(--cream)] sm:text-2xl">
-          Buy a slip in SOL. Sales die with the clock. {DRAW_LAG_SECONDS} seconds later a finalized Solana blockhash is
-          hashed. That number modulo the book is the winner. The rock does not pick.
+          {tape.engine === "program"
+            ? "Buy a slip in SOL. The round account holds the pot. When the clock dies, anyone cranks a SlotHashes draw and the winner claims on-chain. No house wallet."
+            : `Buy a slip in SOL. Sales die with the clock. ${DRAW_LAG_SECONDS} seconds later a finalized Solana blockhash is hashed. That number modulo the book is the winner. The rock does not pick.`}
         </p>
       </div>
 
@@ -143,9 +147,25 @@ export function LottoDesk() {
           potReady={potReady}
           phase={phase}
           error={error}
-          onBuy={() => void buyWithWallet(solana, tape, count, setPhase, setError, load)}
+          onBuy={() =>
+            void (tape.engine === "program"
+              ? buyWithProgram(solana, tape, count, setPhase, setError, load)
+              : buyWithWallet(solana, tape, count, setPhase, setError, load))
+          }
         />
       </div>
+
+      {tape.engine === "program" ? (
+        <CrankBar
+          tape={tape}
+          salesEnded={clock.done}
+          solana={solana}
+          phase={phase}
+          setPhase={setPhase}
+          setError={setError}
+          reload={load}
+        />
+      ) : null}
 
       <EntryTable tape={tape} you={solana.address} />
 
@@ -188,11 +208,15 @@ function WinnerCard({ title, draw }: { title: string; draw: NonNullable<LottoSna
         <HouseButton href={`https://solscan.io/block/${draw.slot}`} target="_blank">
           Block {draw.slot}
         </HouseButton>
-        <HouseButton href={explorerTxUrl(draw.winningSignature)} target="_blank">
-          Winning slip
-        </HouseButton>
+        {draw.winningSignature ? (
+          <HouseButton href={explorerTxUrl(draw.winningSignature)} target="_blank">
+            Winning slip
+          </HouseButton>
+        ) : null}
       </div>
-      <p className="mt-4 break-all font-mono text-[11px] text-[var(--stone)]">blockhash {draw.blockhash}</p>
+      <p className="mt-4 break-all font-mono text-[11px] text-[var(--stone)]">
+        {draw.blockhash.length === 64 ? "slot hash" : "blockhash"} {draw.blockhash}
+      </p>
       <p className="mt-1 break-all font-mono text-[11px] text-[var(--stone)]">sha256 {draw.hash}</p>
     </div>
   );
@@ -204,7 +228,21 @@ function ProofCard({ tape }: { tape: LottoSnapshot }) {
 
   async function checkHere() {
     if (!tape.draw) {
-      setLocal("No draw yet. The clock and the 60-second lag have to finish first.");
+      setLocal(
+        tape.engine === "program"
+          ? "No draw yet. Close sales, wait for the entropy slot, then crank Settle."
+          : "No draw yet. The clock and the 60-second lag have to finish first.",
+      );
+      return;
+    }
+    if (tape.engine === "program") {
+      const math = await winnerIndexFromSlotHash(tape.draw.blockhash, tape.round, tape.slips.length);
+      const ok = await verifyProgramDraw(tape.draw, tape.slips, tape.round);
+      setLocal(
+        ok
+          ? `Local math matches. sha256(slot hash || round ${tape.round} || ${tape.slips.length} slips) % ${tape.slips.length} = slip ${math.index}.`
+          : `Local math disagrees. Got slip ${math.index}, tape says ${tape.draw.winnerIndex}. Do not trust this draw.`,
+      );
       return;
     }
     const math = await winnerIndexFromBlockhash(tape.draw.blockhash, tape.slips.length);
@@ -233,9 +271,10 @@ function ProofCard({ tape }: { tape: LottoSnapshot }) {
         <li>05 · {tape.proof.rules.formula}</li>
       </ol>
       <p className="mt-4 text-sm leading-6 text-[var(--dim)]">
-        Open the pot on Solscan and match every slip. Open the slot and match the blockhash. Hash it. Modulo the book.
-        If that is not the posted winner, the tape is lying. The kennel still has to send the pot — randomness is
-        public, payout is a transfer. {project.ticker} is entertainment and can go to zero.
+        {tape.engine === "program"
+          ? "The round account is the pot. Open it on Solscan. Match the buyers. After settle, hash the slot hash with the round id and slip count. If that is not the posted winner, the tape is lying. Claim pays the winner on-chain."
+          : "Open the pot on Solscan and match every slip. Open the slot and match the blockhash. Hash it. Modulo the book. If that is not the posted winner, the tape is lying. The kennel still has to send the pot — randomness is public, payout is a transfer."}{" "}
+        {project.ticker} is entertainment and can go to zero.
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
         <HouseButton onClick={() => void checkHere()}>Check the math here</HouseButton>
@@ -320,6 +359,8 @@ function BuyCard({
       </div>
       {!potReady ? (
         <p className="mt-3 text-sm text-[var(--gold)]">Pot wallet is not posted. Slips stay closed.</p>
+      ) : tape.status === "awaiting_round" ? (
+        <p className="mt-3 text-sm text-[var(--gold)]">Open the next round to start selling slips.</p>
       ) : null}
       {error ? <p className="mt-3 text-sm text-[#ff8a6a]">{error}</p> : null}
       {tape.pot ? (
@@ -353,22 +394,38 @@ function EntryTable({ tape, you }: { tape: LottoSnapshot; you: string }) {
         </p>
       </div>
       <div className="divide-y divide-[rgba(232,210,176,0.08)]">
-        {tape.entries.map((row) => (
-          <a
-            key={row.signature}
-            href={explorerTxUrl(row.signature)}
-            target="_blank"
-            rel="noreferrer"
-            className={`flex items-center justify-between gap-3 px-5 py-3 text-sm hover:bg-white/5 ${
-              you && row.wallet === you ? "text-[var(--orange)]" : "text-[var(--cream)]"
-            }`}
-          >
-            <span className="font-mono">{shortenAddress(row.wallet, 5)}</span>
-            <span className="text-xs tracking-[0.14em] uppercase text-[var(--gold)]">
-              slot {row.slot} · {row.tickets} {row.tickets === 1 ? "slip" : "slips"}
-            </span>
-          </a>
-        ))}
+        {tape.entries.map((row) => {
+          const inner = (
+            <>
+              <span className="font-mono">{shortenAddress(row.wallet, 5)}</span>
+              <span className="text-xs tracking-[0.14em] uppercase text-[var(--gold)]">
+                {tape.engine === "program" ? "from" : "slot"} {row.slot} · {row.tickets}{" "}
+                {row.tickets === 1 ? "slip" : "slips"}
+              </span>
+            </>
+          );
+          const className = `flex items-center justify-between gap-3 px-5 py-3 text-sm ${
+            you && row.wallet === you ? "text-[var(--orange)]" : "text-[var(--cream)]"
+          }`;
+          if (tape.engine === "program") {
+            return (
+              <div key={row.signature} className={className}>
+                {inner}
+              </div>
+            );
+          }
+          return (
+            <a
+              key={row.signature}
+              href={explorerTxUrl(row.signature)}
+              target="_blank"
+              rel="noreferrer"
+              className={`${className} hover:bg-white/5`}
+            >
+              {inner}
+            </a>
+          );
+        })}
       </div>
     </div>
   );
@@ -416,4 +473,114 @@ async function buyWithWallet(
     setPhase("");
     setError(error instanceof Error ? error.message : "The rock refused the slip.");
   }
+}
+
+async function sendProgramIx(
+  solana: ReturnType<typeof useSolanaWallet>,
+  build: (payer: PublicKey) => TransactionInstruction,
+  setPhase: (value: string) => void,
+  setError: (value: string) => void,
+  reload: () => Promise<void>,
+  asking: string,
+  done: string,
+) {
+  const owner = solana.requireWallet();
+  if (!owner) return;
+  try {
+    setPhase(asking);
+    const from = new PublicKey(owner);
+    const { blockhash, lastValidBlockHeight } = await solana.connection.getLatestBlockhash("confirmed");
+    const tx = new Transaction({ feePayer: from, blockhash, lastValidBlockHeight });
+    tx.add(build(from));
+    const encoded = (await import("@/lib/tx")).encodeTx(tx);
+    setPhase("Filing on Solana…");
+    await solana.signAndSendBase64(encoded);
+    setPhase(done);
+    await reload();
+    window.setTimeout(() => setPhase(""), 1600);
+  } catch (error) {
+    setPhase("");
+    setError(error instanceof Error ? error.message : "The rock refused.");
+  }
+}
+
+async function buyWithProgram(
+  solana: ReturnType<typeof useSolanaWallet>,
+  tape: LottoSnapshot,
+  count: number,
+  setPhase: (value: string) => void,
+  setError: (value: string) => void,
+  reload: () => Promise<void>,
+) {
+  if (tape.status !== "open") {
+    setError("Sales are closed for this round.");
+    return;
+  }
+  const tickets = Math.min(20, Math.max(1, count));
+  await sendProgramIx(
+    solana,
+    (payer) => buyIxForRound(payer, tape.currentRound, tickets),
+    setPhase,
+    setError,
+    reload,
+    "Ask the wallet…",
+    "Slip filed",
+  );
+}
+
+function CrankBar({
+  tape,
+  salesEnded,
+  solana,
+  phase,
+  setPhase,
+  setError,
+  reload,
+}: {
+  tape: LottoSnapshot;
+  salesEnded: boolean;
+  solana: ReturnType<typeof useSolanaWallet>;
+  phase: string;
+  setPhase: (value: string) => void;
+  setError: (value: string) => void;
+  reload: () => Promise<void>;
+}) {
+  const busy = Boolean(phase);
+  const canClose = tape.status === "open" && salesEnded;
+  const canSettle = tape.status === "awaiting_block";
+  const canClaim = tape.status === "drawn" && Boolean(tape.draw?.winner);
+  const canOpen = tape.status === "awaiting_round" || tape.status === "claimed" || tape.status === "void";
+  const run = (
+    build: (payer: PublicKey) => TransactionInstruction,
+    asking: string,
+    done: string,
+  ) => void sendProgramIx(solana, build, setPhase, setError, reload, asking, done);
+
+  return (
+    <div className="glass-panel mt-8 rounded-[28px] p-5 sm:p-6">
+      <p className="kicker">Crank the program</p>
+      <p className="mt-2 text-sm leading-6 text-[var(--dim)]">
+        Anyone with a wallet can run these. Settle has a few minutes after the entropy slot before SlotHashes drops it.
+      </p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <HouseButton disabled={!canClose || busy} onClick={() => run(() => closeSalesIx(tape.currentRound), "Closing sales…", "Sales closed")}>
+          Close sales
+        </HouseButton>
+        <HouseButton disabled={!canSettle || busy} onClick={() => run(() => settleIx(tape.currentRound), "Settling…", "Draw settled")}>
+          Settle draw
+        </HouseButton>
+        <HouseButton
+          disabled={!canClaim || busy}
+          onClick={() =>
+            run((payer) => claimIx(tape.currentRound, new PublicKey(tape.draw?.winner || payer.toBase58())), "Paying winner…", "Pot claimed")
+          }
+        >
+          Pay winner
+        </HouseButton>
+        <HouseButton disabled={!canOpen || busy} onClick={() => run((payer) => openRoundIx(payer, tape.currentRound), "Opening round…", "Round open")}>
+          Open next round
+        </HouseButton>
+      </div>
+    </div>
+  );
 }

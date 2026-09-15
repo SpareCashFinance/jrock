@@ -1,6 +1,7 @@
 export const MEMO_PROGRAM_ID = "MemoSq4gqABAXKb96QnTrNe2EtkZ";
 export const LOTTO_MEMO_PREFIX = "jrock-lotto";
 export const LOTTO_PROOF_VERSION = "jrock-lotto-v2";
+export const LOTTO_PROGRAM_PROOF_VERSION = "jrock-lotto-v3";
 export const DRAW_LAG_SECONDS = 60;
 
 const DEFAULT_GENESIS = "2026-09-14T00:00:00.000Z";
@@ -14,7 +15,17 @@ export const LOTTO_RULES = {
   order: "Sort entries by slot ascending, then signature ascending. Expand each entry into that many slips.",
   entropy: `First finalized Solana block whose blockTime is >= round end + ${DRAW_LAG_SECONDS}s.`,
   formula: "winnerIndex = sha256(utf8(blockhash)) as big-endian integer, modulo slip count.",
-  payout: "The pot wallet pays the winning slip. Randomness is on-chain; payout is still a kennel transfer.",
+  payout: "Wallet mode still needs a kennel transfer from the pot. The on-chain program pays by claim.",
+} as const;
+
+export const PROGRAM_LOTTO_RULES = {
+  version: LOTTO_PROGRAM_PROOF_VERSION,
+  ticket: "Each buy instruction files 1 to 20 slips into the current round PDA. Repeat buys append a new row.",
+  window: "A buy counts only while the round is Open and the chain clock is before end_ts.",
+  order: "Slips are contiguous ranges. from_index is the first slip of that buy; later buys from the same wallet append.",
+  entropy: "After close_sales, entropy_slot = clock.slot + lag_slots. settle reads that exact SlotHashes entry.",
+  formula: "winnerIndex = first 8 big-endian bytes of sha256(slot_hash || round_id_le || ticket_count_le) modulo ticket_count.",
+  payout: "claim pays the round PDA lamports minus rent to the winner. Anyone can crank. No house wallet.",
 } as const;
 
 export type LottoEntry = {
@@ -59,10 +70,17 @@ export type LottoProof = {
   sha256: string | null;
   winnerIndex: number | null;
   winner: string | null;
-  rules: typeof LOTTO_RULES;
+  rules: typeof LOTTO_RULES | typeof PROGRAM_LOTTO_RULES;
 };
 
-export type LottoStatus = "awaiting_pot" | "open" | "awaiting_block" | "void" | "drawn";
+export type LottoStatus =
+  | "awaiting_pot"
+  | "awaiting_round"
+  | "open"
+  | "awaiting_block"
+  | "void"
+  | "drawn"
+  | "claimed";
 
 export type LottoSnapshot = {
   pot: string;
@@ -83,6 +101,9 @@ export type LottoSnapshot = {
   last: LottoDraw | null;
   proof: LottoProof;
   message: string;
+  engine: "program" | "wallet";
+  currentRound: number;
+  entropySlot: number | null;
 };
 
 function envNumber(key: string, fallback: number) {
@@ -163,14 +184,18 @@ function toHex(bytes: Uint8Array) {
   return [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-export async function sha256Hex(value: string) {
-  const data = new TextEncoder().encode(value);
+export async function sha256Bytes(data: Uint8Array) {
+  const bytes = new Uint8Array(data.byteLength);
+  bytes.set(data);
   if (globalThis.crypto?.subtle) {
-    const digest = new Uint8Array(await globalThis.crypto.subtle.digest("SHA-256", data));
-    return toHex(digest);
+    return new Uint8Array(await globalThis.crypto.subtle.digest("SHA-256", bytes));
   }
   const { createHash } = await import("node:crypto");
-  return createHash("sha256").update(value).digest("hex");
+  return new Uint8Array(createHash("sha256").update(bytes).digest());
+}
+
+export async function sha256Hex(value: string) {
+  return toHex(await sha256Bytes(new TextEncoder().encode(value)));
 }
 
 export async function entropyFromBlockhash(blockhash: string) {
@@ -186,6 +211,19 @@ export async function winnerIndexFromBlockhash(blockhash: string, ticketCount: n
   const entropy = await entropyFromBlockhash(blockhash);
   if (ticketCount <= 0) return { ...entropy, index: 0 };
   return { ...entropy, index: Number(entropy.value % BigInt(ticketCount)) };
+}
+
+export async function winnerIndexFromSlotHash(slotHashHex: string, roundId: number, ticketCount: number) {
+  const slotHash = Uint8Array.from(Buffer.from(slotHashHex, "hex"));
+  const roundBuf = Buffer.alloc(8);
+  roundBuf.writeBigUInt64LE(BigInt(roundId));
+  const countBuf = Buffer.alloc(4);
+  countBuf.writeUInt32LE(ticketCount);
+  const digest = await sha256Bytes(Uint8Array.from(Buffer.concat([Buffer.from(slotHash), roundBuf, countBuf])));
+  const hash = toHex(digest);
+  const random = Buffer.from(digest.subarray(0, 8)).readBigUInt64BE(0);
+  if (ticketCount <= 0) return { hash, random: random.toString(16), value: random, index: 0 };
+  return { hash, random: random.toString(16), value: random, index: Number(random % BigInt(ticketCount)) };
 }
 
 export async function makeDrawFromBlock(
@@ -222,6 +260,13 @@ export async function verifyDraw(draw: LottoDraw, slips: LottoSlip[]) {
   );
 }
 
+export async function verifyProgramDraw(draw: LottoDraw, slips: LottoSlip[], roundId: number) {
+  if (slips.length === 0) return false;
+  const entropy = await winnerIndexFromSlotHash(draw.blockhash, roundId, slips.length);
+  const slip = slips[entropy.index];
+  return entropy.index === draw.winnerIndex && slip?.wallet === draw.winner;
+}
+
 export async function buildProof(input: {
   pot: string;
   round: number;
@@ -231,9 +276,11 @@ export async function buildProof(input: {
   ticketLamports: number;
   slips: LottoSlip[];
   draw: LottoDraw | null;
+  version?: string;
+  rules?: typeof LOTTO_RULES | typeof PROGRAM_LOTTO_RULES;
 }): Promise<LottoProof> {
   return {
-    version: LOTTO_PROOF_VERSION,
+    version: input.version ?? LOTTO_PROOF_VERSION,
     pot: input.pot,
     round: input.round,
     startsAt: input.startsAt,
@@ -247,7 +294,7 @@ export async function buildProof(input: {
     sha256: input.draw?.hash ?? null,
     winnerIndex: input.draw?.winnerIndex ?? null,
     winner: input.draw?.winner ?? null,
-    rules: LOTTO_RULES,
+    rules: input.rules ?? LOTTO_RULES,
   };
 }
 
@@ -290,5 +337,8 @@ export function emptyLottoSnapshot(message: string): LottoSnapshot {
       rules: LOTTO_RULES,
     },
     message,
+    engine: "wallet",
+    currentRound: clock.round,
+    entropySlot: null,
   };
 }

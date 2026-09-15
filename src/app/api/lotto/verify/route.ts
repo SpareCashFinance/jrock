@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { verifyDraw } from "@/lib/lotto";
+import { verifyDraw, verifyProgramDraw } from "@/lib/lotto";
 import { getLottoSnapshot } from "@/lib/lotto-chain";
 
 export const dynamic = "force-dynamic";
@@ -9,9 +9,13 @@ export async function GET() {
   try {
     const snapshot = await getLottoSnapshot(true);
     const checked =
-      snapshot.draw && snapshot.slips.length > 0
-        ? await verifyDraw(snapshot.draw, snapshot.slips)
-        : snapshot.status !== "drawn";
+      snapshot.engine === "program"
+        ? snapshot.draw && snapshot.slips.length > 0
+          ? await verifyProgramDraw(snapshot.draw, snapshot.slips, snapshot.round)
+          : snapshot.status !== "drawn"
+        : snapshot.draw && snapshot.slips.length > 0
+          ? await verifyDraw(snapshot.draw, snapshot.slips)
+          : snapshot.status !== "drawn";
     return NextResponse.json({
       ok: checked,
       status: snapshot.status,

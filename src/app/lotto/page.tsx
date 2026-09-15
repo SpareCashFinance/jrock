@@ -12,7 +12,7 @@ export const revalidate = 15;
 
 const title = `Kennel lotto | ${project.name}`;
 const description =
-  "Buy a $JROCK kennel slip in SOL. When the clock hits zero, the next finalized Solana blockhash picks the winner.";
+  "Buy a $JROCK kennel slip in SOL. The round account holds the pot. A SlotHashes draw picks the winner, and that wallet claims on-chain.";
 
 export const metadata: Metadata = {
   title,
