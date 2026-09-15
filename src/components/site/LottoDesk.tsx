@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   PublicKey,
   SystemProgram,
@@ -22,7 +22,6 @@ import { explorerAccountUrl, explorerTxUrl, links } from "@/lib/links";
 import {
   DRAW_LAG_SECONDS,
   MEMO_PROGRAM_ID,
-  emptyLottoSnapshot,
   hasLottoPot,
   lottoMemo,
   slipFeeLamports,
@@ -39,6 +38,7 @@ import {
 import { buyIxForRound, claimIx, closeSalesIx, openRoundIx, settleIx } from "@/lib/lotto-program";
 import { useSolanaWallet } from "@/components/solana/SolanaWalletProvider";
 import { TelegramMark, XMark } from "@/components/brand/SocialMarks";
+import { useCountdown, useLottoSnapshot, type RefreshLottoOpts } from "@/lib/lotto-client";
 
 const PRESETS = [1, 2, 5, 10];
 
@@ -52,24 +52,6 @@ function ixDataFromText(value: string) {
   return new TextEncoder().encode(value) as unknown as Buffer;
 }
 
-function useCountdown(iso: string) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(id);
-  }, []);
-  const end = Date.parse(iso);
-  const left = Math.max(0, end - now);
-  const total = Math.floor(left / 1000);
-  return {
-    done: left <= 0,
-    days: Math.floor(total / 86400),
-    hours: Math.floor((total % 86400) / 3600),
-    minutes: Math.floor((total % 3600) / 60),
-    seconds: total % 60,
-  };
-}
-
 function ClockBox({ label, value }: { label: string; value: number }) {
   return (
     <div className="glass-panel min-w-[4.5rem] rounded-2xl px-3 py-3 text-center">
@@ -81,7 +63,7 @@ function ClockBox({ label, value }: { label: string; value: number }) {
 
 export function LottoDesk() {
   const solana = useSolanaWallet();
-  const [tape, setTape] = useState<LottoSnapshot>(emptyLottoSnapshot("Loading the kennel pot."));
+  const { tape, reload } = useLottoSnapshot();
   const [count, setCount] = useState(1);
   const [phase, setPhase] = useState("");
   const [error, setError] = useState("");
@@ -96,23 +78,6 @@ export function LottoDesk() {
         : 0,
     [solana.address, tape.entries],
   );
-
-  const load = useCallback(async () => {
-    const res = await fetch("/api/lotto", { cache: "no-store" });
-    const next = (await res.json()) as LottoSnapshot & { error?: string };
-    if (!res.ok) throw new Error(next.error || "The lotto tape refused");
-    setTape(next);
-  }, []);
-
-  useEffect(() => {
-    void load().catch((err: unknown) => {
-      setError(err instanceof Error ? err.message : "The lotto tape refused");
-    });
-    const id = window.setInterval(() => {
-      void load().catch(() => undefined);
-    }, 20_000);
-    return () => window.clearInterval(id);
-  }, [load]);
 
   return (
     <section className="section pb-16 pt-8">
@@ -179,8 +144,8 @@ export function LottoDesk() {
           error={error}
           onBuy={() =>
             void (tape.engine === "program"
-              ? buyWithProgram(solana, tape, count, setPhase, setError, load, setReceipt)
-              : buyWithWallet(solana, tape, count, setPhase, setError, load, setReceipt))
+              ? buyWithProgram(solana, tape, count, setPhase, setError, reload, setReceipt)
+              : buyWithWallet(solana, tape, count, setPhase, setError, reload, setReceipt))
           }
         />
       </div>
@@ -194,7 +159,7 @@ export function LottoDesk() {
           phase={phase}
           setPhase={setPhase}
           setError={setError}
-          reload={load}
+          reload={reload}
         />
       ) : null}
 
@@ -681,7 +646,7 @@ async function buyWithWallet(
   count: number,
   setPhase: (value: string) => void,
   setError: (value: string) => void,
-  reload: () => Promise<void>,
+  reload: (opts?: RefreshLottoOpts) => Promise<unknown>,
   onConfirmed: (receipt: SlipReceipt) => void,
 ) {
   const owner = solana.requireWallet();
@@ -728,7 +693,7 @@ async function buyWithWallet(
       paidSol: slipTotalLamports(tape.ticketLamports, count) / 1_000_000_000,
       signature,
     });
-    await reload();
+    await reload({ fresh: true, minTickets: tape.totalTickets + count });
   } catch (error) {
     setPhase("");
     setError(error instanceof Error ? error.message : "The rock refused the slip.");
@@ -740,7 +705,7 @@ async function sendProgramIx(
   build: (payer: PublicKey) => TransactionInstruction,
   setPhase: (value: string) => void,
   setError: (value: string) => void,
-  reload: () => Promise<void>,
+  reload: (opts?: RefreshLottoOpts) => Promise<unknown>,
   asking: string,
   done: string,
 ) {
@@ -756,7 +721,7 @@ async function sendProgramIx(
     setPhase("Filing on Solana…");
     await solana.signAndSendBase64(encoded);
     setPhase(done);
-    await reload();
+    await reload({ fresh: true });
     window.setTimeout(() => setPhase(""), 1600);
   } catch (error) {
     setPhase("");
@@ -770,7 +735,7 @@ async function buyWithProgram(
   count: number,
   setPhase: (value: string) => void,
   setError: (value: string) => void,
-  reload: () => Promise<void>,
+  reload: (opts?: RefreshLottoOpts) => Promise<unknown>,
   onConfirmed: (receipt: SlipReceipt) => void,
 ) {
   if (tape.status !== "open") {
@@ -800,7 +765,7 @@ async function buyWithProgram(
       paidSol: slipTotalLamports(tape.ticketLamports, tickets) / 1_000_000_000,
       signature,
     });
-    await reload();
+    await reload({ fresh: true, minTickets: tape.totalTickets + tickets });
   } catch (error) {
     setPhase("");
     setError(error instanceof Error ? error.message : "The rock refused the slip.");
@@ -822,7 +787,7 @@ function CrankBar({
   phase: string;
   setPhase: (value: string) => void;
   setError: (value: string) => void;
-  reload: () => Promise<void>;
+  reload: (opts?: RefreshLottoOpts) => Promise<unknown>;
 }) {
   const busy = Boolean(phase);
   const canClose = tape.status === "open" && salesEnded;

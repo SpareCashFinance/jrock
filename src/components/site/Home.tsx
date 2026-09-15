@@ -1,6 +1,7 @@
 import { BitcoinRain } from "@/components/brand/BitcoinRain";
 import { Header } from "./Header";
 import { Hero } from "./Hero";
+import { LottoJackpotFrame } from "./LottoJackpotFrame";
 import { AdoptDesk } from "./AdoptDesk";
 import { LiveRewardStrip } from "./LiveRewardStrip";
 import { ExhibitTape } from "./ExhibitTape";
@@ -35,6 +36,7 @@ export function Home({
       <Header />
       <main className="pb-20 md:pb-0">
         <Hero />
+        <LottoJackpotFrame />
         <AdoptDesk />
         <LiveRewardStrip market={market} />
         <ExhibitTape />

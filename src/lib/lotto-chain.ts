@@ -31,7 +31,7 @@ import { lottoProgramId, type OnchainConfig, type OnchainRound } from "@/lib/lot
 
 const SIG_PAGE = 100;
 const SIG_PAGES = 15;
-const CACHE_MS = 12_000;
+const CACHE_MS = 2_000;
 
 let cache: { at: number; data: LottoSnapshot } | null = null;
 
@@ -48,7 +48,7 @@ type ParsedIx = {
 };
 
 function connection() {
-  return new Connection(serverSolanaRpcUrl(), { commitment: "finalized" });
+  return new Connection(serverSolanaRpcUrl(), { commitment: "confirmed" });
 }
 
 function looksLikePot(value: string) {
@@ -123,7 +123,7 @@ async function loadEntries(
     const chunk = wanted.slice(i, i + 80);
     const txs = await rpc.getParsedTransactions(chunk, {
       maxSupportedTransactionVersion: 0,
-      commitment: "finalized",
+      commitment: "confirmed",
     });
     chunk.forEach((signature, index) => {
       const tx = txs[index];
@@ -269,7 +269,7 @@ async function loadPostedRounds(
   if (max < 0) return [];
   const keys = [];
   for (let id = 0; id <= max; id += 1) keys.push(roundPda(id)[0]);
-  const infos = await rpc.getMultipleAccountsInfo(keys, "finalized");
+  const infos = await rpc.getMultipleAccountsInfo(keys, "confirmed");
   const posted: LottoPostedWin[] = [];
   for (let i = 0; i < infos.length; i += 1) {
     const info = infos[i];
@@ -341,7 +341,7 @@ function programProofInput(round: OnchainRound, pot: string, slips: ReturnType<t
 async function getPreviousRound(rpc: Connection, config: OnchainConfig) {
   if (config.currentRound <= 0) return null;
   const [prevPk] = roundPda(config.currentRound - 1);
-  const info = await rpc.getAccountInfo(prevPk, "finalized");
+  const info = await rpc.getAccountInfo(prevPk, "confirmed");
   if (!info?.data) return null;
   const round = decodeRound(info.data);
   if (!round) return null;
@@ -351,12 +351,12 @@ async function getPreviousRound(rpc: Connection, config: OnchainConfig) {
 async function getProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | null> {
   if (!hasLottoProgram()) return null;
   const [configPk] = configPda();
-  const configInfo = await rpc.getAccountInfo(configPk, "finalized");
+  const configInfo = await rpc.getAccountInfo(configPk, "confirmed");
   if (!configInfo?.data) return null;
   const config = decodeConfig(configInfo.data);
   if (!config) return null;
   const [roundPk] = roundPda(config.currentRound);
-  const roundInfo = await rpc.getAccountInfo(roundPk, "finalized");
+  const roundInfo = await rpc.getAccountInfo(roundPk, "confirmed");
   const empty = emptyLottoSnapshot(
     "The on-chain round is not open yet. Anyone can crank Open next round.",
   );
@@ -474,7 +474,7 @@ export async function getLottoSnapshot(fresh = false): Promise<LottoSnapshot> {
   const entropyAfter = new Date(current.drawAfter).toISOString();
 
   const [balance, currentEntries, lastEntries] = await Promise.all([
-    rpc.getBalance(pot, "finalized"),
+    rpc.getBalance(pot, "confirmed"),
     loadEntries(rpc, pot, Math.floor(current.startsAt / 1000), Math.floor(current.endsAt / 1000)),
     current.round > 0
       ? loadEntries(rpc, pot, Math.floor(previous.startsAt / 1000), Math.floor(previous.endsAt / 1000))
