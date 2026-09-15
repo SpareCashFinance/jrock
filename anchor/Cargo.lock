@@ -754,6 +754,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "jrock_lotto_v2"
+version = "0.2.0"
+dependencies = [
+ "anchor-lang",
+]
+
+[[package]]
 name = "js-sys"
 version = "0.3.105"
 source = "registry+https://github.com/rust-lang/crates.io-index"

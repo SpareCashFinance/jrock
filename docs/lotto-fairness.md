@@ -36,6 +36,8 @@ This is **not** ORAO or Switchboard VRF. Known limits:
 
 Do not describe this draw as fully trustless, cryptographically fair, or verified until a VRF is shipped, the binary is explorer-verified, and upgrade authority is revoked or moved to a disclosed timelocked multisig.
 
+Live freeze: `docs/lotto-v1-snapshot.md`. Successor spec: `docs/lotto-fairness-v2.md`. Verifiable-build notes: `docs/lotto-verifiable-build.md`.
+
 ## Independent check
 
 - Site: https://petrock.fun/lotto/verify

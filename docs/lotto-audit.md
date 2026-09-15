@@ -81,6 +81,8 @@ Conservation: `459,754,480 = 14,254,480 + 445,500,000` and `445,500,000 = 378,67
 - `src/components/site/Header.tsx` — Lotto program copy button
 - `src/components/site/LottoVerify.tsx`, `src/app/lotto/verify/page.tsx`, `src/app/api/lotto/independent/route.ts`
 - `src/lib/lotto-ledger.ts`, `src/lib/lotto-verify.ts`, `scripts/verify-lotto.mjs`
+- `docs/lotto-v1-snapshot.md`, `docs/lotto-fairness-v2.md`, `docs/lotto-verifiable-build.md`
+- `anchor/programs/jrock_lotto_v2` — successor ELF, undeployed
 - `src/lib/lotto-client.ts` — mount-safe countdown
 - `src/components/motion/SlotHeadline.tsx` — numeric cores only
 - `src/lib/lotto-program.ts` — previous round writable on open
@@ -119,7 +121,9 @@ Production “Check this draw” on 2026-09-15: `Solana shows round 0 open, 9 sl
 
 ## 15. Remaining limitations
 
-SlotHashes interim; upgradeable single wallet; unverified ELF; settle can stick; no VRF bind; no refund; incomplete program test matrix; `$JROCK` mint still unpublished so market “Contract pending” remains.
+SlotHashes interim on the **live** program; upgradeable single wallet; unverified ELF; settle can stick; no VRF bind on v1; no refund on v1; `$JROCK` mint still unpublished so market “Contract pending” remains.
+
+v2 source (`jrock_lotto_v2` / `66FyiUTkw4JMYMi3yErfa7UBqrHm9GZha1meAxcgbjDg`) is in-tree: ORAO bind, rejection sampling, timeout refund, explicit state machine. It is **not** the live program. Do not flip `NEXT_PUBLIC_LOTTO_PROGRAM` until v2 is initialized on mainnet after round 0 is claimed or refunded. See `docs/lotto-fairness-v2.md` and `docs/lotto-verifiable-build.md`.
 
 ## 16. Launch decision
 

@@ -1,11 +1,13 @@
 import "server-only";
 
 import { Connection, PublicKey } from "@solana/web3.js";
-import { configPda, decodeConfig, decodeRound, hasLottoProgram, roundPda } from "@/lib/lotto-program";
+import { configPda, decodeConfig, decodeRound, hasLottoProgram, isLottoV2, JROCK_LOTTO_PROGRAM_ID, roundPda } from "@/lib/lotto-program";
 import { serverSolanaRpcUrl } from "@/lib/solana";
 import {
   LOTTO_PROGRAM_PROOF_VERSION,
+  LOTTO_PROGRAM_V2_PROOF_VERSION,
   PROGRAM_LOTTO_RULES,
+  PROGRAM_LOTTO_RULES_V2,
   buildProof,
   emptyLottoSnapshot,
   hasLottoPot,
@@ -28,7 +30,9 @@ import {
   type LottoSplit,
 } from "@/lib/lotto";
 import { lottoProgramId, type OnchainConfig, type OnchainRound } from "@/lib/lotto-program";
+import { decodeConfigV2, decodeRoundV2, type OnchainRoundV2 } from "@/lib/lotto-program-v2";
 import { buildLedger } from "@/lib/lotto-ledger";
+import { hexToBytes, winnerFromVrfEntropy } from "@/lib/lotto-vrf";
 
 const SIG_PAGE = 100;
 const SIG_PAGES = 15;
@@ -238,7 +242,17 @@ function splitFromAccount(lamports: number, dataLen: number, ticketLamportsSold:
 }
 
 function postedFromRound(
-  round: OnchainRound,
+  round: {
+    roundId: number;
+    startTs: number;
+    endTs: number;
+    ticketCount: number;
+    winner: string;
+    winnerIndex: number;
+    status: LottoPostedWin["status"];
+    entropySlot?: number;
+    entropyHash?: string;
+  },
   pot: string,
   lamports: number,
   dataLen: number,
@@ -279,7 +293,7 @@ function postedFromRound(
     payoutKnown,
     verified,
     entropySlot: round.entropySlot || null,
-    entropyHash: round.entropyHash === "0".repeat(64) ? null : round.entropyHash || null,
+    entropyHash: round.entropyHash && round.entropyHash !== "0".repeat(64) ? round.entropyHash : null,
   };
 }
 
@@ -347,6 +361,266 @@ async function drawFromRound(round: OnchainRound, ticketLamports: number): Promi
   return draw;
 }
 
+function v2TapeStatus(status: OnchainRoundV2["status"]): LottoSnapshot["status"] {
+  if (status === "open") return "open";
+  if (status === "closed") return "awaiting_vrf_request";
+  if (status === "randomness_requested") return "awaiting_vrf";
+  if (status === "fulfilled") return "awaiting_settle";
+  if (status === "settled") return "drawn";
+  if (status === "claimed") return "claimed";
+  if (status === "void") return "void";
+  if (status === "refunding") return "refunding";
+  if (status === "refunded") return "refunded";
+  return "awaiting_round";
+}
+
+function entriesFromRoundV2(round: OnchainRoundV2, ticketLamports: number): LottoEntry[] {
+  return round.buyers.map((row) => ({
+    wallet: row.wallet,
+    tickets: row.tickets,
+    lamports: row.tickets * ticketLamports,
+    signature: `${row.fromIndex}:${row.wallet}`,
+    slot: row.fromIndex,
+    at: new Date(round.startTs * 1000).toISOString(),
+    refunded: row.refunded,
+  }));
+}
+
+async function drawFromRoundV2(round: OnchainRoundV2, ticketLamports: number): Promise<LottoDraw | null> {
+  if (round.status !== "settled" && round.status !== "claimed") return null;
+  const slips = slipsFromEntries(entriesFromRoundV2(round, ticketLamports));
+  const slip = slips[round.winnerIndex];
+  const zero = "0".repeat(64);
+  if (!round.vrfRandomness || round.vrfRandomness === zero) return null;
+  const entropy = await winnerFromVrfEntropy(hexToBytes(round.vrfRandomness), slips.length || round.ticketCount);
+  return {
+    slot: 0,
+    blockTime: round.closeTs,
+    blockhash: round.vrfRandomness,
+    hash: entropy.hash,
+    random: String(entropy.index),
+    winnerIndex: round.winnerIndex,
+    winner: round.winner,
+    winningSignature: slip?.signature ?? "",
+    verified: entropy.index === round.winnerIndex && slip?.wallet === round.winner,
+  };
+}
+
+async function loadPostedRoundsV2(
+  rpc: Connection,
+  currentRound: number,
+  ticketPrice: number,
+): Promise<LottoPostedWin[]> {
+  const max = Math.min(currentRound, 48);
+  if (max < 0) return [];
+  const keys = [];
+  for (let id = 0; id <= max; id += 1) keys.push(roundPda(id)[0]);
+  const infos = await rpc.getMultipleAccountsInfo(keys, "confirmed");
+  if (infos[0]?.data) await rentExemptLamports(rpc, infos[0].data.length);
+  const posted: LottoPostedWin[] = [];
+  const skip = new Set(["open", "closed", "randomness_requested", "fulfilled", "refunding"]);
+  for (let i = 0; i < infos.length; i += 1) {
+    const info = infos[i];
+    if (!info?.data) continue;
+    const round = decodeRoundV2(info.data);
+    if (!round || skip.has(round.status)) continue;
+    const draw = await drawFromRoundV2(round, ticketPrice);
+    posted.push(
+      postedFromRound(
+        {
+          roundId: round.roundId,
+          startTs: round.startTs,
+          endTs: round.endTs,
+          ticketCount: round.ticketCount,
+          winner: round.winner,
+          winnerIndex: round.winnerIndex,
+          status: round.status,
+          entropyHash: round.vrfRandomness,
+        },
+        keys[i].toBase58(),
+        info.lamports,
+        info.data.length,
+        ticketPrice,
+        round.status === "settled" || round.status === "claimed" || round.status === "refunded",
+        draw?.verified ?? false,
+      ),
+    );
+  }
+  return posted.sort((a, b) => b.round - a.round);
+}
+
+async function historicalV1RoundZero(rpc: Connection, ticketPrice: number): Promise<LottoPostedWin[]> {
+  const v1 = new PublicKey(JROCK_LOTTO_PROGRAM_ID);
+  const [pda] = roundPda(0, v1);
+  const info = await rpc.getAccountInfo(pda, "confirmed");
+  if (!info?.data) return [];
+  const round = decodeRound(info.data);
+  if (!round) return [];
+  if (round.status === "open" || round.status === "closed") return [];
+  const draw = await drawFromRound(round, ticketPrice);
+  return [
+    postedFromRound(
+      round,
+      pda.toBase58(),
+      info.lamports,
+      info.data.length,
+      ticketPrice,
+      round.status === "settled" || round.status === "claimed",
+      draw?.verified ?? false,
+    ),
+  ];
+}
+
+function v2ProofInput(round: OnchainRoundV2, pot: string, slips: ReturnType<typeof slipsFromEntries>, draw: LottoDraw | null, ticketLamports: number) {
+  return buildProof({
+    pot,
+    round: round.roundId,
+    startsAt: new Date(round.startTs * 1000).toISOString(),
+    endsAt: new Date(round.endTs * 1000).toISOString(),
+    entropyAfter: round.vrfRequest && round.vrfRequest !== "11111111111111111111111111111111" ? `ORAO ${round.vrfRequest}` : "ORAO VRF pending",
+    ticketLamports,
+    slips,
+    draw,
+    version: LOTTO_PROGRAM_V2_PROOF_VERSION,
+    rules: PROGRAM_LOTTO_RULES_V2,
+  });
+}
+
+async function getPreviousRoundV2(rpc: Connection, currentRound: number) {
+  if (currentRound <= 0) return null;
+  const [prevPk] = roundPda(currentRound - 1);
+  const info = await rpc.getAccountInfo(prevPk, "confirmed");
+  if (!info?.data) return null;
+  const round = decodeRoundV2(info.data);
+  if (!round) return null;
+  return { round, lamports: info.lamports, pot: prevPk.toBase58(), dataLen: info.data.length };
+}
+
+async function getV2ProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | null> {
+  if (!hasLottoProgram()) return null;
+  const [configPk] = configPda();
+  const configInfo = await rpc.getAccountInfo(configPk, "confirmed");
+  if (!configInfo?.data) return null;
+  const config = decodeConfigV2(configInfo.data);
+  if (!config) return null;
+  const [roundPk] = roundPda(config.currentRound);
+  const roundInfo = await rpc.getAccountInfo(roundPk, "confirmed");
+  const empty = emptyLottoSnapshot("The on-chain round is not open yet. Anyone can crank Open next round.");
+  empty.engine = "program";
+  empty.currentRound = config.currentRound;
+  empty.ticketLamports = config.ticketLamports;
+  empty.ticketPriceSol = config.ticketLamports / 1_000_000_000;
+  empty.pot = roundPk.toBase58();
+  empty.programId = lottoProgramId();
+  empty.configPda = configPk.toBase58();
+  empty.feeWallet = lottoFeeWallet();
+  empty.randomnessProvider = "ORAO VRF Classic";
+  empty.verifiedBuild = false;
+  empty.upgradeable = true;
+  const previous = await getPreviousRoundV2(rpc, config.currentRound);
+  const last = previous ? await drawFromRoundV2(previous.round, config.ticketLamports) : null;
+  const posted = [
+    ...(await loadPostedRoundsV2(rpc, config.currentRound, config.ticketLamports)),
+    ...(await historicalV1RoundZero(rpc, 50_000_000)),
+  ];
+  empty.posted = posted;
+  if (!roundInfo?.data) {
+    empty.status = "awaiting_round";
+    empty.last = last;
+    empty.potLamports = previous?.lamports ?? 0;
+    empty.potSol = (previous?.lamports ?? 0) / 1_000_000_000;
+    empty.split = previous
+      ? splitFromAccount(previous.lamports, previous.dataLen, 0, 0, config.ticketLamports, previous.round.roundId)
+      : splitClaimable(0, 0);
+    empty.proof.version = LOTTO_PROGRAM_V2_PROOF_VERSION;
+    empty.proof.rules = PROGRAM_LOTTO_RULES_V2;
+    empty.proof.pot = roundPk.toBase58();
+    empty.message =
+      previous?.round.status === "claimed"
+        ? "Last winner took 85%. Fifteen percent is waiting to seed the next round. Crank Open next round."
+        : previous?.round.status === "void"
+          ? "Last round had no slips. Leftover seed still rolls forward. Crank Open next round."
+          : previous?.round.status === "refunded"
+            ? "Last round refunded after the VRF timeout. Leftover seed still rolls forward. Crank Open next round."
+            : empty.message;
+    return empty;
+  }
+  const round = decodeRoundV2(roundInfo.data);
+  if (!round) return empty;
+  const entries = entriesFromRoundV2(round, config.ticketLamports);
+  const slips = slipsFromEntries(entries);
+  const startsAt = new Date(round.startTs * 1000).toISOString();
+  const endsAt = new Date(round.endTs * 1000).toISOString();
+  const balance = roundInfo.lamports;
+  const roundLamports = slipPotLamports(config.ticketLamports, slips.length);
+  const status = v2TapeStatus(round.status);
+  const messages: Record<string, string> = {
+    open: "Buy a slip on-chain. After close, the kennel asks ORAO for one VRF. Winner takes 85%. Fifteen percent seeds the next rock.",
+    awaiting_vrf_request: "Sales are closed. Crank Request randomness to bind one ORAO VRF job. A second request is rejected.",
+    awaiting_vrf: "Waiting on ORAO to fulfill the bound request. Then crank Settle. If the timeout hits first, refunds open.",
+    awaiting_settle: "ORAO fulfilled. Crank Settle to map the stored randomness onto a slip with rejection sampling.",
+    drawn: "The program picked a winner. Claim pays that wallet 85%. Fifteen percent stays in the pot.",
+    claimed: "Winner took 85%. Crank Open next round to roll the leftover 15% forward.",
+    void: "No slips. Crank Open next round. Any leftover seed rolls forward.",
+    refunding: "VRF timed out. Anyone can refund unpaid buyers their 99% pot share. The 1% kennel fee stays paid.",
+    refunded: "Every buyer was refunded. Crank Open next round to roll leftover seed.",
+  };
+  const draw = await drawFromRoundV2(round, config.ticketLamports);
+  const rent = await rentExemptLamports(rpc, roundInfo.data.length);
+  const ledger = buildLedger({
+    accountBalanceLamports: balance,
+    rentExemptReserveLamports: rent,
+    ticketCount: round.ticketCount,
+    ticketPriceLamports: config.ticketLamports,
+    currentRound: round.roundId,
+  });
+  const split = splitFromAccount(
+    balance,
+    roundInfo.data.length,
+    roundLamports,
+    round.ticketCount,
+    config.ticketLamports,
+    round.roundId,
+  );
+  const defaultRequest = "11111111111111111111111111111111";
+  return {
+    pot: roundPk.toBase58(),
+    round: round.roundId,
+    startsAt,
+    endsAt,
+    ticketPriceSol: config.ticketLamports / 1_000_000_000,
+    ticketLamports: config.ticketLamports,
+    potLamports: balance,
+    potSol: balance / 1_000_000_000,
+    roundLamports,
+    roundSol: roundLamports / 1_000_000_000,
+    entries,
+    slips,
+    totalTickets: round.ticketCount,
+    status,
+    draw,
+    last: draw ? null : last,
+    proof: await v2ProofInput(round, roundPk.toBase58(), slips, draw, config.ticketLamports),
+    message: messages[status] ?? empty.message,
+    engine: "program",
+    currentRound: config.currentRound,
+    entropySlot: null,
+    programId: lottoProgramId(),
+    configPda: configPk.toBase58(),
+    feeWallet: lottoFeeWallet(),
+    wallets: walletsFromEntries(entries, round.ticketCount),
+    split,
+    posted,
+    ledger,
+    randomnessProvider: "ORAO VRF Classic",
+    vrfRequest: round.vrfRequest && round.vrfRequest !== defaultRequest ? round.vrfRequest : null,
+    vrfTimeoutAt: round.vrfTimeoutTs ? new Date(round.vrfTimeoutTs * 1000).toISOString() : null,
+    verifiedBuild: false,
+    upgradeable: true,
+    onchainStatus: round.status,
+  };
+}
+
 function programProofInput(round: OnchainRound, pot: string, slips: ReturnType<typeof slipsFromEntries>, draw: LottoDraw | null, ticketLamports: number) {
   return buildProof({
     pot,
@@ -373,6 +647,7 @@ async function getPreviousRound(rpc: Connection, config: OnchainConfig) {
 }
 
 async function getProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | null> {
+  if (isLottoV2()) return getV2ProgramSnapshot(rpc);
   if (!hasLottoProgram()) return null;
   const [configPk] = configPda();
   const configInfo = await rpc.getAccountInfo(configPk, "confirmed");
@@ -494,6 +769,12 @@ async function getProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | null
     split,
     posted,
     ledger,
+    randomnessProvider: "Solana SlotHashes",
+    vrfRequest: null,
+    vrfTimeoutAt: null,
+    verifiedBuild: false,
+    upgradeable: true,
+    onchainStatus: round.status,
   };
 }
 

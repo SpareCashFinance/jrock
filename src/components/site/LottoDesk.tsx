@@ -27,7 +27,21 @@ import {
   type LottoPostedWin,
   type LottoSnapshot,
 } from "@/lib/lotto";
-import { buyIxForRound, claimIx, closeSalesIx, openRoundIx, settleIx } from "@/lib/lotto-program";
+import { buyIxForRound, claimIx, closeSalesIx, isLottoV2, openRoundIx, settleIx } from "@/lib/lotto-program";
+import {
+  buyIxV2,
+  claimIxV2,
+  closeSalesIxV2,
+  fulfillRandomnessIxV2,
+  openRoundIxV2,
+  oraoNetworkStatePda,
+  oraoRequestPda,
+  oraoTreasuryFromNetworkState,
+  refundOneIxV2,
+  requestRandomnessIxV2,
+  settleIxV2,
+} from "@/lib/lotto-program-v2";
+import { vrfSeedBytes } from "@/lib/lotto-vrf";
 import { useSolanaWallet } from "@/components/solana/SolanaWalletProvider";
 import { TelegramMark, XMark } from "@/components/brand/SocialMarks";
 import { LottoMachine } from "@/components/site/LottoMachine";
@@ -261,13 +275,20 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 function ChainStatusCard({ tape }: { tape: LottoSnapshot }) {
   const program = tape.engine === "program" && tape.programId;
+  const v2 = isLottoV2(tape.programId);
   const rows = [
     ["Network", "Solana mainnet-beta"],
     ["Program", tape.programId || "Not posted"],
     ["This round", tape.pot || "Not open"],
-    ["Build", "Source is public. Explorer verification is not filed yet."],
-    ["Upgrade", "Upgradeable. Authority is a single kennel wallet."],
-    ["Randomness", "Solana SlotHashes after close. Interim. Not a VRF."],
+    ["Build", tape.verifiedBuild ? "Explorer-verified." : "Source is public. Explorer verification is not filed yet."],
+    ["Upgrade", tape.upgradeable === false ? "Immutable." : "Upgradeable. Authority is a single kennel wallet."],
+    ["Randomness", v2 ? "ORAO VRF Classic. One bound request after close. Rejection sampling." : "Solana SlotHashes after close. Interim. Not a VRF."],
+    ...(v2
+      ? ([
+          ["VRF provider", tape.randomnessProvider || "ORAO VRF Classic"],
+          ["VRF request", tape.vrfRequest || "Not requested yet"],
+        ] as const)
+      : []),
   ] as const;
   return (
     <div className="glass-panel rounded-[28px] p-5 sm:p-7">
@@ -322,15 +343,18 @@ function WinnerCard({
         <p className="display mt-2 text-3xl text-white">{formatAmount(jackpotLamports / 1_000_000_000, 4)} SOL</p>
       ) : null}
       <p className="mt-2 text-sm text-[var(--dim)]">
-        Slip {draw.winnerIndex} · slot {formatCount(draw.slot)} · {draw.verified ? "proof checks" : "proof failed"}
+        Slip {draw.winnerIndex}
+        {draw.slot ? ` · slot ${formatCount(draw.slot)}` : ""} · {draw.verified ? "proof checks" : "proof failed"}
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
         <HouseButton href={explorerAccountUrl(draw.winner)} target="_blank">
           Winner
         </HouseButton>
-        <HouseButton href={`https://solscan.io/block/${draw.slot}`} target="_blank">
-          Block {draw.slot}
-        </HouseButton>
+        {draw.slot ? (
+          <HouseButton href={`https://solscan.io/block/${draw.slot}`} target="_blank">
+            Block {draw.slot}
+          </HouseButton>
+        ) : null}
         {draw.winningSignature ? (
           <HouseButton href={explorerTxUrl(draw.winningSignature)} target="_blank">
             Winning slip
@@ -338,7 +362,7 @@ function WinnerCard({
         ) : null}
       </div>
       <p className="mt-4 break-all font-mono text-[11px] text-[var(--stone)]">
-        {draw.blockhash.length === 64 ? "slot hash" : "blockhash"} {draw.blockhash}
+        {draw.slot ? "slot hash" : draw.blockhash.length === 64 ? "VRF output" : "blockhash"} {draw.blockhash}
       </p>
       <p className="mt-1 break-all font-mono text-[11px] text-[var(--stone)]">sha256 {draw.hash}</p>
     </div>
@@ -348,16 +372,26 @@ function WinnerCard({
 function ProofCard({ tape }: { tape: LottoSnapshot }) {
   const [local, setLocal] = useState("");
   const program = tape.engine === "program";
+  const v2 = isLottoV2(tape.programId);
   const slipPrice = formatAmount(tape.ticketPriceSol, 3) ?? "0.05";
   const steps = program
-    ? [
-        `Buy 1 to 20 slips at a time. You pay ${slipPrice} SOL each. 1% is a kennel fee. The rest goes in the pot.`,
-        "A buy only counts while this round is still open.",
-        "Every slip gets a number, in the order it was bought, from 0 up. Buy again and your numbers continue.",
-        "When time is up, anyone can close sales. The program then locks one future Solana slot (clock.slot + lag). That pick cannot be swapped for a different slot later.",
-        "Settle hashes that SlotHashes entry with the round id and slip count, then takes the remainder into 0..tickets-1. This is not a VRF. If SlotHashes expires, settle can fail until a later upgrade.",
-        "Winner takes 85% of the prize pool after rent. 15% stays to seed the next round. Anyone can press the finish buttons.",
-      ]
+    ? v2
+      ? [
+          `Buy 1 to 20 slips at a time. You pay ${slipPrice} SOL each. 1% is a kennel fee. The rest goes in the pot.`,
+          "A buy only counts while this round is still open.",
+          "Every slip gets a number, in the order it was bought, from 0 up. Buy again and your numbers continue.",
+          "When time is up, anyone can close sales, then request one ORAO VRF job seeded with this program, this round, and the slip count. A second request is rejected.",
+          "Settle maps the stored 256-bit VRF output into 0..tickets-1 with rejection sampling. If ORAO does not fulfill before the timeout, anyone can refund 99% per slip.",
+          "Winner takes 85% of the prize pool after rent. 15% stays to seed the next round. Anyone can press the finish buttons.",
+        ]
+      : [
+          `Buy 1 to 20 slips at a time. You pay ${slipPrice} SOL each. 1% is a kennel fee. The rest goes in the pot.`,
+          "A buy only counts while this round is still open.",
+          "Every slip gets a number, in the order it was bought, from 0 up. Buy again and your numbers continue.",
+          "When time is up, anyone can close sales. The program then locks one future Solana slot (clock.slot + lag). That pick cannot be swapped for a different slot later.",
+          "Settle hashes that SlotHashes entry with the round id and slip count, then takes the remainder into 0..tickets-1. This is not a VRF. If SlotHashes expires, settle can fail until a later upgrade.",
+          "Winner takes 85% of the prize pool after rent. 15% stays to seed the next round. Anyone can press the finish buttons.",
+        ]
     : [
         "Send the slip price to the pot. 1% is a kennel fee. The rest is your ticket.",
         "Only buys during this round count.",
@@ -464,7 +498,9 @@ function ProofCard({ tape }: { tape: LottoSnapshot }) {
         <div className="mt-3 space-y-2 text-xs leading-6 text-[var(--dim)]">
           <p>
             {program
-              ? "On-chain program draw. INTERIM SlotHashes after close, not a VRF. After settle, hash the slot hash with the round id and slip count. Range is 0..tickets-1."
+              ? v2
+                ? "On-chain program draw. ORAO VRF Classic, one bound request after close, rejection sampling into 0..tickets-1. Timeout refunds 99% per slip."
+                : "On-chain program draw. INTERIM SlotHashes after close, not a VRF. After settle, hash the slot hash with the round id and slip count. Range is 0..tickets-1."
               : "Wallet-pot draw. Match every slip on Solscan, then hash the draw block."}
           </p>
           <p className="break-all font-mono text-[11px] text-[var(--stone)]">
@@ -553,8 +589,10 @@ function BuyCard({
       </div>
       {!potReady ? (
         <p className="mt-3 text-sm text-[var(--gold)]">Pot wallet is not posted. Slips stay closed.</p>
-      ) : tape.status === "awaiting_round" ? (
+      ) : tape.status === "awaiting_round" || tape.status === "refunded" ? (
         <p className="mt-3 text-sm text-[var(--gold)]">Open the next round to start selling slips.</p>
+      ) : tape.status === "refunding" ? (
+        <p className="mt-3 text-sm text-[var(--gold)]">VRF timed out. Refund unpaid buyers, then open the next round.</p>
       ) : null}
       {error ? <p className="mt-3 text-sm text-[#ff8a6a]">{error}</p> : null}
       {tape.pot ? (
@@ -572,7 +610,9 @@ function BuyCard({
 }
 
 function PostedWinners({ tape }: { tape: LottoSnapshot }) {
-  const rows = tape.posted.filter((row) => row.status === "settled" || row.status === "claimed");
+  const rows = tape.posted.filter(
+    (row) => row.status === "settled" || row.status === "claimed" || row.status === "refunded",
+  );
   return (
     <div className="glass-panel mt-8 overflow-hidden rounded-[28px]">
       <div className="border-b border-[rgba(232,210,176,0.1)] px-5 py-5 sm:px-7">
@@ -870,7 +910,7 @@ async function buyWithWallet(
 
 async function sendProgramIx(
   solana: ReturnType<typeof useSolanaWallet>,
-  build: (payer: PublicKey) => TransactionInstruction,
+  build: (payer: PublicKey) => TransactionInstruction | Promise<TransactionInstruction>,
   setPhase: (value: string) => void,
   setError: (value: string) => void,
   reload: (opts?: RefreshLottoOpts) => Promise<unknown>,
@@ -884,7 +924,7 @@ async function sendProgramIx(
     const from = new PublicKey(owner);
     const { blockhash, lastValidBlockHeight } = await solana.connection.getLatestBlockhash("confirmed");
     const tx = new Transaction({ feePayer: from, blockhash, lastValidBlockHeight });
-    tx.add(build(from));
+    tx.add(await build(from));
     const encoded = (await import("@/lib/tx")).encodeTx(tx);
     setPhase("Filing on Solana…");
     await solana.signAndSendBase64(encoded);
@@ -923,7 +963,11 @@ async function buyWithProgram(
     const from = new PublicKey(owner);
     const { blockhash, lastValidBlockHeight } = await solana.connection.getLatestBlockhash("confirmed");
     const tx = new Transaction({ feePayer: from, blockhash, lastValidBlockHeight });
-    tx.add(buyIxForRound(from, tape.currentRound, tickets, new PublicKey(tape.feeWallet)));
+    tx.add(
+      isLottoV2(tape.programId)
+        ? buyIxV2(from, tape.currentRound, tickets, new PublicKey(tape.feeWallet))
+        : buyIxForRound(from, tape.currentRound, tickets, new PublicKey(tape.feeWallet)),
+    );
     const encoded = (await import("@/lib/tx")).encodeTx(tx);
     setPhase("Filing on Solana…");
     const signature = await solana.signAndSendBase64(encoded);
@@ -958,38 +1002,128 @@ function CrankBar({
   reload: (opts?: RefreshLottoOpts) => Promise<unknown>;
 }) {
   const busy = Boolean(phase);
+  const v2 = isLottoV2(tape.programId);
+  const timeoutPassed = Boolean(tape.vrfTimeoutAt) && Date.now() >= Date.parse(tape.vrfTimeoutAt ?? "");
   const canClose = tape.status === "open" && salesEnded;
-  const canSettle = tape.status === "awaiting_block";
+  const canRequest = v2 && tape.status === "awaiting_vrf_request";
+  const canFulfill = v2 && (tape.status === "awaiting_vrf" || tape.status === "awaiting_settle");
+  const canSettle = v2
+    ? tape.status === "awaiting_vrf" || tape.status === "awaiting_settle"
+    : tape.status === "awaiting_block";
   const canClaim = tape.status === "drawn" && Boolean(tape.draw?.winner);
-  const canOpen = tape.status === "awaiting_round" || tape.status === "claimed" || tape.status === "void";
+  const canRefund =
+    v2 &&
+    (tape.status === "refunding" ||
+      (timeoutPassed &&
+        (tape.status === "awaiting_vrf_request" || tape.status === "awaiting_vrf" || tape.status === "awaiting_settle")));
+  const canOpen =
+    tape.status === "awaiting_round" || tape.status === "claimed" || tape.status === "void" || tape.status === "refunded";
   const run = (
-    build: (payer: PublicKey) => TransactionInstruction,
+    build: (payer: PublicKey) => TransactionInstruction | Promise<TransactionInstruction>,
     asking: string,
     done: string,
   ) => void sendProgramIx(solana, build, setPhase, setError, reload, asking, done);
+
+  async function vrfRequestIx(payer: PublicKey) {
+    const program = new PublicKey(tape.programId);
+    const round = new PublicKey(tape.pot);
+    const seed = await vrfSeedBytes(program.toBytes(), round.toBytes(), tape.round, tape.totalTickets);
+    const [request] = oraoRequestPda(seed);
+    const [network] = oraoNetworkStatePda();
+    const info = await solana.connection.getAccountInfo(network, "confirmed");
+    if (!info?.data) throw new Error("ORAO network state is missing on this RPC.");
+    const treasury = oraoTreasuryFromNetworkState(info.data);
+    if (!treasury) throw new Error("ORAO treasury did not decode.");
+    return requestRandomnessIxV2(payer, tape.currentRound, request, treasury);
+  }
+
+  function vrfAccount() {
+    if (!tape.vrfRequest) throw new Error("No VRF request is stored on this round yet.");
+    return new PublicKey(tape.vrfRequest);
+  }
+
+  const refundRow = tape.entries.find((row) => !row.refunded);
 
   return (
     <div className="glass-panel mt-8 rounded-[28px] p-5 sm:p-6">
       <p className="kicker">Crank the program</p>
       <p className="mt-2 text-sm leading-6 text-[var(--dim)]">
-        Anyone with a wallet can run these. Settle has a few minutes after the entropy slot before SlotHashes drops it.
+        {v2
+          ? "Anyone with a wallet can run these. After close, request one ORAO job, wait for fulfill, then settle. If the timeout hits, refund unpaid buyers."
+          : "Anyone with a wallet can run these. Settle has a few minutes after the entropy slot before SlotHashes drops it."}
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
-        <HouseButton disabled={!canClose || busy} onClick={() => run(() => closeSalesIx(tape.currentRound), "Closing sales…", "Sales closed")}>
+        <HouseButton
+          disabled={!canClose || busy}
+          onClick={() =>
+            run(() => (v2 ? closeSalesIxV2(tape.currentRound) : closeSalesIx(tape.currentRound)), "Closing sales…", "Sales closed")
+          }
+        >
           Close sales
         </HouseButton>
-        <HouseButton disabled={!canSettle || busy} onClick={() => run(() => settleIx(tape.currentRound), "Settling…", "Draw settled")}>
+        {v2 ? (
+          <HouseButton disabled={!canRequest || busy} onClick={() => run(vrfRequestIx, "Requesting VRF…", "VRF requested")}>
+            Request randomness
+          </HouseButton>
+        ) : null}
+        {v2 ? (
+          <HouseButton
+            disabled={!canFulfill || busy}
+            onClick={() => run(() => fulfillRandomnessIxV2(tape.currentRound, vrfAccount()), "Reading ORAO…", "VRF stored")}
+          >
+            Store VRF
+          </HouseButton>
+        ) : null}
+        <HouseButton
+          disabled={!canSettle || busy}
+          onClick={() =>
+            run(
+              () => (v2 ? settleIxV2(tape.currentRound, vrfAccount()) : settleIx(tape.currentRound)),
+              "Settling…",
+              "Draw settled",
+            )
+          }
+        >
           Settle draw
         </HouseButton>
         <HouseButton
           disabled={!canClaim || busy}
           onClick={() =>
-            run((payer) => claimIx(tape.currentRound, new PublicKey(tape.draw?.winner || payer.toBase58())), "Paying winner…", "Pot claimed")
+            run(
+              (payer) =>
+                v2
+                  ? claimIxV2(tape.currentRound, new PublicKey(tape.draw?.winner || payer.toBase58()))
+                  : claimIx(tape.currentRound, new PublicKey(tape.draw?.winner || payer.toBase58())),
+              "Paying winner…",
+              "Pot claimed",
+            )
           }
         >
           Pay 85%
         </HouseButton>
-        <HouseButton disabled={!canOpen || busy} onClick={() => run((payer) => openRoundIx(payer, tape.currentRound), "Opening round…", "Round open")}>
+        {v2 ? (
+          <HouseButton
+            disabled={!canRefund || busy || !refundRow}
+            onClick={() => {
+              const index = tape.entries.findIndex((row) => !row.refunded);
+              const row = tape.entries[index];
+              if (!row) return;
+              run(() => refundOneIxV2(tape.currentRound, new PublicKey(row.wallet), index), "Refunding…", "Buyer refunded");
+            }}
+          >
+            Refund a buyer
+          </HouseButton>
+        ) : null}
+        <HouseButton
+          disabled={!canOpen || busy}
+          onClick={() =>
+            run(
+              (payer) => (v2 ? openRoundIxV2(payer, tape.currentRound) : openRoundIx(payer, tape.currentRound)),
+              "Opening round…",
+              "Round open",
+            )
+          }
+        >
           Open next round
         </HouseButton>
       </div>

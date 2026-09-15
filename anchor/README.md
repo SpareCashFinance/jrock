@@ -4,6 +4,10 @@ On-chain kennel lotto for `$JROCK`. The round account holds the pot. The winner 
 
 Program id: `FvQfcJYAcRFEDeq8rS19MNXTZfeiCxcSN5nmfA6RdWuC`
 
+**Do not upgrade this program while round 0 holds player SOL.** Snapshot: `docs/lotto-v1-snapshot.md`.
+
+Successor `jrock_lotto_v2` (`66FyiUTkw4JMYMi3yErfa7UBqrHm9GZha1meAxcgbjDg`) is a new program id. Spec: `docs/lotto-fairness-v2.md`. Verifiable build: `docs/lotto-verifiable-build.md`.
+
 ## What it does
 
 1. `initialize` — authority sets ticket price, round length, and slot lag, and opens round 0.

@@ -1,5 +1,5 @@
 [workspace]
-members = ["programs/jrock_lotto"]
+members = ["programs/jrock_lotto", "programs/jrock_lotto_v2"]
 resolver = "2"
 
 [profile.release]

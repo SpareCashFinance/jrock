@@ -1,10 +1,11 @@
 import { EMPTY_LEDGER } from "./lotto-ledger";
-import { hasLottoProgram, lottoProgramId } from "./lotto-program";
+import { hasLottoProgram, isLottoV2, lottoProgramId } from "./lotto-program";
 
 export const MEMO_PROGRAM_ID = "MemoSq4gqABAXKb96QnTrNe2EtkZ";
 export const LOTTO_MEMO_PREFIX = "jrock-lotto";
 export const LOTTO_PROOF_VERSION = "jrock-lotto-v2";
 export const LOTTO_PROGRAM_PROOF_VERSION = "jrock-lotto-v3";
+export const LOTTO_PROGRAM_V2_PROOF_VERSION = "jrock-lotto-v4";
 export const DRAW_LAG_SECONDS = 60;
 export const LOTTO_WINNER_SHARE = 0.85;
 export const LOTTO_CARRY_SHARE = 0.15;
@@ -36,6 +37,16 @@ export const PROGRAM_LOTTO_RULES = {
   payout: "claim pays 85% of the round pot minus rent to the winner. 15% stays on the round and rolls into the next open_round. Anyone can crank.",
 } as const;
 
+export const PROGRAM_LOTTO_RULES_V2 = {
+  version: LOTTO_PROGRAM_V2_PROOF_VERSION,
+  ticket: "Each buy instruction files 1 to 20 slips into the current round PDA. The posted slip price is paid in full. 1% is the kennel fee; 99% goes into the pot. Repeat buys append a new row.",
+  window: "A buy counts only while the round is Open and the chain clock is before end_ts.",
+  order: "Slips are contiguous ranges. from_index is the first slip of that buy; later buys from the same wallet append.",
+  entropy: "After close_sales, anyone may request one ORAO VRF Classic job seeded with sha256(program_id || round_pda || round_id_le || ticket_count_le). The request account is stored. A second request is rejected.",
+  formula: "winnerIndex = rejection sampling of the first 32 bytes of the fulfilled ORAO output into 0..ticket_count-1. Stored randomness is reused so extra VRF responses cannot reroll.",
+  payout: "claim pays 85% of the round pot minus rent to the winner. 15% stays on the round and rolls into the next open_round. If VRF has not fulfilled by close_ts + timeout, anyone may refund_one pro-rata net of the already-paid 1% kennel fee. Anyone can crank. Winner is derived from buyer ranges, never passed in.",
+} as const;
+
 export type LottoEntry = {
   wallet: string;
   tickets: number;
@@ -43,6 +54,7 @@ export type LottoEntry = {
   signature: string;
   slot: number;
   at: string;
+  refunded?: boolean;
 };
 
 export type LottoSlip = {
@@ -78,7 +90,7 @@ export type LottoProof = {
   sha256: string | null;
   winnerIndex: number | null;
   winner: string | null;
-  rules: typeof LOTTO_RULES | typeof PROGRAM_LOTTO_RULES;
+  rules: typeof LOTTO_RULES | typeof PROGRAM_LOTTO_RULES | typeof PROGRAM_LOTTO_RULES_V2;
 };
 
 export type LottoStatus =
@@ -86,9 +98,14 @@ export type LottoStatus =
   | "awaiting_round"
   | "open"
   | "awaiting_block"
+  | "awaiting_vrf_request"
+  | "awaiting_vrf"
+  | "awaiting_settle"
   | "void"
   | "drawn"
-  | "claimed";
+  | "claimed"
+  | "refunding"
+  | "refunded";
 
 export type LottoWalletBook = {
   wallet: string;
@@ -111,7 +128,16 @@ export type LottoSplit = {
 export type LottoPostedWin = {
   round: number;
   pot: string;
-  status: "open" | "closed" | "settled" | "claimed" | "void";
+  status:
+    | "open"
+    | "closed"
+    | "randomness_requested"
+    | "fulfilled"
+    | "settled"
+    | "claimed"
+    | "void"
+    | "refunding"
+    | "refunded";
   startsAt: string;
   endsAt: string;
   tickets: number;
@@ -156,6 +182,12 @@ export type LottoSnapshot = {
   split: LottoSplit;
   posted: LottoPostedWin[];
   ledger?: import("./lotto-ledger").LottoLedger;
+  randomnessProvider?: string;
+  vrfRequest?: string | null;
+  vrfTimeoutAt?: string | null;
+  verifiedBuild?: boolean;
+  upgradeable?: boolean;
+  onchainStatus?: string;
 };
 
 function envNumber(key: string, fallback: number) {
@@ -412,7 +444,7 @@ export async function buildProof(input: {
   slips: LottoSlip[];
   draw: LottoDraw | null;
   version?: string;
-  rules?: typeof LOTTO_RULES | typeof PROGRAM_LOTTO_RULES;
+  rules?: typeof LOTTO_RULES | typeof PROGRAM_LOTTO_RULES | typeof PROGRAM_LOTTO_RULES_V2;
 }): Promise<LottoProof> {
   return {
     version: input.version ?? LOTTO_PROOF_VERSION,
@@ -483,5 +515,11 @@ export function emptyLottoSnapshot(message: string): LottoSnapshot {
     split: splitClaimable(0, 0),
     posted: [],
     ledger: EMPTY_LEDGER,
+    randomnessProvider: programmed ? (isLottoV2() ? "ORAO VRF Classic" : "Solana SlotHashes") : "wallet blockhash",
+    vrfRequest: null,
+    vrfTimeoutAt: null,
+    verifiedBuild: false,
+    upgradeable: true,
+    onchainStatus: "",
   };
 }

@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --experimental-strip-types --test src/lib/lotto-ledger.test.ts",
+    "test": "node --experimental-strip-types --test src/lib/lotto-ledger.test.ts src/lib/lotto-v1-machine.test.ts src/lib/lotto-v2-machine.test.ts src/lib/lotto-vrf.test.ts",
     "verify:lotto": "node scripts/verify-lotto.mjs"
   },
   "dependencies": {

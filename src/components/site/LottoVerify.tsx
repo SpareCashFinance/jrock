@@ -85,6 +85,9 @@ function ReceiptCard({ receipt }: { receipt: IndependentReceipt }) {
         Program {receipt.programId}
       </p>
       <p className="mt-2 break-all font-mono text-xs text-[var(--stone)]">Round {receipt.roundPda}</p>
+      {receipt.vrfRequest ? (
+        <p className="mt-2 break-all font-mono text-xs text-[var(--stone)]">VRF {receipt.vrfRequest}</p>
+      ) : null}
       <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Tickets" value={formatCount(receipt.totalTickets) ?? "0"} />
         <Stat label="Prize pool" value={`${formatAmount(ledger.distributablePotLamports / 1e9, 4)} SOL`} />

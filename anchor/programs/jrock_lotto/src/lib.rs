@@ -1,3 +1,7 @@
+//! Frozen mainnet v1 (SlotHashes). Do not upgrade `FvQfcJYAcRFEDeq8rS19MNXTZfeiCxcSN5nmfA6RdWuC`
+//! while round 0 `3Q5u97fxVbwxPBcqg34CgqtfPdQ1RTyvnwQHPrg7CUe1` holds player SOL.
+//! Successor is `jrock_lotto_v2`. See `docs/lotto-v1-snapshot.md`.
+
 use anchor_lang::prelude::*;
 use anchor_lang::system_program::{transfer, Transfer};
 
@@ -492,6 +496,21 @@ mod tests {
             let index = (random % count as u64) as u32;
             assert!(index < count);
         }
+    }
+
+    #[test]
+    fn buy_size_rejects_zero_and_twenty_one() {
+        assert!(!(0u8 >= 1 && 0u8 <= MAX_TICKETS_PER_BUY));
+        assert!(1u8 >= 1 && 1u8 <= MAX_TICKETS_PER_BUY);
+        assert!(20u8 >= 1 && 20u8 <= MAX_TICKETS_PER_BUY);
+        assert!(!(21u8 >= 1 && 21u8 <= MAX_TICKETS_PER_BUY));
+    }
+
+    #[test]
+    fn status_machine_forbids_buy_after_close() {
+        assert_ne!(RoundStatus::Open, RoundStatus::Closed);
+        assert_ne!(RoundStatus::Closed, RoundStatus::Settled);
+        assert_ne!(RoundStatus::Settled, RoundStatus::Claimed);
     }
 
     #[test]

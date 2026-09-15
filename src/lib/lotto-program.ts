@@ -1,6 +1,7 @@
 import { PublicKey, SystemProgram, TransactionInstruction } from "@solana/web3.js";
 
 export const JROCK_LOTTO_PROGRAM_ID = "FvQfcJYAcRFEDeq8rS19MNXTZfeiCxcSN5nmfA6RdWuC";
+export const JROCK_LOTTO_V2_PROGRAM_ID = "66FyiUTkw4JMYMi3yErfa7UBqrHm9GZha1meAxcgbjDg";
 export const SLOT_HASHES = new PublicKey("SysvarS1otHashes111111111111111111111111111");
 
 const IX = {
@@ -50,6 +51,10 @@ export type OnchainRound = {
 
 export function lottoProgramId() {
   return (process.env.NEXT_PUBLIC_LOTTO_PROGRAM ?? JROCK_LOTTO_PROGRAM_ID).trim();
+}
+
+export function isLottoV2(programId = lottoProgramId()) {
+  return programId === JROCK_LOTTO_V2_PROGRAM_ID;
 }
 
 export function hasLottoProgram() {
