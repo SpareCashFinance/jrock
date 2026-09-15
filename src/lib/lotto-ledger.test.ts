@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { assertLedgerConserved, buildLedger, ownerForTicket, winnerPayoutLamports } from "./lotto-ledger.ts";
+import { assertLedgerConserved, buildLedger, ownerForTicket, winnerPayoutLamports } from "./lotto-ledger";
 
 test("round 0 two 0.05 SOL slips match mainnet snapshot", () => {
   const ledger = buildLedger({
