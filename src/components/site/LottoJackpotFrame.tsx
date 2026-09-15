@@ -1,54 +1,13 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import NumberFlow from "@number-flow/react";
 import { HouseButton } from "@/components/ui/house-button";
+import { LottoClip } from "@/components/site/LottoClip";
 import { formatCount } from "@/lib/format";
 import { useCountdown, useLottoSnapshot } from "@/lib/lotto-client";
 
 function pad(value: number) {
   return String(value).padStart(2, "0");
-}
-
-function LottoClip() {
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) return;
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) void video.play().catch(() => undefined);
-        else video.pause();
-      },
-      { threshold: 0.25 },
-    );
-    io.observe(video);
-    return () => io.disconnect();
-  }, []);
-
-  return (
-    <a
-      href="/lotto"
-      aria-label="Watch the kennel lotto and join this draw"
-      className="relative h-20 w-[7.5rem] shrink-0 overflow-hidden rounded-xl border border-[rgba(247,147,26,0.35)] bg-black shadow-[inset_0_0_0_1px_rgba(0,0,0,0.35)] sm:h-[5.5rem] sm:w-[8.25rem]"
-    >
-      <video
-        ref={videoRef}
-        className="h-full w-full object-cover"
-        poster="/media/lotto-rock-poster.jpg"
-        playsInline
-        muted
-        loop
-        preload="metadata"
-      >
-        <source src="/media/lotto-rock.mp4" type="video/mp4" />
-      </video>
-      <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,transparent_55%,rgba(6,10,18,0.45))]" />
-    </a>
-  );
 }
 
 export function LottoJackpotFrame() {
@@ -60,11 +19,16 @@ export function LottoJackpotFrame() {
   return (
     <section className="relative z-1 mx-auto w-[min(1120px,calc(100%-1.5rem))] pb-8 pt-1">
       <div className="cardboard overflow-hidden rounded-[22px] p-2 sm:p-2.5">
-        <div className="relative flex flex-wrap items-center gap-x-4 gap-y-3 rounded-[16px] bg-[#060a12] px-3 py-2.5 sm:px-4">
+        <div className="relative flex items-center gap-3 overflow-hidden rounded-[16px] bg-[#060a12] px-3 py-2.5 sm:gap-4 sm:px-4">
           <div className="pointer-events-none absolute inset-0 rounded-[16px] bg-[radial-gradient(circle_at_right,rgba(247,147,26,0.14),transparent_42%)]" />
-          <div className="relative">
+          <a
+            href="/lotto"
+            aria-label="Watch the kennel lotto and join this draw"
+            className="relative block h-20 w-[7.5rem] shrink-0 overflow-hidden rounded-xl border border-[rgba(247,147,26,0.35)] bg-black sm:h-[5.5rem] sm:w-[8.25rem]"
+          >
             <LottoClip />
-          </div>
+            <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,transparent_55%,rgba(6,10,18,0.45))]" />
+          </a>
           <div className="relative flex min-w-0 flex-1 flex-wrap items-center gap-x-5 gap-y-2">
             <div>
               <p className="kicker">

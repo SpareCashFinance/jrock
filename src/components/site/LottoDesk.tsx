@@ -38,6 +38,7 @@ import {
 import { buyIxForRound, claimIx, closeSalesIx, openRoundIx, settleIx } from "@/lib/lotto-program";
 import { useSolanaWallet } from "@/components/solana/SolanaWalletProvider";
 import { TelegramMark, XMark } from "@/components/brand/SocialMarks";
+import { LottoMachine } from "@/components/site/LottoMachine";
 import { useCountdown, useLottoSnapshot, type RefreshLottoOpts } from "@/lib/lotto-client";
 
 const PRESETS = [1, 2, 5, 10];
@@ -135,20 +136,23 @@ export function LottoDesk() {
           <ProofCard tape={tape} />
         </div>
 
-        <BuyCard
-          tape={tape}
-          count={count}
-          setCount={setCount}
-          canBuy={canBuy}
-          potReady={potReady}
-          phase={phase}
-          error={error}
-          onBuy={() =>
-            void (tape.engine === "program"
-              ? buyWithProgram(solana, tape, count, setPhase, setError, reload, setReceipt)
-              : buyWithWallet(solana, tape, count, setPhase, setError, reload, setReceipt))
-          }
-        />
+        <div className="space-y-5">
+          <BuyCard
+            tape={tape}
+            count={count}
+            setCount={setCount}
+            canBuy={canBuy}
+            potReady={potReady}
+            phase={phase}
+            error={error}
+            onBuy={() =>
+              void (tape.engine === "program"
+                ? buyWithProgram(solana, tape, count, setPhase, setError, reload, setReceipt)
+                : buyWithWallet(solana, tape, count, setPhase, setError, reload, setReceipt))
+            }
+          />
+          <LottoMachine />
+        </div>
       </div>
       <SlipReceiptDialog receipt={receipt} onClose={() => setReceipt(null)} />
 
