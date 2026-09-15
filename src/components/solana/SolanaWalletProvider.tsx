@@ -230,7 +230,7 @@ async function waitForSignature(connection: Connection, signature: string) {
       searchTransactionHistory: true,
     });
     const status = value[0];
-    if (status?.err) throw new Error("Swap failed on-chain.");
+    if (status?.err) throw new Error("The transaction failed on-chain.");
     if (status?.confirmationStatus === "confirmed" || status?.confirmationStatus === "finalized") {
       return;
     }
@@ -240,5 +240,5 @@ async function waitForSignature(connection: Connection, signature: string) {
     searchTransactionHistory: true,
   });
   if (value[0] && !value[0].err) return;
-  throw new Error("Swap sent. Confirmation is slow — check Explorer before retrying.");
+  throw new Error("Sent. Confirmation is slow — check Solscan before retrying.");
 }

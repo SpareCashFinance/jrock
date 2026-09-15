@@ -20,7 +20,7 @@ const nav: { href: string; label: string; show?: string }[] = [
 export function Header() {
   return (
     <header className="sticky z-40 px-3" style={{ top: "var(--tape-h)" }}>
-      <div className="dock mx-auto flex w-[min(1120px,calc(100%-0.5rem))] items-center justify-between gap-2 rounded-full px-2 py-1.5 sm:gap-3 sm:px-3 sm:py-2">
+      <div className="dock mx-auto flex w-[min(1120px,calc(100%-0.5rem))] flex-nowrap items-center justify-between gap-2 overflow-hidden rounded-full px-2 py-1.5 sm:gap-3 sm:px-3 sm:py-2">
         <a
           href="/"
           aria-label={project.name}

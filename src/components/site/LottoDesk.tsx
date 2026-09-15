@@ -8,6 +8,13 @@ import {
   TransactionInstruction,
 } from "@solana/web3.js";
 import { Dices, Trophy, Users } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { HouseButton } from "@/components/ui/house-button";
 import { project } from "@/lib/config";
 import { formatAmount, formatCount, shortenAddress } from "@/lib/format";
@@ -34,6 +41,12 @@ import { useSolanaWallet } from "@/components/solana/SolanaWalletProvider";
 import { TelegramMark, XMark } from "@/components/brand/SocialMarks";
 
 const PRESETS = [1, 2, 5, 10];
+
+type SlipReceipt = {
+  slips: number;
+  paidSol: number;
+  signature: string;
+};
 
 function ixDataFromText(value: string) {
   return new TextEncoder().encode(value) as unknown as Buffer;
@@ -72,6 +85,7 @@ export function LottoDesk() {
   const [count, setCount] = useState(1);
   const [phase, setPhase] = useState("");
   const [error, setError] = useState("");
+  const [receipt, setReceipt] = useState<SlipReceipt | null>(null);
   const clock = useCountdown(tape.endsAt);
   const potReady = tape.pot.length >= 32 && (tape.engine === "program" || hasLottoPot());
   const canBuy = potReady && tape.status === "open" && !clock.done;
@@ -165,11 +179,12 @@ export function LottoDesk() {
           error={error}
           onBuy={() =>
             void (tape.engine === "program"
-              ? buyWithProgram(solana, tape, count, setPhase, setError, load)
-              : buyWithWallet(solana, tape, count, setPhase, setError, load))
+              ? buyWithProgram(solana, tape, count, setPhase, setError, load, setReceipt)
+              : buyWithWallet(solana, tape, count, setPhase, setError, load, setReceipt))
           }
         />
       </div>
+      <SlipReceiptDialog receipt={receipt} onClose={() => setReceipt(null)} />
 
       {tape.engine === "program" ? (
         <CrankBar
@@ -199,6 +214,48 @@ export function LottoDesk() {
         <HouseButton href="/#adopt">Adopt the rock</HouseButton>
       </div>
     </section>
+  );
+}
+
+function SlipReceiptDialog({
+  receipt,
+  onClose,
+}: {
+  receipt: SlipReceipt | null;
+  onClose: () => void;
+}) {
+  const slips = receipt?.slips ?? 0;
+  return (
+    <Dialog open={Boolean(receipt)} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent
+        showCloseButton
+        className="glass-panel max-w-md gap-4 border border-[rgba(232,210,176,0.16)] bg-[#0c1320] p-6 text-[var(--cream)] sm:max-w-md sm:p-8"
+      >
+        <DialogHeader className="gap-3">
+          <p className="kicker">Slip filed</p>
+          <DialogTitle className="display text-4xl leading-none text-white sm:text-5xl">Congratulations.</DialogTitle>
+          <DialogDescription className="serif text-lg text-[var(--cream)] sm:text-xl">
+            Your purchase is confirmed for {formatCount(slips)} {slips === 1 ? "slip" : "slips"}.
+          </DialogDescription>
+        </DialogHeader>
+        {receipt ? (
+          <p className="display text-3xl text-[var(--gold)]">{formatAmount(receipt.paidSol, 4)} SOL</p>
+        ) : null}
+        {receipt?.signature ? (
+          <a
+            href={explorerTxUrl(receipt.signature)}
+            target="_blank"
+            rel="noreferrer"
+            className="text-sm text-[var(--gold)] hover:text-[var(--orange)]"
+          >
+            See the filing on Solscan · {shortenAddress(receipt.signature, 4)}
+          </a>
+        ) : null}
+        <HouseButton variant="primary" className="w-full" onClick={onClose}>
+          Back to the kennel
+        </HouseButton>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -625,6 +682,7 @@ async function buyWithWallet(
   setPhase: (value: string) => void,
   setError: (value: string) => void,
   reload: () => Promise<void>,
+  onConfirmed: (receipt: SlipReceipt) => void,
 ) {
   const owner = solana.requireWallet();
   if (!owner) return;
@@ -662,10 +720,15 @@ async function buyWithWallet(
     }
     const encoded = (await import("@/lib/tx")).encodeTx(tx);
     setPhase("Filing on Solana…");
-    await solana.signAndSendBase64(encoded);
-    setPhase("Slip filed");
+    setError("");
+    const signature = await solana.signAndSendBase64(encoded);
+    setPhase("");
+    onConfirmed({
+      slips: count,
+      paidSol: slipTotalLamports(tape.ticketLamports, count) / 1_000_000_000,
+      signature,
+    });
     await reload();
-    window.setTimeout(() => setPhase(""), 1600);
   } catch (error) {
     setPhase("");
     setError(error instanceof Error ? error.message : "The rock refused the slip.");
@@ -708,6 +771,7 @@ async function buyWithProgram(
   setPhase: (value: string) => void,
   setError: (value: string) => void,
   reload: () => Promise<void>,
+  onConfirmed: (receipt: SlipReceipt) => void,
 ) {
   if (tape.status !== "open") {
     setError("Sales are closed for this round.");
@@ -718,15 +782,29 @@ async function buyWithProgram(
     setError("Kennel fee wallet is not posted.");
     return;
   }
-  await sendProgramIx(
-    solana,
-    (payer) => buyIxForRound(payer, tape.currentRound, tickets, new PublicKey(tape.feeWallet)),
-    setPhase,
-    setError,
-    reload,
-    "Ask the wallet…",
-    "Slip filed",
-  );
+  const owner = solana.requireWallet();
+  if (!owner) return;
+  try {
+    setPhase("Ask the wallet…");
+    setError("");
+    const from = new PublicKey(owner);
+    const { blockhash, lastValidBlockHeight } = await solana.connection.getLatestBlockhash("confirmed");
+    const tx = new Transaction({ feePayer: from, blockhash, lastValidBlockHeight });
+    tx.add(buyIxForRound(from, tape.currentRound, tickets, new PublicKey(tape.feeWallet)));
+    const encoded = (await import("@/lib/tx")).encodeTx(tx);
+    setPhase("Filing on Solana…");
+    const signature = await solana.signAndSendBase64(encoded);
+    setPhase("");
+    onConfirmed({
+      slips: tickets,
+      paidSol: slipTotalLamports(tape.ticketLamports, tickets) / 1_000_000_000,
+      signature,
+    });
+    await reload();
+  } catch (error) {
+    setPhase("");
+    setError(error instanceof Error ? error.message : "The rock refused the slip.");
+  }
 }
 
 function CrankBar({
