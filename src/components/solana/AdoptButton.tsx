@@ -111,12 +111,12 @@ export function WalletControls({
   }
 
   return (
-    <div className={cn("flex flex-wrap items-center gap-1.5", className)}>
-      <SpringButton type="button" className="btn-ghost px-3 text-xs" onClick={openModal}>
+    <div className={cn("flex shrink-0 items-center gap-1.5", className)}>
+      <SpringButton type="button" className="btn-ghost px-2.5 text-xs" onClick={openModal}>
         <NetworkSolana variant="branded" size={14} />
         <span className="font-mono">{shortenAddress(address || "")}</span>
       </SpringButton>
-      <SpringButton type="button" className="btn-ghost px-3 text-xs" onClick={() => void disconnect()}>
+      <SpringButton type="button" className="btn-ghost px-2.5 text-xs" onClick={() => void disconnect()}>
         Disconnect
       </SpringButton>
     </div>
