@@ -15,13 +15,17 @@ import {
   makeDrawFromBlock,
   slipsFromEntries,
   sortEntries,
+  splitClaimable,
   verifyDraw,
+  walletsFromEntries,
   winnerIndexFromSlotHash,
   type LottoDraw,
   type LottoEntry,
+  type LottoPostedWin,
   type LottoSnapshot,
+  type LottoSplit,
 } from "@/lib/lotto";
-import type { OnchainConfig, OnchainRound } from "@/lib/lotto-program";
+import { lottoProgramId, type OnchainConfig, type OnchainRound } from "@/lib/lotto-program";
 
 const SIG_PAGE = 100;
 const SIG_PAGES = 15;
@@ -196,6 +200,96 @@ async function firstFinalizedBlockAfter(rpc: Connection, unixMs: number) {
   return found;
 }
 
+function rentExemptLamports(dataLen: number) {
+  return (dataLen + 128) * 5080;
+}
+
+function splitFromAccount(lamports: number, dataLen: number, ticketLamportsSold: number): LottoSplit {
+  const rent = rentExemptLamports(dataLen);
+  const split = splitClaimable(Math.max(0, lamports - rent), ticketLamportsSold);
+  split.rentLamports = rent;
+  return split;
+}
+
+function postedFromRound(
+  round: OnchainRound,
+  pot: string,
+  lamports: number,
+  dataLen: number,
+  ticketPrice: number,
+  payoutKnown: boolean,
+  verified: boolean,
+): LottoPostedWin {
+  const sold = round.ticketCount * ticketPrice;
+  let split = splitFromAccount(lamports, dataLen, sold);
+  if (round.status === "claimed") {
+    const leftover = Math.max(0, lamports - rentExemptLamports(dataLen));
+    if (leftover > 1_000) {
+      const claimable = Math.floor((leftover * 100) / 15);
+      split = splitClaimable(claimable, sold);
+      split.rentLamports = rentExemptLamports(dataLen);
+    } else {
+      split = splitClaimable(sold, sold);
+      split.rentLamports = rentExemptLamports(dataLen);
+      payoutKnown = false;
+    }
+  } else if (round.status === "void") {
+    split = splitFromAccount(lamports, dataLen, 0);
+  }
+  const settled = round.status === "settled" || round.status === "claimed";
+  return {
+    round: round.roundId,
+    pot,
+    status: round.status,
+    startsAt: new Date(round.startTs * 1000).toISOString(),
+    endsAt: new Date(round.endTs * 1000).toISOString(),
+    tickets: round.ticketCount,
+    winner: settled ? round.winner : null,
+    winnerIndex: settled ? round.winnerIndex : null,
+    jackpotLamports: split.winnerLamports,
+    carryLamports: split.carryLamports,
+    ticketLamports: sold,
+    seedLamports: split.seedLamports,
+    payoutKnown,
+    verified,
+    entropySlot: round.entropySlot || null,
+    entropyHash: round.entropyHash === "0".repeat(64) ? null : round.entropyHash || null,
+  };
+}
+
+async function loadPostedRounds(
+  rpc: Connection,
+  currentRound: number,
+  ticketPrice: number,
+): Promise<LottoPostedWin[]> {
+  const max = Math.min(currentRound, 48);
+  if (max < 0) return [];
+  const keys = [];
+  for (let id = 0; id <= max; id += 1) keys.push(roundPda(id)[0]);
+  const infos = await rpc.getMultipleAccountsInfo(keys, "finalized");
+  const posted: LottoPostedWin[] = [];
+  for (let i = 0; i < infos.length; i += 1) {
+    const info = infos[i];
+    if (!info?.data) continue;
+    const round = decodeRound(info.data);
+    if (!round) continue;
+    if (round.status === "open" || round.status === "closed") continue;
+    const draw = await drawFromRound(round, ticketPrice);
+    posted.push(
+      postedFromRound(
+        round,
+        keys[i].toBase58(),
+        info.lamports,
+        info.data.length,
+        ticketPrice,
+        round.status === "settled" || (round.status === "claimed" && info.lamports - rentExemptLamports(info.data.length) > 1_000),
+        draw?.verified ?? false,
+      ),
+    );
+  }
+  return posted.sort((a, b) => b.round - a.round);
+}
+
 function entriesFromRound(round: OnchainRound, ticketLamports: number): LottoEntry[] {
   return round.buyers.map((row) => ({
     wallet: row.wallet,
@@ -248,7 +342,7 @@ async function getPreviousRound(rpc: Connection, config: OnchainConfig) {
   if (!info?.data) return null;
   const round = decodeRound(info.data);
   if (!round) return null;
-  return { round, lamports: info.lamports, pot: prevPk.toBase58() };
+  return { round, lamports: info.lamports, pot: prevPk.toBase58(), dataLen: info.data.length };
 }
 
 async function getProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | null> {
@@ -268,13 +362,20 @@ async function getProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | null
   empty.ticketLamports = config.ticketLamports;
   empty.ticketPriceSol = config.ticketLamports / 1_000_000_000;
   empty.pot = roundPk.toBase58();
+  empty.programId = lottoProgramId();
+  empty.configPda = configPk.toBase58();
   const previous = await getPreviousRound(rpc, config);
   const last = previous ? await drawFromRound(previous.round, config.ticketLamports) : null;
+  const posted = await loadPostedRounds(rpc, config.currentRound, config.ticketLamports);
+  empty.posted = posted;
   if (!roundInfo?.data) {
     empty.status = "awaiting_round";
     empty.last = last;
     empty.potLamports = previous?.lamports ?? 0;
     empty.potSol = (previous?.lamports ?? 0) / 1_000_000_000;
+    empty.split = previous
+      ? splitFromAccount(previous.lamports, previous.dataLen, 0)
+      : splitClaimable(0, 0);
     empty.proof.version = LOTTO_PROGRAM_PROOF_VERSION;
     empty.proof.rules = PROGRAM_LOTTO_RULES;
     empty.proof.pot = roundPk.toBase58();
@@ -310,6 +411,7 @@ async function getProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | null
     message = "No slips. Crank Open next round. Any leftover seed rolls forward.";
   }
   const draw = await drawFromRound(round, config.ticketLamports);
+  const split = splitFromAccount(balance, roundInfo.data.length, roundLamports);
   return {
     pot: roundPk.toBase58(),
     round: round.roundId,
@@ -332,6 +434,11 @@ async function getProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | null
     engine: "program",
     currentRound: config.currentRound,
     entropySlot: round.entropySlot || null,
+    programId: lottoProgramId(),
+    configPda: configPk.toBase58(),
+    wallets: walletsFromEntries(entries, round.ticketCount),
+    split,
+    posted,
   };
 }
 
@@ -437,6 +544,32 @@ export async function getLottoSnapshot(fresh = false): Promise<LottoSnapshot> {
     engine: "wallet",
     currentRound: current.round,
     entropySlot: draw?.slot ?? null,
+    programId: "",
+    configPda: "",
+    wallets: walletsFromEntries(sortEntries(currentEntries), slips.length),
+    split: splitClaimable(roundLamports, roundLamports),
+    posted: last
+      ? [
+          {
+            round: previous.round,
+            pot: potKey,
+            status: "claimed",
+            startsAt: new Date(previous.startsAt).toISOString(),
+            endsAt: new Date(previous.endsAt).toISOString(),
+            tickets: lastSlips.length,
+            winner: last.winner,
+            winnerIndex: last.winnerIndex,
+            jackpotLamports: lastSlips.length * price,
+            carryLamports: 0,
+            ticketLamports: lastSlips.length * price,
+            seedLamports: 0,
+            payoutKnown: false,
+            verified: last.verified,
+            entropySlot: last.slot,
+            entropyHash: last.blockhash,
+          },
+        ]
+      : [],
   };
   cache = { at: Date.now(), data };
   return data;

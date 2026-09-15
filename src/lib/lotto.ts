@@ -84,6 +84,43 @@ export type LottoStatus =
   | "drawn"
   | "claimed";
 
+export type LottoWalletBook = {
+  wallet: string;
+  tickets: number;
+  lamports: number;
+  buys: number;
+  ranges: string;
+  chance: number;
+};
+
+export type LottoSplit = {
+  rentLamports: number;
+  claimableLamports: number;
+  ticketLamports: number;
+  seedLamports: number;
+  winnerLamports: number;
+  carryLamports: number;
+};
+
+export type LottoPostedWin = {
+  round: number;
+  pot: string;
+  status: "open" | "closed" | "settled" | "claimed" | "void";
+  startsAt: string;
+  endsAt: string;
+  tickets: number;
+  winner: string | null;
+  winnerIndex: number | null;
+  jackpotLamports: number;
+  carryLamports: number;
+  ticketLamports: number;
+  seedLamports: number;
+  payoutKnown: boolean;
+  verified: boolean;
+  entropySlot: number | null;
+  entropyHash: string | null;
+};
+
 export type LottoSnapshot = {
   pot: string;
   round: number;
@@ -106,6 +143,11 @@ export type LottoSnapshot = {
   engine: "program" | "wallet";
   currentRound: number;
   entropySlot: number | null;
+  programId: string;
+  configPda: string;
+  wallets: LottoWalletBook[];
+  split: LottoSplit;
+  posted: LottoPostedWin[];
 };
 
 function envNumber(key: string, fallback: number) {
@@ -269,6 +311,57 @@ export async function verifyProgramDraw(draw: LottoDraw, slips: LottoSlip[], rou
   return entropy.index === draw.winnerIndex && slip?.wallet === draw.winner;
 }
 
+export function splitClaimable(claimableLamports: number, ticketLamportsSold: number): LottoSplit {
+  const claimable = Math.max(0, Math.floor(claimableLamports));
+  const tickets = Math.max(0, Math.floor(ticketLamportsSold));
+  const winnerLamports = Math.floor((claimable * 85) / 100);
+  const carryLamports = Math.max(0, claimable - winnerLamports);
+  const seedLamports = Math.max(0, claimable - tickets);
+  return {
+    rentLamports: 0,
+    claimableLamports: claimable,
+    ticketLamports: tickets,
+    seedLamports,
+    winnerLamports,
+    carryLamports,
+  };
+}
+
+export function slipRange(fromIndex: number, tickets: number) {
+  if (tickets <= 1) return String(fromIndex);
+  return `${fromIndex}–${fromIndex + tickets - 1}`;
+}
+
+export function walletsFromEntries(entries: LottoEntry[], totalTickets: number): LottoWalletBook[] {
+  const map = new Map<string, LottoWalletBook>();
+  for (const row of entries) {
+    const existing = map.get(row.wallet);
+    const range = slipRange(row.slot, row.tickets);
+    if (existing) {
+      existing.tickets += row.tickets;
+      existing.lamports += row.lamports;
+      existing.buys += 1;
+      existing.ranges = `${existing.ranges} · ${range}`;
+    } else {
+      map.set(row.wallet, {
+        wallet: row.wallet,
+        tickets: row.tickets,
+        lamports: row.lamports,
+        buys: 1,
+        ranges: range,
+        chance: 0,
+      });
+    }
+  }
+  const total = totalTickets > 0 ? totalTickets : 0;
+  return [...map.values()]
+    .map((row) => ({
+      ...row,
+      chance: total > 0 ? row.tickets / total : 0,
+    }))
+    .sort((a, b) => b.tickets - a.tickets || a.wallet.localeCompare(b.wallet));
+}
+
 export async function buildProof(input: {
   pot: string;
   round: number;
@@ -342,5 +435,10 @@ export function emptyLottoSnapshot(message: string): LottoSnapshot {
     engine: "wallet",
     currentRound: clock.round,
     entropySlot: null,
+    programId: "",
+    configPda: "",
+    wallets: [],
+    split: splitClaimable(0, 0),
+    posted: [],
   };
 }

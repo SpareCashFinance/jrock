@@ -7,7 +7,7 @@ import {
   Transaction,
   TransactionInstruction,
 } from "@solana/web3.js";
-import { Dices } from "lucide-react";
+import { Dices, Trophy, Users } from "lucide-react";
 import { HouseButton } from "@/components/ui/house-button";
 import { project } from "@/lib/config";
 import { formatAmount, formatCount, shortenAddress } from "@/lib/format";
@@ -22,6 +22,8 @@ import {
   verifyProgramDraw,
   winnerIndexFromBlockhash,
   winnerIndexFromSlotHash,
+  slipRange,
+  type LottoPostedWin,
   type LottoSnapshot,
 } from "@/lib/lotto";
 import { buyIxForRound, claimIx, closeSalesIx, openRoundIx, settleIx } from "@/lib/lotto-program";
@@ -125,15 +127,24 @@ export function LottoDesk() {
               <ClockBox label="Minutes" value={clock.minutes} />
               <ClockBox label="Seconds" value={clock.seconds} />
             </div>
-            <div className="mt-6 grid gap-3 sm:grid-cols-3">
-              <Stat label="Round pot" value={`${formatAmount(tape.engine === "program" ? tape.potSol : tape.roundSol, 3) ?? "0"} SOL`} />
-              <Stat label="Slips sold" value={formatCount(tape.totalTickets) ?? "0"} />
+            <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <Stat label="In the pot" value={`${formatAmount(tape.engine === "program" ? tape.potSol : tape.roundSol, 4) ?? "0"} SOL`} />
+              <Stat label="Winner 85%" value={`${formatAmount(tape.split.winnerLamports / 1_000_000_000, 4) ?? "0"} SOL`} />
+              <Stat label="Next seed 15%" value={`${formatAmount(tape.split.carryLamports / 1_000_000_000, 4) ?? "0"} SOL`} />
               <Stat label="Your slips" value={formatCount(yours) ?? "0"} />
             </div>
+            <p className="mt-3 text-xs tracking-[0.14em] uppercase text-[var(--gold)]">
+              {formatCount(tape.totalTickets) ?? "0"} slips sold
+              {tape.split.seedLamports > 0
+                ? ` · ${formatAmount(tape.split.seedLamports / 1_000_000_000, 4)} SOL rolled in from last round`
+                : ""}
+            </p>
             <p className="serif mt-5 text-lg text-[var(--cream)]">{tape.message}</p>
           </div>
 
-          {tape.draw ? <WinnerCard title="This block picked" draw={tape.draw} /> : null}
+          {tape.draw ? (
+            <WinnerCard title="This block picked" draw={tape.draw} jackpotLamports={tape.split.winnerLamports} />
+          ) : null}
           {tape.last && !tape.draw ? <WinnerCard title="Last rock picked" draw={tape.last} /> : null}
           <ProofCard tape={tape} />
         </div>
@@ -167,7 +178,9 @@ export function LottoDesk() {
         />
       ) : null}
 
-      <EntryTable tape={tape} you={solana.address} />
+      <PostedWinners tape={tape} />
+      <WalletBook tape={tape} you={solana.address} />
+      <PurchaseLog tape={tape} you={solana.address} />
 
       <div className="mt-10 flex flex-wrap items-center gap-3">
         <HouseButton variant="primary" href={links.telegram} target="_blank">
@@ -193,11 +206,22 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function WinnerCard({ title, draw }: { title: string; draw: NonNullable<LottoSnapshot["draw"]> }) {
+function WinnerCard({
+  title,
+  draw,
+  jackpotLamports = 0,
+}: {
+  title: string;
+  draw: NonNullable<LottoSnapshot["draw"]>;
+  jackpotLamports?: number;
+}) {
   return (
     <div className="glass-panel rounded-[28px] p-5 sm:p-7">
       <p className="kicker">{title}</p>
       <p className="display mt-2 text-4xl text-[var(--orange)]">{shortenAddress(draw.winner, 6)}</p>
+      {jackpotLamports > 0 ? (
+        <p className="display mt-2 text-3xl text-white">{formatAmount(jackpotLamports / 1_000_000_000, 4)} SOL</p>
+      ) : null}
       <p className="mt-2 text-sm text-[var(--dim)]">
         Slip {draw.winnerIndex} · slot {formatCount(draw.slot)} · {draw.verified ? "proof checks" : "proof failed"}
       </p>
@@ -285,6 +309,11 @@ function ProofCard({ tape }: { tape: LottoSnapshot }) {
             Pot on Solscan
           </HouseButton>
         ) : null}
+        {tape.programId ? (
+          <HouseButton href={explorerAccountUrl(tape.programId)} target="_blank">
+            Program
+          </HouseButton>
+        ) : null}
         {tape.proof.slot ? (
           <HouseButton href={`https://solscan.io/block/${tape.proof.slot}`} target="_blank">
             Entropy block
@@ -347,6 +376,12 @@ function BuyCard({
       <p className="serif mt-5 text-xl text-[var(--cream)]">
         {count} × {formatAmount(tape.ticketPriceSol, 3)} = {formatAmount(cost, 3)} SOL
       </p>
+      {tape.split.winnerLamports > 0 ? (
+        <p className="mt-2 text-sm text-[var(--gold)]">
+          If the clock died now the winner takes {formatAmount(tape.split.winnerLamports / 1_000_000_000, 4)} SOL.{" "}
+          {formatAmount(tape.split.carryLamports / 1_000_000_000, 4)} SOL stays for the next rock.
+        </p>
+      ) : null}
       <div className="mt-5">
         {solana.connected ? (
           <HouseButton variant="primary" className="w-full" disabled={!canBuy || Boolean(phase)} onClick={onBuy}>
@@ -378,34 +413,181 @@ function BuyCard({
   );
 }
 
-function EntryTable({ tape, you }: { tape: LottoSnapshot; you: string }) {
-  if (tape.entries.length === 0) {
+function PostedWinners({ tape }: { tape: LottoSnapshot }) {
+  const rows = tape.posted.filter((row) => row.status === "settled" || row.status === "claimed");
+  return (
+    <div className="glass-panel mt-8 overflow-hidden rounded-[28px]">
+      <div className="border-b border-[rgba(232,210,176,0.1)] px-5 py-5 sm:px-7">
+        <div className="flex items-center gap-2">
+          <Trophy size={18} className="text-[var(--orange)]" />
+          <p className="kicker">Posted winners</p>
+        </div>
+        <p className="serif mt-2 text-lg text-[var(--cream)]">
+          Every settled rock, the jackpot they took, and the 15% that stayed in the pot.
+        </p>
+      </div>
+      {rows.length === 0 ? (
+        <div className="px-5 py-8 sm:px-7">
+          <p className="display text-4xl text-white">No winner posted yet.</p>
+          <p className="mt-3 text-sm leading-6 text-[var(--dim)]">
+            Round {String(tape.round + 1).padStart(2, "0")} is live. When it settles, the wallet, slip, 85% jackpot, and
+            leftover seed land here. Anyone can re-check the math.
+          </p>
+        </div>
+      ) : (
+        <div className="divide-y divide-[rgba(232,210,176,0.08)]">
+          {rows.map((row) => (
+            <PostedWinRow key={row.round} row={row} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PostedWinRow({ row }: { row: LottoPostedWin }) {
+  return (
+    <div className="flex flex-col gap-3 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+      <div>
+        <p className="text-[10px] tracking-[0.16em] uppercase text-[var(--gold)]">
+          Round {String(row.round + 1).padStart(2, "0")} · {row.status}
+          {row.verified ? " · proof checks" : ""}
+        </p>
+        {row.winner ? (
+          <a
+            href={explorerAccountUrl(row.winner)}
+            target="_blank"
+            rel="noreferrer"
+            className="display mt-1 block text-3xl text-[var(--orange)] hover:text-white"
+          >
+            {shortenAddress(row.winner, 6)}
+          </a>
+        ) : (
+          <p className="display mt-1 text-3xl text-[var(--dim)]">No winner</p>
+        )}
+        <p className="mt-1 text-sm text-[var(--dim)]">
+          Slip {row.winnerIndex ?? "—"} · {formatCount(row.tickets)} slips
+          {row.entropySlot ? ` · slot ${formatCount(row.entropySlot)}` : ""}
+        </p>
+      </div>
+      <div className="text-left sm:text-right">
+        <p className="display text-4xl text-white">{formatAmount(row.jackpotLamports / 1_000_000_000, 4)} SOL</p>
+        <p className="mt-1 text-xs tracking-[0.14em] uppercase text-[var(--gold)]">
+          jackpot 85%{row.payoutKnown ? "" : " · tickets only"}
+        </p>
+        <p className="mt-1 text-xs tracking-[0.14em] uppercase text-[var(--stone)]">
+          seed left {formatAmount(row.carryLamports / 1_000_000_000, 4)} SOL
+        </p>
+        <a
+          href={explorerAccountUrl(row.pot)}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-2 inline-block text-[11px] tracking-[0.14em] uppercase text-[var(--stone)] hover:text-[var(--orange)]"
+        >
+          Round account
+        </a>
+      </div>
+    </div>
+  );
+}
+
+function WalletBook({ tape, you }: { tape: LottoSnapshot; you: string }) {
+  if (tape.wallets.length === 0) {
     return (
       <div className="glass-panel mt-8 rounded-[28px] p-6">
-        <p className="kicker">The book</p>
-        <p className="serif mt-3 text-xl text-[var(--dim)]">No slips this round. The rock is patient.</p>
+        <div className="flex items-center gap-2">
+          <Users size={18} className="text-[var(--orange)]" />
+          <p className="kicker">Wallets this round</p>
+        </div>
+        <p className="serif mt-3 text-xl text-[var(--dim)]">No wallets have filed a slip yet.</p>
       </div>
     );
   }
   return (
     <div className="glass-panel mt-8 overflow-hidden rounded-[28px]">
       <div className="border-b border-[rgba(232,210,176,0.1)] px-5 py-4">
-        <p className="kicker">
-          The book · {formatCount(tape.totalTickets)} slips · sorted by slot then signature
-        </p>
+        <div className="flex items-center gap-2">
+          <Users size={16} className="text-[var(--orange)]" />
+          <p className="kicker">
+            Wallets this round · {formatCount(tape.wallets.length)} · {formatCount(tape.totalTickets)} slips
+          </p>
+        </div>
+      </div>
+      <div className="hidden border-b border-[rgba(232,210,176,0.08)] px-5 py-2 text-[10px] tracking-[0.16em] uppercase text-[var(--stone)] sm:grid sm:grid-cols-[minmax(0,1.4fr)_0.6fr_0.7fr_0.7fr_0.6fr] sm:gap-3">
+        <span>Wallet</span>
+        <span>Buys</span>
+        <span>Slips</span>
+        <span>SOL in</span>
+        <span>Odds</span>
       </div>
       <div className="divide-y divide-[rgba(232,210,176,0.08)]">
-        {tape.entries.map((row) => {
+        {tape.wallets.map((row) => (
+          <a
+            key={row.wallet}
+            href={explorerAccountUrl(row.wallet)}
+            target="_blank"
+            rel="noreferrer"
+            className={`grid gap-1 px-5 py-3 text-sm hover:bg-white/5 sm:grid-cols-[minmax(0,1.4fr)_0.6fr_0.7fr_0.7fr_0.6fr] sm:items-center sm:gap-3 ${
+              you && row.wallet === you ? "text-[var(--orange)]" : "text-[var(--cream)]"
+            }`}
+          >
+            <span className="font-mono">{shortenAddress(row.wallet, 6)}</span>
+            <span className="text-xs tracking-[0.14em] uppercase text-[var(--gold)] sm:text-[var(--cream)]">
+              {formatCount(row.buys)} {row.buys === 1 ? "buy" : "buys"}
+            </span>
+            <span>
+              {formatCount(row.tickets)} · slips {row.ranges}
+            </span>
+            <span>{formatAmount(row.lamports / 1_000_000_000, 4)} SOL</span>
+            <span>{(row.chance * 100).toFixed(2)}%</span>
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PurchaseLog({ tape, you }: { tape: LottoSnapshot; you: string }) {
+  if (tape.entries.length === 0) {
+    return (
+      <div className="glass-panel mt-8 rounded-[28px] p-6">
+        <p className="kicker">Every purchase</p>
+        <p className="serif mt-3 text-xl text-[var(--dim)]">No slips this round. The rock is patient.</p>
+      </div>
+    );
+  }
+  const ordered = [...tape.entries].sort((a, b) => a.slot - b.slot);
+  const totals = new Map<string, number>();
+  return (
+    <div className="glass-panel mt-8 overflow-hidden rounded-[28px]">
+      <div className="border-b border-[rgba(232,210,176,0.1)] px-5 py-4">
+        <p className="kicker">Every purchase · {formatCount(tape.entries.length)} buys on the book</p>
+      </div>
+      <div className="hidden border-b border-[rgba(232,210,176,0.08)] px-5 py-2 text-[10px] tracking-[0.16em] uppercase text-[var(--stone)] sm:grid sm:grid-cols-[0.7fr_minmax(0,1.3fr)_0.7fr_0.7fr_0.7fr] sm:gap-3">
+        <span>Slips</span>
+        <span>Wallet</span>
+        <span>This buy</span>
+        <span>SOL</span>
+        <span>Wallet total</span>
+      </div>
+      <div className="divide-y divide-[rgba(232,210,176,0.08)]">
+        {ordered.map((row) => {
+          const running = (totals.get(row.wallet) ?? 0) + row.tickets;
+          totals.set(row.wallet, running);
           const inner = (
             <>
-              <span className="font-mono">{shortenAddress(row.wallet, 5)}</span>
-              <span className="text-xs tracking-[0.14em] uppercase text-[var(--gold)]">
-                {tape.engine === "program" ? "from" : "slot"} {row.slot} · {row.tickets}{" "}
-                {row.tickets === 1 ? "slip" : "slips"}
+              <span className="font-mono text-[var(--gold)]">{slipRange(row.slot, row.tickets)}</span>
+              <span className="font-mono">{shortenAddress(row.wallet, 6)}</span>
+              <span>
+                {formatCount(row.tickets)} {row.tickets === 1 ? "slip" : "slips"}
+              </span>
+              <span>{formatAmount(row.lamports / 1_000_000_000, 4)} SOL</span>
+              <span>
+                {formatCount(running)} total
               </span>
             </>
           );
-          const className = `flex items-center justify-between gap-3 px-5 py-3 text-sm ${
+          const className = `grid grid-cols-1 gap-1 px-5 py-3 text-sm sm:grid-cols-[0.7fr_minmax(0,1.3fr)_0.7fr_0.7fr_0.7fr] sm:items-center sm:gap-3 ${
             you && row.wallet === you ? "text-[var(--orange)]" : "text-[var(--cream)]"
           }`;
           if (tape.engine === "program") {
@@ -416,13 +598,7 @@ function EntryTable({ tape, you }: { tape: LottoSnapshot; you: string }) {
             );
           }
           return (
-            <a
-              key={row.signature}
-              href={explorerTxUrl(row.signature)}
-              target="_blank"
-              rel="noreferrer"
-              className={`${className} hover:bg-white/5`}
-            >
+            <a key={row.signature} href={explorerTxUrl(row.signature)} target="_blank" rel="noreferrer" className={`${className} hover:bg-white/5`}>
               {inner}
             </a>
           );
