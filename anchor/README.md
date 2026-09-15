@@ -1,6 +1,6 @@
 # jrock_lotto
 
-On-chain kennel lotto for `$JROCK`. The round account holds the pot. After the clock, anyone closes sales, settles from SlotHashes, and claims to the winner. No house wallet.
+On-chain kennel lotto for `$JROCK`. The round account holds the pot. The winner takes 85%. Fifteen percent stays and rolls into the next round.
 
 Program id: `FvQfcJYAcRFEDeq8rS19MNXTZfeiCxcSN5nmfA6RdWuC`
 
@@ -10,8 +10,8 @@ Program id: `FvQfcJYAcRFEDeq8rS19MNXTZfeiCxcSN5nmfA6RdWuC`
 2. `buy` — 1 to 20 slips. SOL moves into the round account.
 3. `close_sales` — after `end_ts`. If nobody bought, the round is void. Otherwise it locks `entropy_slot = now + lag`.
 4. `settle` — reads that exact SlotHashes entry and picks `sha256(slot_hash || round_id || ticket_count) % slips`.
-5. `claim` — pays the round balance minus rent to the winner.
-6. `open_round` — starts the next round after a claim or void.
+5. `claim` — pays 85% of the pot (minus rent) to the winner. 15% stays on the round account.
+6. `open_round` — starts the next round after a claim or void, and moves the leftover 15% into the new pot.
 
 Anyone can crank close, settle, claim, and open. Settle must happen within a few minutes of the entropy slot or SlotHashes forgets it.
 

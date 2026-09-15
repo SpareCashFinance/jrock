@@ -7,6 +7,8 @@ pub const CONFIG_SEED: &[u8] = b"config";
 pub const ROUND_SEED: &[u8] = b"round";
 pub const MAX_BUYERS: usize = 64;
 pub const MAX_TICKETS_PER_BUY: u8 = 20;
+pub const WINNER_SHARE_BPS: u64 = 85;
+pub const SHARE_DENOM: u64 = 100;
 
 #[program]
 pub mod jrock_lotto {
@@ -52,21 +54,27 @@ pub mod jrock_lotto {
     pub fn open_round(ctx: Context<OpenRound>) -> Result<()> {
         let clock = Clock::get()?;
         let config = &ctx.accounts.config;
-        let round = &mut ctx.accounts.round;
-        round.round_id = config.current_round;
-        round.start_ts = clock.unix_timestamp;
-        round.end_ts = clock
-            .unix_timestamp
-            .checked_add(config.round_secs)
-            .ok_or(LottoError::Overflow)?;
-        round.entropy_slot = 0;
-        round.ticket_count = 0;
-        round.winner_index = 0;
-        round.winner = Pubkey::default();
-        round.entropy_hash = [0u8; 32];
-        round.status = RoundStatus::Open;
-        round.buyers = Vec::new();
-        round.bump = ctx.bumps.round;
+        {
+            let round = &mut ctx.accounts.round;
+            round.round_id = config.current_round;
+            round.start_ts = clock.unix_timestamp;
+            round.end_ts = clock
+                .unix_timestamp
+                .checked_add(config.round_secs)
+                .ok_or(LottoError::Overflow)?;
+            round.entropy_slot = 0;
+            round.ticket_count = 0;
+            round.winner_index = 0;
+            round.winner = Pubkey::default();
+            round.entropy_hash = [0u8; 32];
+            round.status = RoundStatus::Open;
+            round.buyers = Vec::new();
+            round.bump = ctx.bumps.round;
+        }
+        move_excess(
+            &ctx.accounts.previous_round.to_account_info(),
+            &ctx.accounts.round.to_account_info(),
+        )?;
         Ok(())
     }
 
@@ -80,10 +88,11 @@ pub mod jrock_lotto {
 
         let add = tickets as u32;
         require!(round.buyers.len() < MAX_BUYERS, LottoError::BookFull);
+        let from_index = round.ticket_count;
         round.buyers.push(Buyer {
             wallet: ctx.accounts.buyer.key(),
             tickets: add,
-            from_index: round.ticket_count,
+            from_index,
         });
         round.ticket_count = round
             .ticket_count
@@ -148,35 +157,39 @@ pub mod jrock_lotto {
         let bytes = digest.to_bytes();
         let random = u64::from_be_bytes(bytes[0..8].try_into().map_err(|_| LottoError::BadEntropy)?);
         let winner_index = (random % round.ticket_count as u64) as u32;
-        let winner = round
+        let winner_key = round
             .buyers
             .iter()
-            .find(|row| {
-                winner_index >= row.from_index && winner_index < row.from_index + row.tickets
-            })
+            .find(|row| winner_index >= row.from_index && winner_index < row.from_index + row.tickets)
+            .map(|row| row.wallet)
             .ok_or(LottoError::WinnerMissing)?;
 
         round.entropy_hash = slot_hash;
         round.winner_index = winner_index;
-        round.winner = winner.wallet;
+        round.winner = winner_key;
         round.status = RoundStatus::Settled;
         Ok(())
     }
 
     pub fn claim(ctx: Context<Claim>) -> Result<()> {
-        let round = &mut ctx.accounts.round;
-        require!(round.status == RoundStatus::Settled, LottoError::NotSettled);
-        require_keys_eq!(ctx.accounts.winner.key(), round.winner, LottoError::WrongWinner);
+        require!(ctx.accounts.round.status == RoundStatus::Settled, LottoError::NotSettled);
+        require_keys_eq!(ctx.accounts.winner.key(), ctx.accounts.round.winner, LottoError::WrongWinner);
 
-        let rent = Rent::get()?.minimum_balance(ctx.accounts.round.to_account_info().data_len());
-        let balance = ctx.accounts.round.to_account_info().lamports();
-        let payout = balance.saturating_sub(rent);
-        require!(payout > 0, LottoError::EmptyPot);
+        {
+            let round_info = ctx.accounts.round.to_account_info();
+            let winner_info = ctx.accounts.winner.to_account_info();
+            let rent = Rent::get()?.minimum_balance(round_info.data_len());
+            let claimable = round_info.lamports().saturating_sub(rent);
+            let payout = claimable
+                .checked_mul(WINNER_SHARE_BPS)
+                .ok_or(LottoError::Overflow)?
+                / SHARE_DENOM;
+            require!(payout > 0, LottoError::EmptyPot);
+            **round_info.try_borrow_mut_lamports()? -= payout;
+            **winner_info.try_borrow_mut_lamports()? += payout;
+        }
 
-        **ctx.accounts.round.to_account_info().try_borrow_mut_lamports()? -= payout;
-        **ctx.accounts.winner.to_account_info().try_borrow_mut_lamports()? += payout;
-
-        round.status = RoundStatus::Claimed;
+        ctx.accounts.round.status = RoundStatus::Claimed;
         ctx.accounts.config.current_round = ctx
             .accounts
             .config
@@ -219,6 +232,21 @@ fn hashv(parts: &[&[u8]]) -> anchor_lang::solana_program::hash::Hash {
     anchor_lang::solana_program::hash::hashv(parts)
 }
 
+fn excess_lamports(account: &AccountInfo) -> Result<u64> {
+    let rent = Rent::get()?.minimum_balance(account.data_len());
+    Ok(account.lamports().saturating_sub(rent))
+}
+
+fn move_excess(from: &AccountInfo, to: &AccountInfo) -> Result<()> {
+    let carry = excess_lamports(from)?;
+    if carry == 0 {
+        return Ok(());
+    }
+    **from.try_borrow_mut_lamports()? -= carry;
+    **to.try_borrow_mut_lamports()? += carry;
+    Ok(())
+}
+
 #[derive(Accounts)]
 pub struct Initialize<'info> {
     #[account(mut)]
@@ -253,6 +281,7 @@ pub struct OpenRound<'info> {
     )]
     pub config: Account<'info, Config>,
     #[account(
+        mut,
         seeds = [ROUND_SEED, (config.current_round - 1).to_le_bytes().as_ref()],
         bump = previous_round.bump,
         constraint = (previous_round.status == RoundStatus::Claimed

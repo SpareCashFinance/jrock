@@ -102,7 +102,7 @@ export function LottoDesk() {
         </h1>
         <p className="serif mt-5 max-w-xl text-xl text-[var(--cream)] sm:text-2xl">
           {tape.engine === "program"
-            ? "Buy a slip in SOL. The round account holds the pot. When the clock dies, anyone cranks a SlotHashes draw and the winner claims on-chain. No house wallet."
+            ? "Buy a slip in SOL. The round account holds the pot. The winner takes 85%. Fifteen percent stays to seed the next rock."
             : `Buy a slip in SOL. Sales die with the clock. ${DRAW_LAG_SECONDS} seconds later a finalized Solana blockhash is hashed. That number modulo the book is the winner. The rock does not pick.`}
         </p>
       </div>
@@ -126,7 +126,7 @@ export function LottoDesk() {
               <ClockBox label="Seconds" value={clock.seconds} />
             </div>
             <div className="mt-6 grid gap-3 sm:grid-cols-3">
-              <Stat label="Round pot" value={`${formatAmount(tape.roundSol, 3) ?? "0"} SOL`} />
+              <Stat label="Round pot" value={`${formatAmount(tape.engine === "program" ? tape.potSol : tape.roundSol, 3) ?? "0"} SOL`} />
               <Stat label="Slips sold" value={formatCount(tape.totalTickets) ?? "0"} />
               <Stat label="Your slips" value={formatCount(yours) ?? "0"} />
             </div>
@@ -269,10 +269,11 @@ function ProofCard({ tape }: { tape: LottoSnapshot }) {
         <li>03 · {tape.proof.rules.order}</li>
         <li>04 · {tape.proof.rules.entropy}</li>
         <li>05 · {tape.proof.rules.formula}</li>
+        <li>06 · {tape.proof.rules.payout}</li>
       </ol>
       <p className="mt-4 text-sm leading-6 text-[var(--dim)]">
         {tape.engine === "program"
-          ? "The round account is the pot. Open it on Solscan. Match the buyers. After settle, hash the slot hash with the round id and slip count. If that is not the posted winner, the tape is lying. Claim pays the winner on-chain."
+          ? "The round account is the pot. Winner takes 85%. Fifteen percent rolls into the next round. Open it on Solscan. Match the buyers. After settle, hash the slot hash with the round id and slip count. If that is not the posted winner, the tape is lying."
           : "Open the pot on Solscan and match every slip. Open the slot and match the blockhash. Hash it. Modulo the book. If that is not the posted winner, the tape is lying. The kennel still has to send the pot — randomness is public, payout is a transfer."}{" "}
         {project.ticker} is entertainment and can go to zero.
       </p>
@@ -575,7 +576,7 @@ function CrankBar({
             run((payer) => claimIx(tape.currentRound, new PublicKey(tape.draw?.winner || payer.toBase58())), "Paying winner…", "Pot claimed")
           }
         >
-          Pay winner
+          Pay 85%
         </HouseButton>
         <HouseButton disabled={!canOpen || busy} onClick={() => run((payer) => openRoundIx(payer, tape.currentRound), "Opening round…", "Round open")}>
           Open next round

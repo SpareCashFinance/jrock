@@ -3,6 +3,8 @@ export const LOTTO_MEMO_PREFIX = "jrock-lotto";
 export const LOTTO_PROOF_VERSION = "jrock-lotto-v2";
 export const LOTTO_PROGRAM_PROOF_VERSION = "jrock-lotto-v3";
 export const DRAW_LAG_SECONDS = 60;
+export const LOTTO_WINNER_SHARE = 0.85;
+export const LOTTO_CARRY_SHARE = 0.15;
 
 const DEFAULT_GENESIS = "2026-09-14T00:00:00.000Z";
 const DEFAULT_ROUND_MS = 72 * 60 * 60 * 1000;
@@ -25,7 +27,7 @@ export const PROGRAM_LOTTO_RULES = {
   order: "Slips are contiguous ranges. from_index is the first slip of that buy; later buys from the same wallet append.",
   entropy: "After close_sales, entropy_slot = clock.slot + lag_slots. settle reads that exact SlotHashes entry.",
   formula: "winnerIndex = first 8 big-endian bytes of sha256(slot_hash || round_id_le || ticket_count_le) modulo ticket_count.",
-  payout: "claim pays the round PDA lamports minus rent to the winner. Anyone can crank. No house wallet.",
+  payout: "claim pays 85% of the round pot minus rent to the winner. 15% stays on the round and rolls into the next open_round. Anyone can crank.",
 } as const;
 
 export type LottoEntry = {

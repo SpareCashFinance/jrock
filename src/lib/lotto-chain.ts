@@ -246,7 +246,9 @@ async function getPreviousRound(rpc: Connection, config: OnchainConfig) {
   const [prevPk] = roundPda(config.currentRound - 1);
   const info = await rpc.getAccountInfo(prevPk, "finalized");
   if (!info?.data) return null;
-  return decodeRound(info.data);
+  const round = decodeRound(info.data);
+  if (!round) return null;
+  return { round, lamports: info.lamports, pot: prevPk.toBase58() };
 }
 
 async function getProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | null> {
@@ -267,18 +269,20 @@ async function getProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | null
   empty.ticketPriceSol = config.ticketLamports / 1_000_000_000;
   empty.pot = roundPk.toBase58();
   const previous = await getPreviousRound(rpc, config);
-  const last = previous ? await drawFromRound(previous, config.ticketLamports) : null;
+  const last = previous ? await drawFromRound(previous.round, config.ticketLamports) : null;
   if (!roundInfo?.data) {
     empty.status = "awaiting_round";
     empty.last = last;
+    empty.potLamports = previous?.lamports ?? 0;
+    empty.potSol = (previous?.lamports ?? 0) / 1_000_000_000;
     empty.proof.version = LOTTO_PROGRAM_PROOF_VERSION;
     empty.proof.rules = PROGRAM_LOTTO_RULES;
     empty.proof.pot = roundPk.toBase58();
     empty.message =
-      previous?.status === "claimed"
-        ? "Last round is paid. Anyone can crank Open next round."
-        : previous?.status === "void"
-          ? "Last round had no slips. Anyone can crank Open next round."
+      previous?.round.status === "claimed"
+        ? "Last winner took 85%. Fifteen percent is waiting to seed the next round. Crank Open next round."
+        : previous?.round.status === "void"
+          ? "Last round had no slips. Leftover seed still rolls forward. Crank Open next round."
           : empty.message;
     return empty;
   }
@@ -291,19 +295,19 @@ async function getProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | null
   const balance = roundInfo.lamports;
   const roundLamports = slips.length * config.ticketLamports;
   let status: LottoSnapshot["status"] = "open";
-  let message = "Buy a slip on-chain. The round account holds the pot. Anyone can crank the draw and the claim.";
+  let message = "Buy a slip on-chain. The round account holds the pot. Winner takes 85%. Fifteen percent seeds the next rock.";
   if (round.status === "closed") {
     status = "awaiting_block";
     message = `Sales are closed. Wait until slot ${round.entropySlot} lands in SlotHashes, then crank Settle within a few minutes.`;
   } else if (round.status === "settled") {
     status = "drawn";
-    message = "The program picked a winner. Anyone can crank Claim. The pot pays that wallet directly.";
+    message = "The program picked a winner. Claim pays that wallet 85%. Fifteen percent stays in the pot.";
   } else if (round.status === "claimed") {
     status = "claimed";
-    message = "This round is paid. Crank Open next round.";
+    message = "Winner took 85%. Crank Open next round to roll the leftover 15% forward.";
   } else if (round.status === "void") {
     status = "void";
-    message = "No slips. Crank Open next round.";
+    message = "No slips. Crank Open next round. Any leftover seed rolls forward.";
   }
   const draw = await drawFromRound(round, config.ticketLamports);
   return {
