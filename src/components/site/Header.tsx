@@ -26,7 +26,7 @@ export function Header() {
         </a>
         <div className="flex flex-wrap items-center gap-2">
           <CopyButton value={project.mint} label="Contract" className="px-3 text-xs" />
-          <WalletControls />
+          <WalletControls compact />
           <AdoptButton idleLabel="Connect wallet" connectedLabel="Adopt $JROCK" />
         </div>
       </div>
