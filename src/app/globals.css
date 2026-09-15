@@ -411,7 +411,6 @@ a {
 }
 
 .dock {
-  overflow: hidden;
   background: rgba(12, 19, 32, 0.58);
   border: 1px solid rgba(232, 210, 176, 0.14);
   backdrop-filter: blur(18px) saturate(150%);
@@ -458,7 +457,7 @@ a {
   margin: 0 auto;
   width: min(1120px, calc(100% - 2rem));
   padding: 3.25rem 0;
-  scroll-margin-top: calc(var(--tape-h) + 5.5rem);
+  scroll-margin-top: calc(var(--tape-h) + 1rem);
 }
 
 #adopt,
@@ -471,7 +470,7 @@ a {
 #lore,
 #community,
 #top {
-  scroll-margin-top: calc(var(--tape-h) + 5.5rem);
+  scroll-margin-top: calc(var(--tape-h) + 1rem);
 }
 
 .tape-scanlines::after {
