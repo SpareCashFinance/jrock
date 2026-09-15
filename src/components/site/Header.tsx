@@ -18,8 +18,8 @@ const nav: { href: string; label: string }[] = [
 
 export function Header() {
   return (
-    <div className="relative z-10 mx-auto w-[min(1120px,calc(100%-1.5rem))] pt-4 pb-2">
-      <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <div className="relative z-10 mx-auto w-[min(1120px,calc(100%-1.5rem))] overflow-visible pt-4 pb-2">
+      <div className="flex items-center gap-2 overflow-visible whitespace-nowrap">
         <a href="/" aria-label={project.name} className="flex shrink-0 items-center gap-2">
           <BrandMark size={32} className="shrink-0 border border-[rgba(247,147,26,0.35)]" />
           <span className="display text-2xl leading-none text-[var(--gold)]">{project.ticker}</span>
@@ -46,11 +46,14 @@ export function Header() {
             />
           ))}
         </div>
-        <div className="ml-auto flex shrink-0 items-center gap-1.5">
-          <CopyButton value={project.mint} label="Contract" className="px-3 text-xs" />
-          <WalletControls compact />
-          <AdoptButton idleLabel="Connect wallet" connectedLabel="Adopt $JROCK" compact />
-        </div>
+        <CopyButton value={project.mint} label="Contract" className="ml-auto shrink-0 px-3 text-xs" />
+        <WalletControls compact />
+        <AdoptButton
+          idleLabel="Connect wallet"
+          connectedLabel="Adopt $JROCK"
+          compact
+          className="shrink-0"
+        />
       </div>
     </div>
   );

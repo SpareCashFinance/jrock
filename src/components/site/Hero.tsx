@@ -6,7 +6,6 @@ import SplitFlapText from "@/components/react-bits/SplitFlapText";
 import { ChainMarks } from "@/components/brand/ChainMarks";
 import { project } from "@/lib/config";
 import { links } from "@/lib/links";
-import { AdoptButton } from "@/components/solana/AdoptButton";
 import { AnimatedShinyText } from "@/components/ui/animated-shiny-text";
 import { InteractiveHoverButton } from "@/components/ui/interactive-hover-button";
 import { Mascot } from "./Mascot";
@@ -53,12 +52,11 @@ export function Hero() {
               onMouseEnter={() => setDropping(true)}
               onMouseLeave={() => setDropping(false)}
             >
-              <AdoptButton shine />
+              <InteractiveHoverButton href="/lotto">Kennel lotto</InteractiveHoverButton>
             </span>
           </Magnet>
           <InteractiveHoverButton href="#adopt">Adopt the rock</InteractiveHoverButton>
           <InteractiveHoverButton href="/memes">Steal these</InteractiveHoverButton>
-          <InteractiveHoverButton href="/lotto">Kennel lotto</InteractiveHoverButton>
         </div>
         <ChainMarks />
         <a href={links.pumpfun} className="inline-block text-[11px] tracking-[0.18em] uppercase text-[var(--stone)] hover:text-[var(--orange)]">
