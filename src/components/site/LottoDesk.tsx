@@ -275,25 +275,44 @@ function WinnerCard({
 }
 
 function ProofCard({ tape }: { tape: LottoSnapshot }) {
-  const [local, setLocal] = useState<string>("");
-  const [server, setServer] = useState<string>("");
+  const [local, setLocal] = useState("");
+  const [server, setServer] = useState("");
+  const program = tape.engine === "program";
+  const slipPrice = formatAmount(tape.ticketPriceSol, 3) ?? "0.05";
+  const steps = program
+    ? [
+        `Buy 1 to 20 slips at a time. You pay ${slipPrice} SOL each. 1% is a kennel fee. The rest goes in the pot.`,
+        "A buy only counts while this round is still open.",
+        "Every slip gets a number, in the order it was bought. Buy again and your numbers continue.",
+        "When time is up, Solana locks a future block. Nobody can swap that pick after the fact.",
+        "That block is hashed. The leftover number picks one slip. That wallet wins.",
+        "Winner takes 85% of the pot. 15% stays to seed the next round. Anyone can press the finish buttons.",
+      ]
+    : [
+        "Send the slip price to the pot. 1% is a kennel fee. The rest is your ticket.",
+        "Only buys during this round count.",
+        "Slips are numbered in the order they land on Solana.",
+        `When the clock hits zero we wait ${DRAW_LAG_SECONDS} seconds, then the next Solana block is the draw.`,
+        "That block is hashed. The leftover number picks one slip. That wallet wins.",
+        "The pick is public. The kennel still has to send the pot.",
+      ];
 
   async function checkHere() {
     if (!tape.draw) {
       setLocal(
-        tape.engine === "program"
-          ? "No draw yet. Close sales, wait for the entropy slot, then crank Settle."
-          : "No draw yet. The clock and the 60-second lag have to finish first.",
+        program
+          ? "No winner yet. Sales have to close, then someone hits Settle after Solana posts the draw block."
+          : "No winner yet. The clock has to finish, then we wait one extra minute for a Solana block.",
       );
       return;
     }
-    if (tape.engine === "program") {
+    if (program) {
       const math = await winnerIndexFromSlotHash(tape.draw.blockhash, tape.round, tape.slips.length);
       const ok = await verifyProgramDraw(tape.draw, tape.slips, tape.round);
       setLocal(
         ok
-          ? `Local math matches. sha256(slot hash || round ${tape.round} || ${tape.slips.length} slips) % ${tape.slips.length} = slip ${math.index}.`
-          : `Local math disagrees. Got slip ${math.index}, tape says ${tape.draw.winnerIndex}. Do not trust this draw.`,
+          ? `It checks. Slip ${math.index} is the winner.`
+          : `It does not match. This page got slip ${math.index}. The tape says ${tape.draw.winnerIndex}. Do not trust this draw.`,
       );
       return;
     }
@@ -301,58 +320,89 @@ function ProofCard({ tape }: { tape: LottoSnapshot }) {
     const ok = await verifyDraw(tape.draw, tape.slips);
     setLocal(
       ok
-        ? `Local math matches. sha256(blockhash) % ${tape.slips.length} = slip ${math.index}.`
-        : `Local math disagrees. Got slip ${math.index}, tape says ${tape.draw.winnerIndex}. Do not trust this draw.`,
+        ? `It checks. Slip ${math.index} is the winner.`
+        : `It does not match. This page got slip ${math.index}. The tape says ${tape.draw.winnerIndex}. Do not trust this draw.`,
     );
   }
 
   async function checkServer() {
     const res = await fetch("/api/lotto/verify", { cache: "no-store" });
     const next = (await res.json()) as { ok?: boolean; error?: string };
-    setServer(next.ok ? "Fresh chain read agrees with the posted proof." : next.error || "The proof did not recompute.");
+    setServer(next.ok ? "Solana agrees with this page." : next.error || "Solana did not match this page.");
   }
 
   return (
     <div className="glass-panel rounded-[28px] p-5 sm:p-7">
-      <p className="kicker">Provable random · {tape.proof.version}</p>
-      <ol className="serif mt-4 space-y-3 text-lg text-[var(--cream)]">
-        <li>01 · {tape.proof.rules.ticket}</li>
-        <li>02 · {tape.proof.rules.window}</li>
-        <li>03 · {tape.proof.rules.order}</li>
-        <li>04 · {tape.proof.rules.entropy}</li>
-        <li>05 · {tape.proof.rules.formula}</li>
-        <li>06 · {tape.proof.rules.payout}</li>
+      <p className="kicker">Fair draw · the rock does not pick</p>
+      <h2 className="display mt-2 text-4xl text-white sm:text-5xl">How a winner happens.</h2>
+      <ol className="serif mt-5 space-y-3 text-lg text-[var(--cream)]">
+        {steps.map((step, index) => (
+          <li key={step}>
+            <span className="mr-2 font-sans text-sm tracking-[0.14em] uppercase text-[var(--gold)]">
+              {String(index + 1).padStart(2, "0")}
+            </span>
+            {step}
+          </li>
+        ))}
       </ol>
-      <p className="mt-4 text-sm leading-6 text-[var(--dim)]">
-        {tape.engine === "program"
-          ? "The round account is the pot. Winner takes 85%. Fifteen percent rolls into the next round. 1% of each slip price is the kennel fee; 99% hits the pot. Open the pot on Solscan. Match the buyers. After settle, hash the slot hash with the round id and slip count. If that is not the posted winner, the tape is lying."
-          : "Open the pot on Solscan and match every slip. Open the slot and match the blockhash. Hash it. Modulo the book. If that is not the posted winner, the tape is lying. The kennel still has to send the pot — randomness is public, payout is a transfer."}{" "}
-        {project.ticker} is entertainment and can go to zero.
+      <div className="mt-6 grid gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl border border-[rgba(232,210,176,0.12)] bg-[#080d16] px-4 py-3">
+          <p className="text-[10px] tracking-[0.16em] uppercase text-[var(--gold)]">You pay</p>
+          <p className="display mt-1 text-2xl text-white">{slipPrice} SOL</p>
+          <p className="mt-1 text-xs text-[var(--dim)]">1% kennel fee is inside that price</p>
+        </div>
+        <div className="rounded-2xl border border-[rgba(232,210,176,0.12)] bg-[#080d16] px-4 py-3">
+          <p className="text-[10px] tracking-[0.16em] uppercase text-[var(--gold)]">Winner</p>
+          <p className="display mt-1 text-2xl text-white">85%</p>
+          <p className="mt-1 text-xs text-[var(--dim)]">Paid on-chain to one slip</p>
+        </div>
+        <div className="rounded-2xl border border-[rgba(232,210,176,0.12)] bg-[#080d16] px-4 py-3">
+          <p className="text-[10px] tracking-[0.16em] uppercase text-[var(--gold)]">Next round</p>
+          <p className="display mt-1 text-2xl text-white">15%</p>
+          <p className="mt-1 text-xs text-[var(--dim)]">Stays in the pot as seed</p>
+        </div>
+      </div>
+      <p className="mt-5 text-sm leading-6 text-[var(--dim)]">
+        You can check the pot and the math yourself. If the posted winner is not the slip the block picks, the tape is
+        lying. {project.ticker} is entertainment and can go to zero.
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
-        <HouseButton onClick={() => void checkHere()}>Check the math here</HouseButton>
-        <HouseButton onClick={() => void checkServer()}>Re-read the chain</HouseButton>
+        <HouseButton onClick={() => void checkHere()}>Check this draw</HouseButton>
+        <HouseButton onClick={() => void checkServer()}>Ask Solana again</HouseButton>
         {tape.pot ? (
           <HouseButton href={explorerAccountUrl(tape.pot)} target="_blank">
-            Pot on Solscan
-          </HouseButton>
-        ) : null}
-        {tape.programId ? (
-          <HouseButton href={explorerAccountUrl(tape.programId)} target="_blank">
-            Program
+            See the pot
           </HouseButton>
         ) : null}
         {tape.proof.slot ? (
           <HouseButton href={`https://solscan.io/block/${tape.proof.slot}`} target="_blank">
-            Entropy block
+            See the draw block
           </HouseButton>
         ) : null}
       </div>
       {local ? <p className="mt-3 text-sm text-[var(--gold)]">{local}</p> : null}
       {server ? <p className="mt-2 text-sm text-[var(--gold)]">{server}</p> : null}
-      <p className="mt-4 font-mono text-[11px] text-[var(--stone)]">
-        book {tape.proof.bookHash || "empty"} · slips {tape.proof.ticketCount} · entropy after {tape.proof.entropyAfter}
-      </p>
+      <details className="mt-5">
+        <summary className="cursor-pointer text-[11px] tracking-[0.16em] uppercase text-[var(--stone)] hover:text-[var(--gold)]">
+          Nerd receipts
+        </summary>
+        <div className="mt-3 space-y-2 text-xs leading-6 text-[var(--dim)]">
+          <p>
+            {program
+              ? "On-chain program draw. The round account holds the pot. After settle, hash the slot hash with the round id and slip count."
+              : "Wallet-pot draw. Match every slip on Solscan, then hash the draw block."}
+          </p>
+          <p className="break-all font-mono text-[11px] text-[var(--stone)]">
+            {tape.proof.version} · book {tape.proof.bookHash || "empty"} · slips {tape.proof.ticketCount} · entropy{" "}
+            {tape.proof.entropyAfter}
+          </p>
+          {tape.programId ? (
+            <HouseButton href={explorerAccountUrl(tape.programId)} target="_blank" className="mt-2 px-3 text-xs">
+              Open the program
+            </HouseButton>
+          ) : null}
+        </div>
+      </details>
     </div>
   );
 }
