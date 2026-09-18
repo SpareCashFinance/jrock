@@ -20,7 +20,7 @@ export const project = {
     process.env.NEXT_PUBLIC_WBTC_MINT?.trim() ||
     "3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh",
   totalSupply: process.env.NEXT_PUBLIC_TOTAL_SUPPLY ?? "",
-  burnPercent: Number(process.env.NEXT_PUBLIC_BURN_PERCENT || 60) || 60,
+  burnPercent: Number(process.env.NEXT_PUBLIC_BURN_PERCENT || 70.05) || 70.05,
   burnTx: (process.env.NEXT_PUBLIC_BURN_TX ?? "").trim(),
   transferFee: process.env.NEXT_PUBLIC_TRANSFER_FEE ?? "",
   eligibility: process.env.NEXT_PUBLIC_ELIGIBILITY ?? "",
@@ -78,7 +78,7 @@ export const copy = {
     "JROCK launches as a StonkFun reward coin paired with WBTC (Wormhole). The tax is paid in that quote token.",
     "Verify transactions and reward distributions on-chain.",
     `${holderFeePercent}% of each transfer is planned to go toward eligible holders in WBTC. Amounts follow live volume and are not a yield.`,
-    "At launch, 60% of supply is planned to be purchased and burned. Verify that transaction on-chain when the receipt is filed.",
+    `At launch, ${project.burnPercent}% of supply is planned to be purchased and burned. Verify that transaction on-chain when the receipt is filed.`,
     "A smaller float does not guarantee larger or faster WBTC payouts.",
   ],
   disclaimer:

@@ -5,7 +5,7 @@ import type { BurnSnapshot } from "@/lib/burn";
 import { CopyButton } from "./CopyButton";
 import { BurnIncinerator } from "./BurnFlame";
 
-const remaining = Math.max(0, 100 - project.burnPercent);
+const remaining = Math.max(0, Math.round((100 - project.burnPercent) * 100) / 100);
 
 export function BurnReceipt({ burn }: { burn: BurnSnapshot }) {
   const filed = hasBurnTx();

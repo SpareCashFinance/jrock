@@ -18,7 +18,7 @@ const rows = [
   { label: "Contract", value: displayValue(project.mint) },
   { label: "Total supply", value: displayValue(project.totalSupply) },
   { label: "Launch burn", value: `${project.burnPercent}% purchased and burned` },
-  { label: "Float after burn", value: `${Math.max(0, 100 - project.burnPercent)}% remains` },
+  { label: "Float after burn", value: `${Math.max(0, Math.round((100 - project.burnPercent) * 100) / 100)}% remains` },
   {
     label: "Burn transaction",
     value: hasBurnTx() ? shortenAddress(project.burnTx, 6) : "Receipt pending",
