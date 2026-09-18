@@ -40,7 +40,6 @@ import {
   oraoNetworkStatePda,
   oraoRequestPda,
   oraoTreasuryFromNetworkState,
-  refundOneIxV2,
   requestRandomnessIxV2,
   setRoundSecsIxV2,
   settleIxV2,
@@ -686,7 +685,7 @@ function ProofCard({ tape }: { tape: LottoSnapshot }) {
           "A buy only counts while this round is still open.",
           "Every slip gets a number, in the order it was bought, from 0 up. Buy again and your numbers continue.",
           "When time is up, anyone can close sales, then request one ORAO VRF job seeded with this program, this round, and the slip count. A second request is rejected.",
-          "If anyone bought, settle always maps the stored 256-bit VRF output onto one of those slips with rejection sampling. Refunds only if ORAO is silent for 6 hours.",
+          "If anyone bought, settle always maps the stored 256-bit VRF output onto one of those slips with rejection sampling.",
           "Winner takes 85% of the prize pool after rent. 15% stays to seed the next round. Anyone can press the finish buttons.",
         ]
       : [
@@ -781,8 +780,9 @@ function ProofCard({ tape }: { tape: LottoSnapshot }) {
         </div>
       </div>
       <p className="mt-5 text-sm leading-6 text-[var(--dim)]">
-        You can check the pot and the math yourself. If the posted winner is not the slip the block picks, the tape is
-        lying. {project.ticker} is entertainment and can go to zero.
+        {v2
+          ? `You can check the pot and the math yourself. If the posted winner is not the slip ORAO maps onto, the tape is lying. ${project.ticker} is entertainment and can go to zero.`
+          : `You can check the pot and the math yourself. If the posted winner is not the slip the block picks, the tape is lying. ${project.ticker} is entertainment and can go to zero.`}
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
         <HouseButton onClick={() => void checkHere()}>Check this draw</HouseButton>
@@ -807,7 +807,7 @@ function ProofCard({ tape }: { tape: LottoSnapshot }) {
           <p>
             {program
               ? v2
-                ? "On-chain program draw. ORAO VRF Classic, one bound request after close, rejection sampling into 0..tickets-1. Timeout refunds 99% per slip."
+                ? "On-chain program draw. ORAO VRF Classic, one bound request after close, rejection sampling into 0..tickets-1."
                 : "On-chain program draw. INTERIM SlotHashes after close, not a VRF. After settle, hash the slot hash with the round id and slip count. Range is 0..tickets-1."
               : "Wallet-pot draw. Match every slip on Solscan, then hash the draw block."}
           </p>
@@ -919,7 +919,7 @@ function BuyCard({
       ) : tape.status === "awaiting_round" || tape.status === "refunded" ? (
         <p className="mt-3 text-sm text-[var(--gold)]">Open the next round to start selling slips.</p>
       ) : tape.status === "refunding" ? (
-        <p className="mt-3 text-sm text-[var(--gold)]">VRF timed out. Refund unpaid buyers, then open the next round.</p>
+        <p className="mt-3 text-sm text-[var(--gold)]">This round is closed. Finish the draw, then open the next rock.</p>
       ) : null}
       {error ? <LottoAlert text={error} onDismiss={onDismissError} /> : null}
       {tape.pot ? (
@@ -1338,7 +1338,6 @@ function CrankBar({
 }) {
   const busy = Boolean(phase);
   const v2 = isLottoV2(tape.programId);
-  const timeoutPassed = Boolean(tape.vrfTimeoutAt) && Date.now() >= Date.parse(tape.vrfTimeoutAt ?? "");
   const canClose = tape.status === "open" && salesEnded;
   const canRequest = v2 && tape.status === "awaiting_vrf_request";
   const canFulfill = v2 && (tape.status === "awaiting_vrf" || tape.status === "awaiting_settle");
@@ -1346,11 +1345,6 @@ function CrankBar({
     ? tape.status === "awaiting_vrf" || tape.status === "awaiting_settle"
     : tape.status === "awaiting_block";
   const canClaim = tape.status === "drawn" && Boolean(tape.draw?.winner);
-  const canRefund =
-    v2 &&
-    (tape.status === "refunding" ||
-      (timeoutPassed &&
-        (tape.status === "awaiting_vrf_request" || tape.status === "awaiting_vrf" || tape.status === "awaiting_settle")));
   const canOpen =
     tape.status === "awaiting_round" || tape.status === "claimed" || tape.status === "void" || tape.status === "refunded";
   const run = (
@@ -1377,14 +1371,12 @@ function CrankBar({
     return new PublicKey(tape.vrfRequest);
   }
 
-  const refundRow = tape.entries.find((row) => !row.refunded);
-
   return (
     <div className="glass-panel mt-8 rounded-[28px] p-5 sm:p-6">
       <p className="kicker">Crank the program</p>
       <p className="mt-2 text-sm leading-6 text-[var(--dim)]">
         {v2
-          ? "Anyone with a wallet can run these. After close, request one ORAO job, wait for fulfill, then settle. If the timeout hits, refund unpaid buyers."
+          ? "Anyone with a wallet can run these. After close, request one ORAO job, wait for fulfill, then settle and pay the winner."
           : "Anyone with a wallet can run these. Settle has a few minutes after the entropy slot before SlotHashes drops it."}
       </p>
       {error ? <LottoAlert text={error} onDismiss={onDismissError} /> : null}
@@ -1437,19 +1429,6 @@ function CrankBar({
         >
           Pay 85%
         </HouseButton>
-        {v2 ? (
-          <HouseButton
-            disabled={!canRefund || busy || !refundRow}
-            onClick={() => {
-              const index = tape.entries.findIndex((row) => !row.refunded);
-              const row = tape.entries[index];
-              if (!row) return;
-              run(() => refundOneIxV2(tape.currentRound, new PublicKey(row.wallet), index), "Refunding…", "Buyer refunded");
-            }}
-          >
-            Refund a buyer
-          </HouseButton>
-        ) : null}
         <HouseButton
           disabled={!canOpen || busy}
           onClick={() =>

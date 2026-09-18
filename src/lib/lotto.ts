@@ -45,7 +45,7 @@ export const PROGRAM_LOTTO_RULES_V2 = {
   order: "Slips are contiguous ranges. from_index is the first slip of that buy; later buys from the same wallet append.",
   entropy: "After close_sales, anyone may request one ORAO VRF Classic job seeded with sha256(program_id || round_pda || round_id_le || ticket_count_le). The request account is stored. A second request is rejected.",
   formula: "winnerIndex = rejection sampling of the first 32 bytes of the fulfilled ORAO output into 0..ticket_count-1. Stored randomness is reused so extra VRF responses cannot reroll.",
-  payout: "If anyone bought a slip, settle always maps the stored ORAO bytes onto one of those wallets. claim pays 85% of the round pot minus rent to that winner. 15% stays on the round and rolls into the next open_round. Refunds open only if ORAO is silent through close_ts + timeout. Anyone can crank. Winner is derived from buyer ranges, never passed in.",
+  payout: "If anyone bought a slip, settle always maps the stored ORAO bytes onto one of those wallets. claim pays 85% of the round pot minus rent to that winner. 15% stays on the round and rolls into the next open_round. Anyone can crank. Winner is derived from buyer ranges, never passed in.",
 } as const;
 
 export type LottoEntry = {

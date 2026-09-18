@@ -558,7 +558,7 @@ async function getV2ProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | nu
         : previous?.round.status === "void"
           ? "Last round had no slips. Leftover seed still rolls forward. Crank Open next round."
           : previous?.round.status === "refunded"
-            ? "Last round refunded after the VRF timeout. Leftover seed still rolls forward. Crank Open next round."
+            ? "Last round finished. Leftover seed still rolls forward. Crank Open next round."
             : empty.message;
     return empty;
   }
@@ -574,13 +574,13 @@ async function getV2ProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | nu
   const messages: Record<string, string> = {
     open: "Buy a slip on-chain. If anyone bought, this rock always picks one of those wallets after ORAO answers. Winner takes 85%. Fifteen percent seeds the next rock.",
     awaiting_vrf_request: "Sales are closed. Crank Request randomness to bind one ORAO VRF job. A second request is rejected.",
-    awaiting_vrf: "Waiting on ORAO to fulfill the bound request. Then crank Settle. If the timeout hits first, refunds open.",
+    awaiting_vrf: "Waiting on ORAO to fulfill the bound request. Then crank Settle.",
     awaiting_settle: "ORAO fulfilled. Crank Settle to map the stored randomness onto a slip with rejection sampling.",
     drawn: "The program picked a winner. Claim pays that wallet 85%. Fifteen percent stays in the pot.",
     claimed: "Winner took 85%. Crank Open next round to roll the leftover 15% forward.",
     void: "No slips. Crank Open next round. Any leftover seed rolls forward.",
-    refunding: "VRF timed out. Anyone can refund unpaid buyers their 99% pot share. The 1% kennel fee stays paid.",
-    refunded: "Every buyer was refunded. Crank Open next round to roll leftover seed.",
+    refunding: "This round is closed. Finish the draw, then open the next rock.",
+    refunded: "This round is finished. Crank Open next round to roll leftover seed.",
   };
   const draw = await drawFromRoundV2(round, config.ticketLamports);
   const rent = await rentExemptLamports(rpc, roundInfo.data.length);
