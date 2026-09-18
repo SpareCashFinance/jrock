@@ -10,7 +10,7 @@ Do not reuse v1 PDAs. Product rules stay: 0.05 SOL, 1–20 slips, 1% kennel fee 
 
 `Open → Closed → RandomnessRequested → Fulfilled → Settled → Claimed`
 
-Plus `Void` (close with zero tickets) and `Refunding` / `Refunded` (VRF timeout).
+Plus `Void` (close with zero tickets). `Refunding` / `Refunded` stay in the account layout so existing PDAs decode, but `refund_one` now returns `RefundsDisabled`. If anyone bought, settle always picks one of those wallets. The book holds 256 buy rows.
 
 ## Randomness
 
@@ -26,7 +26,7 @@ After `close_sales` with tickets:
 
 ## Always a winner when slips exist
 
-`settle` requires `ticket_count > 0` and then **always** writes one `winner` from the buyer ranges. An empty book cannot pick a wallet (`Void` on close). The only tickets-but-no-winner path is the timeout refund: if ORAO is silent through `close_ts + vrf_timeout_secs` (6h), anyone may `refund_one` for each unrefunded buyer. Payout is `tickets * price * 99/100` (the 1% kennel fee stays paid). After refunds start, settle is rejected. When every buyer is refunded the round is `Refunded` and `open_round` may roll leftover lamports.
+`settle` requires `ticket_count > 0` and then **always** writes one `winner` from the buyer ranges. An empty book cannot pick a wallet (`Void` on close). `refund_one` is kept so the instruction index stays compatible; it always errors. If ORAO is late, wait and crank `fulfill_randomness` / `settle`. Do not tell buyers they can get a refund.
 
 ## Independent check
 

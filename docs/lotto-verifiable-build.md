@@ -45,20 +45,25 @@ solana-verify verify-from-repo \
 - Ticket: 50_000_000 lamports
 - Round length: 172800 seconds (48h)
 - VRF timeout: 21600 seconds (6h)
-- Source tag: `lotto-v2-mainnet` (`5513a4854dbbe80f4cea4ecee3d04b40077ca22f`)
+- Source commit: `da6775229249545330a6993c42d5d8b33b25d9f2` (256-buy book, `refund_one` disabled, `security_txt!`)
 - OtterSec verification PDA: `7fYS1EP9gvC2if556WGtvCC8ZQUZYBuaKv3vdwYANRE4`
-- PDA initialize tx: `5H9Jop1jmMkFufX68kaZ8kxNRFNgu2BZgxjXDMWf6TdTGdTUhmpqnRzWgHHMhjjkCZJXpMDTeyboA1mxETKHJpix`
+- PDA update tx: `4ndBvqJGG9M49rXgaCTuE9AegobMyLmE2U9ZPMtq2CFkshH2w1aiYWp5ppWhTYKtesdevpeqVXEuwn4vqcErho2Z`
 - Uploader / upgrade authority: `62C41rN2uUrsZoRkZyTqxD8GJYpa6KtERAtehfNmiXwq`
-- On-chain ELF hash: `7ca4ee5adf7a24e1b9f4f0eab5dd9e7045dbf31a2d531987a44f9cc98e4ac6e9`
-- Explorer verified: **yes** on OtterSec (`is_verified: true`). On-chain hash matches executable hash `e11ee6d86a356e21c8ba407b799028ff46dbdb29f4ca137158d4c6aaf83efbe1`. Explorer/Solscan badges can lag a few minutes. Upgrade tx: `4W1a8LFR3da8yWzEqAKGFytR33kgYp9QMaiZ4kot13Z18y27vGTLz42TBMEUJrmERCFxWYff6VUd2p6Usms35z19`.
-- Keep upgradeable for the first mainnet week. Do not revoke on day one.
+- Docker ELF sha256: `774bcde312fd66353cec9ae61378ca98ccf9c746e8afd7b029d35b403a78679f`
+- OtterSec hash (on-chain = executable): `3c20014bff29c0b7271eb48bb378e4c5a1eecbab306b996299cba7c759df8d24`
+- Explorer verified: **yes** (`is_verified: true`, commit `da67752`, job `d2b73a5e-3909-4397-884f-8480160a1d42`).
+- Upgrade tx: `3N63rdjtmvjk6LdaR6LLWrDkF7v76vvZ4Dgi3kXsBhFGCVZbXsTmgj3HrJ6GwUYfDPk6tutxmsdqpwcZgh98ssUc`
+- Deployed slot: `448205705`
+- Book: 256 buy rows. Live round 0 realloced to 10686 bytes on the next buy.
+- `refund_one` returns `RefundsDisabled` (6023). If anyone bought, settle always picks one of those wallets.
+- Keep upgradeable. Do not revoke on day one.
 
 ```
 solana-verify verify-from-repo \
   https://github.com/SpareCashFinance/jrock-lotto \
   --program-id 66FyiUTkw4JMYMi3yErfa7UBqrHm9GZha1meAxcgbjDg \
   --library-name jrock_lotto_v2 \
-  --commit-hash lotto-v2-mainnet
+  --commit-hash da6775229249545330a6993c42d5d8b33b25d9f2
 ```
 
 Confirm the verified badge on Explorer and Solscan independently. Then either revoke upgrade authority or document Squads signers, threshold, and delay.

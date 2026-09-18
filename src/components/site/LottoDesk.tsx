@@ -693,7 +693,7 @@ function ProofCard({ tape }: { tape: LottoSnapshot }) {
   const steps = program
     ? v2
       ? [
-          `Buy 1 to 20 slips at a time. You pay ${slipPrice} SOL each. 1% is a kennel fee. The rest goes in the pot.`,
+          `Buy 1 to 20 slips at a time (256 buys this round). You pay ${slipPrice} SOL each. 1% is a kennel fee. The rest goes in the pot.`,
           "A buy only counts while this round is still open.",
           "Every slip gets a number, in the order it was bought, from 0 up. Buy again and your numbers continue.",
           "When time is up, anyone can close sales, then request one ORAO VRF job seeded with this program, this round, and the slip count. A second request is rejected.",
@@ -819,7 +819,7 @@ function ProofCard({ tape }: { tape: LottoSnapshot }) {
           <p>
             {program
               ? v2
-                ? "On-chain program draw. ORAO VRF Classic, one bound request after close, rejection sampling into 0..tickets-1."
+                ? "On-chain program draw. ORAO VRF Classic, one bound request after close, rejection sampling into 0..tickets-1. Book cap 256 buys. refund_one is disabled."
                 : "On-chain program draw. INTERIM SlotHashes after close, not a VRF. After settle, hash the slot hash with the round id and slip count. Range is 0..tickets-1."
               : "Wallet-pot draw. Match every slip on Solscan, then hash the draw block."}
           </p>

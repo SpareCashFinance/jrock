@@ -31,11 +31,8 @@ function canSettle(status: Status) {
   return status === "randomness_requested" || status === "fulfilled";
 }
 
-function canRefund(status: Status, now: number, timeoutTs: number) {
-  return (
-    now >= timeoutTs &&
-    (status === "closed" || status === "randomness_requested" || status === "fulfilled" || status === "refunding")
-  );
+function canRefund() {
+  return false;
 }
 
 test("v2 buy presets 1, 2, 5, 10, 20 are legal; 0 and 21 are not", () => {
@@ -55,14 +52,14 @@ test("v2 close, request, settle, and refund gates", () => {
   assert.equal(canSettle("fulfilled"), true);
   assert.equal(canSettle("settled"), false);
   assert.equal(canSettle("refunding"), false);
-  assert.equal(canRefund("closed", 10, 9), true);
-  assert.equal(canRefund("closed", 8, 9), false);
-  assert.equal(canRefund("settled", 20, 9), false);
+  assert.equal(canRefund(), false);
 });
 
-test("v2 refund is 99 percent of the posted price", () => {
-  const refund = 50_000_000 * 2 - Math.floor((50_000_000 * 2 * 1) / 100);
-  assert.equal(refund, 99_000_000);
+test("v2 kennel fee is 1 percent inside the posted price", () => {
+  const gross = 50_000_000 * 2;
+  const fee = Math.floor((gross * 1) / 100);
+  assert.equal(fee, 1_000_000);
+  assert.equal(gross - fee, 99_000_000);
 });
 
 test("v2 successor program id is distinct from live v1", () => {
