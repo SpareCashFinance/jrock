@@ -14,7 +14,7 @@ export const LOTTO_SLIP_FEE_DENOM = 100;
 export const DEFAULT_LOTTO_FEE_WALLET = "qbjbLafSNGq27fYFiF1RKhb9BREk1zFWWS8H6Drj8co";
 
 const DEFAULT_GENESIS = "2026-09-14T00:00:00.000Z";
-const DEFAULT_ROUND_MS = 72 * 60 * 60 * 1000;
+const DEFAULT_ROUND_MS = 48 * 60 * 60 * 1000;
 const DEFAULT_TICKET_SOL = 0.05;
 
 export const LOTTO_RULES = {
@@ -188,6 +188,7 @@ export type LottoSnapshot = {
   verifiedBuild?: boolean;
   upgradeable?: boolean;
   onchainStatus?: string;
+  roundSecs?: number;
 };
 
 function envNumber(key: string, fallback: number) {
@@ -521,5 +522,6 @@ export function emptyLottoSnapshot(message: string): LottoSnapshot {
     verifiedBuild: false,
     upgradeable: true,
     onchainStatus: "",
+    roundSecs: Math.round(lottoRoundMs() / 1000),
   };
 }

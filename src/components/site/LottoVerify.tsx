@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { HouseButton } from "@/components/ui/house-button";
+import { LottoAlert } from "@/components/site/LottoAlert";
 import { formatAmount, formatCount, shortenAddress } from "@/lib/format";
-import { explorerAccountUrl } from "@/lib/links";
+import { explorerAccountUrl, LOTTO_SOURCE_REPO } from "@/lib/links";
 import type { IndependentReceipt } from "@/lib/lotto-verify";
 
 export function LottoVerifyDesk({ defaultRound = 0 }: { defaultRound?: number }) {
@@ -11,6 +12,7 @@ export function LottoVerifyDesk({ defaultRound = 0 }: { defaultRound?: number })
   const [pda, setPda] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const dismissError = useCallback(() => setError(""), []);
   const [receipt, setReceipt] = useState<IndependentReceipt | null>(null);
 
   async function run() {
@@ -45,6 +47,34 @@ export function LottoVerifyDesk({ defaultRound = 0 }: { defaultRound?: number })
       <code className="font-mono text-[var(--gold)]">npm run verify:lotto</code>.
       </p>
 
+      <div className="glass-panel mt-8 rounded-[28px] p-5 sm:p-6">
+        <p className="kicker">Public program source</p>
+        <h2 className="display mt-2 text-4xl text-white sm:text-5xl">Match the ELF. Not the luck.</h2>
+        <p className="serif mt-4 max-w-2xl text-lg text-[var(--cream)]">
+          The live kennel still uses SlotHashes. A verified build proves the deployed binary came from the public
+          program repo. It does not make this draw a VRF or 100% fair.
+        </p>
+        <p className="mt-4 break-all font-mono text-xs text-[var(--stone)]">{LOTTO_SOURCE_REPO}</p>
+        <pre className="mt-4 overflow-x-auto rounded-2xl bg-[#080d16] p-4 font-mono text-[11px] leading-6 text-[var(--gold)]">
+{`solana-verify verify-from-repo \\
+  ${LOTTO_SOURCE_REPO} \\
+  --program-id FvQfcJYAcRFEDeq8rS19MNXTZfeiCxcSN5nmfA6RdWuC \\
+  --library-name jrock_lotto \\
+  --commit-hash lotto-v1-mainnet`}
+        </pre>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <HouseButton href={LOTTO_SOURCE_REPO} target="_blank">
+            Program repo
+          </HouseButton>
+          <HouseButton href={`${LOTTO_SOURCE_REPO}/releases/tag/lotto-v1-mainnet`} target="_blank">
+            Frozen v1 tag
+          </HouseButton>
+          <HouseButton href={explorerAccountUrl("FvQfcJYAcRFEDeq8rS19MNXTZfeiCxcSN5nmfA6RdWuC")} target="_blank">
+            Program on Solscan
+          </HouseButton>
+        </div>
+      </div>
+
       <div className="glass-panel mt-8 max-w-xl rounded-[28px] p-5 sm:p-6">
         <label className="text-[10px] tracking-[0.16em] uppercase text-[var(--gold)]">Round number</label>
         <input
@@ -64,7 +94,7 @@ export function LottoVerifyDesk({ defaultRound = 0 }: { defaultRound?: number })
         <HouseButton variant="primary" className="mt-5 w-full" disabled={busy} onClick={() => void run()}>
           {busy ? "Reading Solana…" : "Recompute from chain"}
         </HouseButton>
-        {error ? <p className="mt-3 text-sm text-[#ff8a6a]">{error}</p> : null}
+        {error ? <LottoAlert text={error} onDismiss={dismissError} /> : null}
       </div>
 
       {receipt ? <ReceiptCard receipt={receipt} /> : null}

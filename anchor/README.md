@@ -37,12 +37,14 @@ anchor build
 anchor deploy --provider.cluster mainnet
 ```
 
-Initialize once from the upgrade-authority wallet (0.05 SOL tickets, 72h rounds, ~150 slot lag):
+Initialize once from the upgrade-authority wallet (0.05 SOL tickets, 48h rounds, ~150 slot lag):
 
 ```
 ticket_lamports = 50_000_000
-round_secs = 259200
+round_secs = 172800
 lag_slots = 150
 ```
+
+Live v1 was initialized at 72 hours (`259200`). That value lives on the config PDA. The current rock's `end_ts` is already written. Shortening later rocks to 48 hours needs `set_round_secs` after a safe upgrade — do not replace the live ELF while a round PDA holds player SOL.
 
 Set `NEXT_PUBLIC_LOTTO_PROGRAM` to the program id on Vercel. The site reads the config PDA and switches off wallet-pot mode by itself. Keep upgrade authority on the kennel wallet.

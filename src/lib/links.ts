@@ -68,6 +68,9 @@ export function explorerTxUrl(signature: string) {
   return `${SOLSCAN_ORIGIN}/tx/${signature}`;
 }
 
+export const LOTTO_SOURCE_REPO = "https://github.com/SpareCashFinance/jrock-lotto";
+export const LOTTO_SITE_REPO = "https://github.com/SpareCashFinance/jrock";
+
 export function explorerAccountUrl(address: string) {
   return address ? `${SOLSCAN_ORIGIN}/account/${address}` : "";
 }

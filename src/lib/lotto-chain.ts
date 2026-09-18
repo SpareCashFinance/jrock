@@ -517,6 +517,7 @@ async function getV2ProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | nu
   empty.randomnessProvider = "ORAO VRF Classic";
   empty.verifiedBuild = false;
   empty.upgradeable = true;
+  empty.roundSecs = config.roundSecs;
   const previous = await getPreviousRoundV2(rpc, config.currentRound);
   const last = previous ? await drawFromRoundV2(previous.round, config.ticketLamports) : null;
   const posted = [
@@ -618,6 +619,7 @@ async function getV2ProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | nu
     verifiedBuild: false,
     upgradeable: true,
     onchainStatus: round.status,
+    roundSecs: config.roundSecs,
   };
 }
 
@@ -667,6 +669,7 @@ async function getProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | null
   empty.programId = lottoProgramId();
   empty.configPda = configPk.toBase58();
   empty.feeWallet = lottoFeeWallet();
+  empty.roundSecs = config.roundSecs;
   const previous = await getPreviousRound(rpc, config);
   const last = previous ? await drawFromRound(previous.round, config.ticketLamports) : null;
   const posted = await loadPostedRounds(rpc, config.currentRound, config.ticketLamports);
@@ -778,6 +781,7 @@ async function getProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | null
     verifiedBuild: false,
     upgradeable: true,
     onchainStatus: round.status,
+    roundSecs: config.roundSecs,
   };
 }
 

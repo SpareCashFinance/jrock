@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   PublicKey,
@@ -12,7 +12,7 @@ import { Dices, Trophy, Users } from "lucide-react";
 import { HouseButton } from "@/components/ui/house-button";
 import { project } from "@/lib/config";
 import { formatAmount, formatCount, shortenAddress } from "@/lib/format";
-import { explorerAccountUrl, explorerTxUrl, links } from "@/lib/links";
+import { explorerAccountUrl, explorerTxUrl, links, LOTTO_SOURCE_REPO } from "@/lib/links";
 import {
   DRAW_LAG_SECONDS,
   MEMO_PROGRAM_ID,
@@ -47,6 +47,8 @@ import { TelegramMark, XMark } from "@/components/brand/SocialMarks";
 import { LottoMachine } from "@/components/site/LottoMachine";
 import { useCountdown, useLottoSnapshot, type RefreshLottoOpts } from "@/lib/lotto-client";
 import { drawPhaseLabel, nextCrankStep, salesHaveEnded } from "@/lib/lotto-crank-plan";
+import { walletActionMessage } from "@/lib/wallet-error";
+import { LottoAlert } from "@/components/site/LottoAlert";
 
 const PRESETS = [1, 2, 5, 10, 20];
 const PURCHASE_PAGE_SIZE = 20;
@@ -78,6 +80,7 @@ export function LottoDesk({ initial }: { initial?: LottoSnapshot }) {
   const [count, setCount] = useState(1);
   const [phase, setPhase] = useState("");
   const [error, setError] = useState("");
+  const dismissError = useCallback(() => setError(""), []);
   const [receipt, setReceipt] = useState<SlipReceipt | null>(null);
   const clock = useCountdown(tape.endsAt);
   const ended = clock.done || salesHaveEnded(tape);
@@ -114,6 +117,13 @@ export function LottoDesk({ initial }: { initial?: LottoSnapshot }) {
       window.clearInterval(id);
     };
   }, [solana.connection, tape.engine, tape.status]);
+
+  useEffect(() => {
+    if (!error) return;
+    const ms = /cancelled/i.test(error) ? 4500 : 10000;
+    const id = window.setTimeout(dismissError, ms);
+    return () => window.clearTimeout(id);
+  }, [dismissError, error]);
 
   useEffect(() => {
     if (tape.engine !== "program" || !solana.connected || phase || !ended) return;
@@ -240,11 +250,15 @@ export function LottoDesk({ initial }: { initial?: LottoSnapshot }) {
           <BuyCard
             tape={tape}
             count={count}
-            setCount={setCount}
+            setCount={(n) => {
+              dismissError();
+              setCount(n);
+            }}
             canBuy={canBuy}
             potReady={potReady}
             phase={phase}
             error={error}
+            onDismissError={dismissError}
             crankLabel={crankStep.kind === "idle" || crankStep.kind === "wait" ? "" : crankStep.label}
             crankHint={ended || tape.status !== "open" ? crankStep.reason : ""}
             onBuy={() =>
@@ -302,6 +316,8 @@ export function LottoDesk({ initial }: { initial?: LottoSnapshot }) {
           phase={phase}
           setPhase={setPhase}
           setError={setError}
+          error={error}
+          onDismissError={dismissError}
           reload={reload}
         />
       ) : null}
@@ -405,6 +421,12 @@ function ChainStatusCard({ tape }: { tape: LottoSnapshot }) {
     ["This round", tape.pot || "Not open"],
     ["Build", tape.verifiedBuild ? "Explorer-verified." : "Source is public. Explorer verification is not filed yet."],
     ["Upgrade", tape.upgradeable === false ? "Immutable." : "Upgradeable. Authority is a single kennel wallet."],
+    [
+      "Round length",
+      tape.roundSecs
+        ? `${Math.round(tape.roundSecs / 3600)} hours on-chain. This rock ends at the posted clock.`
+        : "Posted on the round clock.",
+    ],
     ["Randomness", v2 ? "ORAO VRF Classic. One bound request after close. Rejection sampling." : "Solana SlotHashes after close. Interim. Not a VRF."],
     ...(v2
       ? ([
@@ -443,6 +465,9 @@ function ChainStatusCard({ tape }: { tape: LottoSnapshot }) {
         ) : null}
         <HouseButton href="/lotto/verify" className="px-3 text-xs">
           Independent check
+        </HouseButton>
+        <HouseButton href={LOTTO_SOURCE_REPO} target="_blank" className="px-3 text-xs">
+          Program source
         </HouseButton>
       </div>
     </div>
@@ -676,6 +701,7 @@ function BuyCard({
   potReady,
   phase,
   error,
+  onDismissError,
   onBuy,
   onFinish,
   crankLabel,
@@ -688,6 +714,7 @@ function BuyCard({
   potReady: boolean;
   phase: string;
   error: string;
+  onDismissError: () => void;
   onBuy: () => void;
   onFinish?: () => void;
   crankLabel?: string;
@@ -761,7 +788,7 @@ function BuyCard({
       ) : tape.status === "refunding" ? (
         <p className="mt-3 text-sm text-[var(--gold)]">VRF timed out. Refund unpaid buyers, then open the next round.</p>
       ) : null}
-      {error ? <p className="mt-3 text-sm text-[#ff8a6a]">{error}</p> : null}
+      {error ? <LottoAlert text={error} onDismiss={onDismissError} /> : null}
       {tape.pot ? (
         <a
           href={explorerAccountUrl(tape.pot)}
@@ -1071,7 +1098,7 @@ async function buyWithWallet(
     await reload({ fresh: true, minTickets: tape.totalTickets + count });
   } catch (error) {
     setPhase("");
-    setError(error instanceof Error ? error.message : "The rock refused the slip.");
+    setError(walletActionMessage(error, "The rock refused the slip."));
   }
 }
 
@@ -1088,6 +1115,7 @@ async function sendProgramIx(
   if (!owner) return;
   try {
     setPhase(asking);
+    setError("");
     const from = new PublicKey(owner);
     const { blockhash, lastValidBlockHeight } = await solana.connection.getLatestBlockhash("confirmed");
     const tx = new Transaction({ feePayer: from, blockhash, lastValidBlockHeight });
@@ -1100,7 +1128,7 @@ async function sendProgramIx(
     window.setTimeout(() => setPhase(""), 1600);
   } catch (error) {
     setPhase("");
-    setError(error instanceof Error ? error.message : "The rock refused.");
+    setError(walletActionMessage(error, "The rock refused."));
   }
 }
 
@@ -1147,7 +1175,7 @@ async function buyWithProgram(
     await reload({ fresh: true, minTickets: tape.totalTickets + tickets });
   } catch (error) {
     setPhase("");
-    setError(error instanceof Error ? error.message : "The rock refused the slip.");
+    setError(walletActionMessage(error, "The rock refused the slip."));
   }
 }
 
@@ -1158,6 +1186,8 @@ function CrankBar({
   phase,
   setPhase,
   setError,
+  error,
+  onDismissError,
   reload,
 }: {
   tape: LottoSnapshot;
@@ -1166,6 +1196,8 @@ function CrankBar({
   phase: string;
   setPhase: (value: string) => void;
   setError: (value: string) => void;
+  error: string;
+  onDismissError: () => void;
   reload: (opts?: RefreshLottoOpts) => Promise<unknown>;
 }) {
   const busy = Boolean(phase);
@@ -1219,6 +1251,7 @@ function CrankBar({
           ? "Anyone with a wallet can run these. After close, request one ORAO job, wait for fulfill, then settle. If the timeout hits, refund unpaid buyers."
           : "Anyone with a wallet can run these. Settle has a few minutes after the entropy slot before SlotHashes drops it."}
       </p>
+      {error ? <LottoAlert text={error} onDismiss={onDismissError} /> : null}
       <div className="mt-4 flex flex-wrap gap-2">
         <HouseButton
           disabled={!canClose || busy}

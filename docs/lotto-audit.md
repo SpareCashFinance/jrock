@@ -18,10 +18,10 @@ Players must trust SlotHashes plus closer timing, and that upgrade authority doe
 | --- | --- | --- | --- |
 | Critical | C1 | Randomness is SlotHashes after close, not a VRF. The closer chooses close time, hence the future slot. | Live, disclosed |
 | Critical | C2 | Upgrade authority is a single wallet and can replace code mid-round. | Live, disclosed |
-| Critical | C3 | Deployed binary is not explorer-verified. | Live |
+| Critical | C3 | Deployed binary is not explorer-verified. | Program repo published (`SpareCashFinance/jrock-lotto`, tag `lotto-v1-mainnet`). Explorer badge still not filed. |
 | Critical | C4 | If SlotHashes expires before settle, the round can stick. No refund instruction. | Live |
 | High | H1 | `u64 % n` has a tiny bias unless `n` divides 2^64. | Live, disclosed |
-| High | H2 | No Anchor integration, local-validator, devnet lifecycle, fuzz, or solana-verify CI. | Open |
+| High | H2 | No Anchor integration, local-validator, devnet lifecycle, fuzz, or solana-verify CI. | Program repo builds SBF on push. `solana-verify` is still a manual `verify-from-repo` against tag `lotto-v1-mainnet`. |
 | Medium | M1 | Home DexTape still says “Contract pending” because `$JROCK` mint is unpublished. Not the lotto program. | Expected |
 | Fixed | F1 | UI treated raw PDA balance as the prize pool (rent included). | Shipped |
 | Fixed | F2 | Header copied empty mint (“Contract pending”) instead of the lotto program id. | Shipped |
@@ -109,6 +109,7 @@ Not run to completion: `cargo test` (no cached `anchor-lang` in this environment
 - Config: `p9XrAnsutdWKWnBxiCb57fPuuoH2mvdq32nBHKhwh7K`
 - Round 0: `3Q5u97fxVbwxPBcqg34CgqtfPdQ1RTyvnwQHPrg7CUe1`
 - Verifiable-build / explorer badge: **not filed**
+- Program source: https://github.com/SpareCashFinance/jrock-lotto (`lotto-v1-mainnet`)
 - `solana-verify` job: **not submitted** (would not make the current randomness a VRF)
 
 ## 14. Public verifier

@@ -21,12 +21,14 @@ Pin for reproducers:
 
 Verification of v1 does **not** make SlotHashes a VRF. It only proves the binary matches public source.
 
+Program-only GitHub repo (required layout for `verify-from-repo`): https://github.com/SpareCashFinance/jrock-lotto
+
 ```
 solana-verify verify-from-repo \
-  https://github.com/SpareCashFinance/jrock \
+  https://github.com/SpareCashFinance/jrock-lotto \
   --program-id FvQfcJYAcRFEDeq8rS19MNXTZfeiCxcSN5nmfA6RdWuC \
   --library-name jrock_lotto \
-  --commit-hash $(git rev-parse lotto-v1-mainnet)
+  --commit-hash lotto-v1-mainnet
 ```
 
 ## v2 successor (not production until initialized on mainnet)
@@ -37,7 +39,7 @@ solana-verify verify-from-repo \
 
 ```
 solana-verify verify-from-repo \
-  https://github.com/SpareCashFinance/jrock \
+  https://github.com/SpareCashFinance/jrock-lotto \
   --program-id 66FyiUTkw4JMYMi3yErfa7UBqrHm9GZha1meAxcgbjDg \
   --library-name jrock_lotto_v2 \
   --commit-hash <v2-deploy-commit>

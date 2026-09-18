@@ -5,3 +5,4 @@ Preferred-Languages: en
 Canonical: https://petrock.fun/.well-known/security.txt
 Policy: https://petrock.fun/lotto/verify
 Acknowledgments: https://github.com/SpareCashFinance/jrock
+Acknowledgments: https://github.com/SpareCashFinance/jrock-lotto

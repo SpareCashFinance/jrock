@@ -12,6 +12,7 @@ export const ORAO_VRF_PROGRAM_ID = "VRFzZoJdhFWL8rkvu87LpKM3RbcVezpMEc6X5GVDr7y"
 
 const IX = {
   initialize: [175, 175, 109, 31, 13, 152, 155, 237],
+  setRoundSecs: [161, 155, 62, 109, 203, 221, 239, 254],
   openRound: [66, 235, 123, 240, 8, 35, 185, 159],
   buy: [102, 6, 61, 18, 1, 218, 235, 234],
   closeSales: [63, 216, 175, 193, 204, 39, 113, 225],
@@ -246,6 +247,19 @@ export function initializeIxV2(authority: PublicKey, ticketLamports: number, rou
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     ],
     data: ixData(concat([disc(IX.initialize), u64le(ticketLamports), i64le(roundSecs), i64le(vrfTimeoutSecs)])),
+  });
+}
+
+export function setRoundSecsIxV2(authority: PublicKey, roundSecs: number) {
+  const programId = program();
+  const [config] = configPda(programId);
+  return new TransactionInstruction({
+    programId,
+    keys: [
+      { pubkey: authority, isSigner: true, isWritable: false },
+      { pubkey: config, isSigner: false, isWritable: true },
+    ],
+    data: ixData(concat([disc(IX.setRoundSecs), i64le(roundSecs)])),
   });
 }
 
