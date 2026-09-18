@@ -34,4 +34,6 @@ This file is the Phase 0 snapshot from the kennel lotto fix plan. Round 0 must f
 
 Git tag for this ELF's public source: `lotto-v1-mainnet`.
 
+Round 0 was claimed. The live program was later upgraded (slot 448133514) to the 48-hour ELF from tag `lotto-v1-48h`. Keep this snapshot as the round-0 freeze record.
+
 Successor program (not live): `jrock_lotto_v2` id `66FyiUTkw4JMYMi3yErfa7UBqrHm9GZha1meAxcgbjDg`. Do not point `NEXT_PUBLIC_LOTTO_PROGRAM` at v2 on production until v2 is initialized on mainnet after round 0 is claimed or refunded.

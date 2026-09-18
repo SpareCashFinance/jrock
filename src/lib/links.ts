@@ -69,6 +69,7 @@ export function explorerTxUrl(signature: string) {
 }
 
 export const LOTTO_SOURCE_REPO = "https://github.com/SpareCashFinance/jrock-lotto";
+export const LOTTO_SOURCE_TAG = "lotto-v1-48h";
 export const LOTTO_SITE_REPO = "https://github.com/SpareCashFinance/jrock";
 
 export function explorerAccountUrl(address: string) {

@@ -42,7 +42,7 @@ Live freeze: `docs/lotto-v1-snapshot.md`. Successor spec: `docs/lotto-fairness-v
 ## Independent check
 
 - Site: https://petrock.fun/lotto/verify
-- Program source: https://github.com/SpareCashFinance/jrock-lotto (`lotto-v1-mainnet`)
+- Program source: https://github.com/SpareCashFinance/jrock-lotto (`lotto-v1-48h`)
 - CLI: `node scripts/verify-lotto.mjs [roundId|roundPda]`
 - Audit findings: `docs/lotto-audit.md` (launch decision: FAIL for a trustless production lottery)
 

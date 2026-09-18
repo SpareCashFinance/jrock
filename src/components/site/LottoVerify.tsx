@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { HouseButton } from "@/components/ui/house-button";
 import { LottoAlert } from "@/components/site/LottoAlert";
 import { formatAmount, formatCount, shortenAddress } from "@/lib/format";
-import { explorerAccountUrl, LOTTO_SOURCE_REPO } from "@/lib/links";
+import { explorerAccountUrl, LOTTO_SOURCE_REPO, LOTTO_SOURCE_TAG } from "@/lib/links";
 import type { IndependentReceipt } from "@/lib/lotto-verify";
 
 export function LottoVerifyDesk({ defaultRound = 0 }: { defaultRound?: number }) {
@@ -60,14 +60,14 @@ export function LottoVerifyDesk({ defaultRound = 0 }: { defaultRound?: number })
   ${LOTTO_SOURCE_REPO} \\
   --program-id FvQfcJYAcRFEDeq8rS19MNXTZfeiCxcSN5nmfA6RdWuC \\
   --library-name jrock_lotto \\
-  --commit-hash lotto-v1-mainnet`}
+  --commit-hash ${LOTTO_SOURCE_TAG}`}
         </pre>
         <div className="mt-4 flex flex-wrap gap-2">
           <HouseButton href={LOTTO_SOURCE_REPO} target="_blank">
             Program repo
           </HouseButton>
-          <HouseButton href={`${LOTTO_SOURCE_REPO}/releases/tag/lotto-v1-mainnet`} target="_blank">
-            Frozen v1 tag
+          <HouseButton href={`${LOTTO_SOURCE_REPO}/releases/tag/${LOTTO_SOURCE_TAG}`} target="_blank">
+            Live 48h tag
           </HouseButton>
           <HouseButton href={explorerAccountUrl("FvQfcJYAcRFEDeq8rS19MNXTZfeiCxcSN5nmfA6RdWuC")} target="_blank">
             Program on Solscan

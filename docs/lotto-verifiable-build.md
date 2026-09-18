@@ -15,9 +15,10 @@ Pin for reproducers:
 - Program: `FvQfcJYAcRFEDeq8rS19MNXTZfeiCxcSN5nmfA6RdWuC`
 - Program-data: `BZ2RWk6QZFspNKCHiESE7uYzfeCXMjpSvBJYgas26oWi`
 - Upgrade authority: `62C41rN2uUrsZoRkZyTqxD8GJYpa6KtERAtehfNmiXwq`
-- Source tag: `lotto-v1-mainnet`
+- Source tag: `lotto-v1-48h` (commit `80697656e27cab29ff1c8ceb3800c8c946cfa55d`)
+- Upgrade tx: `27TSxFQi4fvJM6JbpydLZSztvb3QqXfwP5nhLunsZJKY97tn7DuhoswPa128u85FdiF1bRjfekJtqynp98TWHNWr`
 - Explorer verified: **no**
-- Do **not** revoke this authority while round 0 holds player SOL.
+- Round 0 is claimed. Do **not** upgrade again while a funded round holds ticket SOL.
 
 Verification of v1 does **not** make SlotHashes a VRF. It only proves the binary matches public source.
 
@@ -28,7 +29,7 @@ solana-verify verify-from-repo \
   https://github.com/SpareCashFinance/jrock-lotto \
   --program-id FvQfcJYAcRFEDeq8rS19MNXTZfeiCxcSN5nmfA6RdWuC \
   --library-name jrock_lotto \
-  --commit-hash lotto-v1-mainnet
+  --commit-hash lotto-v1-48h
 ```
 
 ## v2 successor (not production until initialized on mainnet)
