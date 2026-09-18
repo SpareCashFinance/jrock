@@ -218,14 +218,16 @@ export function initializeIx(authority: PublicKey, ticketLamports: number, round
   });
 }
 
-export function setRoundSecsIx(authority: PublicKey, roundSecs: number) {
+export function setRoundSecsIx(authority: PublicKey, currentRound: number, roundSecs: number) {
   const program = lottoProgramKey();
   const [config] = configPda(program);
+  const [round] = roundPda(currentRound, program);
   return new TransactionInstruction({
     programId: program,
     keys: [
       { pubkey: authority, isSigner: true, isWritable: false },
       { pubkey: config, isSigner: false, isWritable: true },
+      { pubkey: round, isSigner: false, isWritable: true },
     ],
     data: ixData(concat([disc(IX.setRoundSecs), i64le(roundSecs)])),
   });

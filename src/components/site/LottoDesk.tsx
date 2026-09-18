@@ -15,6 +15,7 @@ import { formatAmount, formatCount, shortenAddress } from "@/lib/format";
 import { explorerAccountUrl, explorerTxUrl, links, LOTTO_SOURCE_REPO } from "@/lib/links";
 import {
   DRAW_LAG_SECONDS,
+  LOTTO_ROUND_SECS_48H,
   MEMO_PROGRAM_ID,
   hasLottoPot,
   lottoMemo,
@@ -27,7 +28,7 @@ import {
   type LottoPostedWin,
   type LottoSnapshot,
 } from "@/lib/lotto";
-import { buyIxForRound, claimIx, closeSalesIx, isLottoV2, openRoundIx, settleIx } from "@/lib/lotto-program";
+import { buyIxForRound, claimIx, closeSalesIx, isLottoV2, openRoundIx, setRoundSecsIx, settleIx } from "@/lib/lotto-program";
 import {
   buyIxV2,
   claimIxV2,
@@ -39,6 +40,7 @@ import {
   oraoTreasuryFromNetworkState,
   refundOneIxV2,
   requestRandomnessIxV2,
+  setRoundSecsIxV2,
   settleIxV2,
 } from "@/lib/lotto-program-v2";
 import { vrfSeedBytes } from "@/lib/lotto-vrf";
@@ -70,6 +72,71 @@ function ClockBox({ label, value, ready }: { label: string; value: number; ready
         {ready ? String(value).padStart(2, "0") : "—"}
       </p>
       <p className="mt-1 text-[10px] tracking-[0.16em] uppercase text-[var(--gold)]">{label}</p>
+    </div>
+  );
+}
+
+function KennelClockCard({
+  tape,
+  solana,
+  phase,
+  setPhase,
+  setError,
+  reload,
+}: {
+  tape: LottoSnapshot;
+  solana: ReturnType<typeof useSolanaWallet>;
+  phase: string;
+  setPhase: (value: string) => void;
+  setError: (value: string) => void;
+  reload: (opts?: RefreshLottoOpts) => Promise<unknown>;
+}) {
+  const hours = Math.round((tape.roundSecs ?? 0) / 3600);
+  const emptyOpen = tape.engine === "program" && tape.status === "open" && tape.totalTickets === 0;
+  if (!emptyOpen || hours <= 48) return null;
+  const isKennel = Boolean(tape.authority) && solana.address === tape.authority;
+  return (
+    <div className="glass-panel rounded-[28px] p-5 sm:p-6">
+      <p className="kicker">Empty book</p>
+      <h2 className="display mt-2 text-3xl text-white">Cut this rock to 48 hours.</h2>
+      <p className="mt-3 text-sm leading-6 text-[var(--cream)]">
+        Nobody has filed a slip. The on-chain clock is still {hours} hours. The leftover seed stays in the pot.
+      </p>
+      <div className="mt-4">
+        {solana.connected ? (
+          isKennel ? (
+            <HouseButton
+              variant="primary"
+              className="w-full"
+              disabled={Boolean(phase)}
+              onClick={() =>
+                void sendProgramIx(
+                  solana,
+                  (payer) =>
+                    isLottoV2(tape.programId)
+                      ? setRoundSecsIxV2(payer, tape.currentRound, LOTTO_ROUND_SECS_48H)
+                      : setRoundSecsIx(payer, tape.currentRound, LOTTO_ROUND_SECS_48H),
+                  setPhase,
+                  setError,
+                  reload,
+                  "Cutting to 48 hours…",
+                  "Clock is 48 hours",
+                )
+              }
+            >
+              {phase || "Cut this rock to 48 hours"}
+            </HouseButton>
+          ) : (
+            <HouseButton variant="primary" className="w-full" onClick={solana.openModal}>
+              Switch to the kennel wallet
+            </HouseButton>
+          )
+        ) : (
+          <HouseButton variant="primary" className="w-full" onClick={solana.openModal}>
+            Connect kennel wallet
+          </HouseButton>
+        )}
+      </div>
     </div>
   );
 }
@@ -302,6 +369,14 @@ export function LottoDesk({ initial }: { initial?: LottoSnapshot }) {
                   }
                 : undefined
             }
+          />
+          <KennelClockCard
+            tape={tape}
+            solana={solana}
+            phase={phase}
+            setPhase={setPhase}
+            setError={setError}
+            reload={reload}
           />
           <LottoMachine />
         </div>

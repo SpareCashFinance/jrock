@@ -518,6 +518,7 @@ async function getV2ProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | nu
   empty.verifiedBuild = false;
   empty.upgradeable = true;
   empty.roundSecs = config.roundSecs;
+  empty.authority = config.authority;
   const previous = await getPreviousRoundV2(rpc, config.currentRound);
   const last = previous ? await drawFromRoundV2(previous.round, config.ticketLamports) : null;
   const posted = [
@@ -620,6 +621,7 @@ async function getV2ProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | nu
     upgradeable: true,
     onchainStatus: round.status,
     roundSecs: config.roundSecs,
+    authority: config.authority,
   };
 }
 
@@ -670,6 +672,7 @@ async function getProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | null
   empty.configPda = configPk.toBase58();
   empty.feeWallet = lottoFeeWallet();
   empty.roundSecs = config.roundSecs;
+  empty.authority = config.authority;
   const previous = await getPreviousRound(rpc, config);
   const last = previous ? await drawFromRound(previous.round, config.ticketLamports) : null;
   const posted = await loadPostedRounds(rpc, config.currentRound, config.ticketLamports);
@@ -782,6 +785,7 @@ async function getProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | null
     upgradeable: true,
     onchainStatus: round.status,
     roundSecs: config.roundSecs,
+    authority: config.authority,
   };
 }
 

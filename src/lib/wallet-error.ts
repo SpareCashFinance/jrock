@@ -12,6 +12,9 @@ export function walletActionMessage(error: unknown, fallback = "The rock refused
   if (/insufficient|no record of a prior credit|0x1\b/i.test(message)) {
     return "Not enough SOL in the wallet for this slip plus fees.";
   }
+  if (/invalid instruction|InstructionFallbackNotFound|FallbackNotFound/i.test(message)) {
+    return "This live program is still the old 72-hour ELF. Deploy v1-48h, then cut the clock.";
+  }
   if (/WalletSendTransactionError|WalletSign/i.test(message) && message.length > 140) {
     return fallback;
   }

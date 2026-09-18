@@ -250,14 +250,16 @@ export function initializeIxV2(authority: PublicKey, ticketLamports: number, rou
   });
 }
 
-export function setRoundSecsIxV2(authority: PublicKey, roundSecs: number) {
+export function setRoundSecsIxV2(authority: PublicKey, currentRound: number, roundSecs: number) {
   const programId = program();
   const [config] = configPda(programId);
+  const [round] = roundPda(currentRound, programId);
   return new TransactionInstruction({
     programId,
     keys: [
       { pubkey: authority, isSigner: true, isWritable: false },
       { pubkey: config, isSigner: false, isWritable: true },
+      { pubkey: round, isSigner: false, isWritable: true },
     ],
     data: ixData(concat([disc(IX.setRoundSecs), i64le(roundSecs)])),
   });
