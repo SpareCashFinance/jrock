@@ -31,6 +31,13 @@ export function nextCrankStep(
 
   if (tape.status === "open") {
     if (!ended) return { kind: "idle", label: "", reason: "Sales are still open." };
+    if (tape.totalTickets === 0) {
+      return {
+        kind: "close",
+        label: "Open next rock",
+        reason: "No slips this round. Close the book and start the next rock in the same transaction.",
+      };
+    }
     return {
       kind: "close",
       label: "Finish this draw",
@@ -73,8 +80,8 @@ export function nextCrankStep(
   if (tape.status === "drawn" && tape.draw?.winner) {
     return {
       kind: "claim",
-      label: "Pay the winner",
-      reason: "Send 85% of the prize pool. 15% stays to seed the next rock.",
+      label: "Pay winner & open next",
+      reason: "Pay 85% of the prize pool. The leftover 15% seeds the next rock, which opens in the same transaction.",
       winner: tape.draw.winner,
     };
   }
@@ -88,7 +95,7 @@ export function nextCrankStep(
     return {
       kind: "open",
       label: "Open next round",
-      reason: "Roll leftover seed into a new round and start selling slips again.",
+      reason: "The next rock should already be open after payout. This recovers leftover seed if that step was skipped.",
     };
   }
 

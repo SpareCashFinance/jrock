@@ -30,19 +30,16 @@ import {
   type LottoPostedWin,
   type LottoSnapshot,
 } from "@/lib/lotto";
-import { buyIxForRound, claimIx, closeSalesIx, isLottoV2, openRoundIx, setRoundSecsIx, settleIx } from "@/lib/lotto-program";
+import { deskCrankIxs, finishFlowAsking, finishFlowDone, type FinishFlowInput } from "@/lib/lotto-continue";
+import { buyIxForRound, isLottoV2, setRoundSecsIx } from "@/lib/lotto-program";
 import {
   buyIxV2,
-  claimIxV2,
-  closeSalesIxV2,
   fulfillRandomnessIxV2,
-  openRoundIxV2,
   oraoNetworkStatePda,
   oraoRequestPda,
   oraoTreasuryFromNetworkState,
   requestRandomnessIxV2,
   setRoundSecsIxV2,
-  settleIxV2,
 } from "@/lib/lotto-program-v2";
 import { vrfSeedBytes } from "@/lib/lotto-vrf";
 import { useSolanaWallet } from "@/components/solana/SolanaWalletProvider";
@@ -256,50 +253,31 @@ export function LottoDesk({ initial }: { initial?: LottoSnapshot }) {
     autoKey.current = key;
     const v2 = isLottoV2(tape.programId);
     const round = tape.currentRound;
-    if (crankStep.kind === "close") {
-      void sendProgramIx(solana, () => (v2 ? closeSalesIxV2(round) : closeSalesIx(round)), setPhase, setError, reload, "Closing sales…", "Sales closed");
-      return;
-    }
-    if (crankStep.kind === "settle") {
-      if (v2 && !tape.vrfRequest) return;
-      void sendProgramIx(
-        solana,
-        () => (v2 ? settleIxV2(round, new PublicKey(tape.vrfRequest || "")) : settleIx(round)),
-        setPhase,
-        setError,
-        reload,
-        "Settling…",
-        "Draw settled",
-      );
-      return;
-    }
-    if (crankStep.kind === "claim") {
-      void sendProgramIx(
-        solana,
-        (payer) =>
-          v2
-            ? claimIxV2(round, new PublicKey(crankStep.winner || payer.toBase58()))
-            : claimIx(round, new PublicKey(crankStep.winner || payer.toBase58())),
-        setPhase,
-        setError,
-        reload,
-        "Paying winner…",
-        "Pot claimed",
-      );
-      return;
-    }
-    if (crankStep.kind === "open") {
-      void sendProgramIx(
-        solana,
-        (payer) => (v2 ? openRoundIxV2(payer, round) : openRoundIx(payer, round)),
-        setPhase,
-        setError,
-        reload,
-        "Opening round…",
-        "Round open",
-      );
-    }
-  }, [crankStep, ended, phase, reload, solana, tape.currentRound, tape.engine, tape.programId, tape.round, tape.status, tape.vrfRequest]);
+    if (crankStep.kind === "settle" && v2 && !tape.vrfRequest) return;
+    void sendProgramIx(
+      solana,
+      (payer) =>
+        deskCrankIxs({
+          v2,
+          payer,
+          currentRound: round,
+          step: crankStep,
+          totalTickets: tape.totalTickets,
+          winner: crankStep.kind === "claim" ? crankStep.winner : tape.draw?.winner,
+          vrfRequest: tape.vrfRequest,
+          connection: solana.connection,
+          programId: tape.programId,
+          roundPda: tape.pot,
+          ticketCount: tape.totalTickets,
+          roundId: tape.round,
+        }),
+      setPhase,
+      setError,
+      reload,
+      finishFlowAsking(crankStep.kind, tape.totalTickets),
+      finishFlowDone(crankStep.kind, tape.totalTickets),
+    );
+  }, [crankStep, ended, phase, reload, solana, tape.currentRound, tape.engine, tape.programId, tape.round, tape.status, tape.totalTickets, tape.vrfRequest]);
 
   return (
     <section className="section pb-16 pt-8">
@@ -391,35 +369,29 @@ export function LottoDesk({ initial }: { initial?: LottoSnapshot }) {
               tape.engine === "program" && crankStep.kind !== "idle" && crankStep.kind !== "wait"
                 ? () => {
                     const v2 = isLottoV2(tape.programId);
-                    const round = tape.currentRound;
-                    if (crankStep.kind === "close") {
-                      void sendProgramIx(solana, () => (v2 ? closeSalesIxV2(round) : closeSalesIx(round)), setPhase, setError, reload, "Closing sales…", "Sales closed");
-                    } else if (crankStep.kind === "settle") {
-                      void sendProgramIx(solana, () => settleIx(round), setPhase, setError, reload, "Settling…", "Draw settled");
-                    } else if (crankStep.kind === "claim") {
-                      void sendProgramIx(
-                        solana,
-                        (payer) =>
-                          v2
-                            ? claimIxV2(round, new PublicKey(crankStep.winner || payer.toBase58()))
-                            : claimIx(round, new PublicKey(crankStep.winner || payer.toBase58())),
-                        setPhase,
-                        setError,
-                        reload,
-                        "Paying winner…",
-                        "Pot claimed",
-                      );
-                    } else if (crankStep.kind === "open") {
-                      void sendProgramIx(
-                        solana,
-                        (payer) => (v2 ? openRoundIxV2(payer, round) : openRoundIx(payer, round)),
-                        setPhase,
-                        setError,
-                        reload,
-                        "Opening round…",
-                        "Round open",
-                      );
-                    }
+                    void sendProgramIx(
+                      solana,
+                      (payer) =>
+                        deskCrankIxs({
+                          v2,
+                          payer,
+                          currentRound: tape.currentRound,
+                          step: crankStep,
+                          totalTickets: tape.totalTickets,
+                          winner: crankStep.kind === "claim" ? crankStep.winner : tape.draw?.winner,
+                          vrfRequest: tape.vrfRequest,
+                          connection: solana.connection,
+                          programId: tape.programId,
+                          roundPda: tape.pot,
+                          ticketCount: tape.totalTickets,
+                          roundId: tape.round,
+                        }),
+                      setPhase,
+                      setError,
+                      reload,
+                      finishFlowAsking(crankStep.kind, tape.totalTickets),
+                      finishFlowDone(crankStep.kind, tape.totalTickets),
+                    );
                   }
                 : undefined
             }
@@ -631,7 +603,7 @@ function SolePlayerCard({
       ) : null}
       <p className="mt-2 text-sm leading-6 text-[var(--dim)]">
         This wallet bought every slip ({formatCount(player.tickets)}). The official winner is written on-chain after
-        settle. Connect a wallet to finish close → settle → pay → open the next round.
+        settle. Connect a wallet to finish the draw. Paying the winner opens the next rock.
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
         <HouseButton href={explorerAccountUrl(player.wallet)} target="_blank">
@@ -956,7 +928,7 @@ function BuyCard({
       ) : tape.status === "awaiting_round" || tape.status === "refunded" ? (
         <p className="mt-3 text-sm text-[var(--gold)]">Open the next round to start selling slips.</p>
       ) : tape.status === "refunding" ? (
-        <p className="mt-3 text-sm text-[var(--gold)]">This round is closed. Finish the draw, then open the next rock.</p>
+        <p className="mt-3 text-sm text-[var(--gold)]">This round is closed. Finish the draw. Paying the winner opens the next rock.</p>
       ) : null}
       {error ? <LottoAlert text={error} onDismiss={onDismissError} /> : null}
       {tape.pot ? (
@@ -1276,7 +1248,12 @@ async function buyWithWallet(
 
 async function sendProgramIx(
   solana: ReturnType<typeof useSolanaWallet>,
-  build: (payer: PublicKey) => TransactionInstruction | Promise<TransactionInstruction>,
+  build: (
+    payer: PublicKey,
+  ) =>
+    | TransactionInstruction
+    | TransactionInstruction[]
+    | Promise<TransactionInstruction | TransactionInstruction[]>,
   setPhase: (value: string) => void,
   setError: (value: string) => void,
   reload: (opts?: RefreshLottoOpts) => Promise<unknown>,
@@ -1292,7 +1269,10 @@ async function sendProgramIx(
     const from = new PublicKey(owner);
     const { blockhash, lastValidBlockHeight } = await solana.connection.getLatestBlockhash("confirmed");
     const tx = new Transaction({ feePayer: from, blockhash, lastValidBlockHeight });
-    tx.add(await build(from));
+    const built = await build(from);
+    const ixs = Array.isArray(built) ? built : [built];
+    if (!ixs.length) throw new Error("No instruction to send.");
+    tx.add(...ixs);
     const encoded = (await import("@/lib/tx")).encodeTx(tx);
     setPhase("Filing on Solana…");
     await solana.signAndSendBase64(encoded);
@@ -1385,10 +1365,37 @@ function CrankBar({
   const canOpen =
     tape.status === "awaiting_round" || tape.status === "claimed" || tape.status === "void" || tape.status === "refunded";
   const run = (
-    build: (payer: PublicKey) => TransactionInstruction | Promise<TransactionInstruction>,
+    build: (
+      payer: PublicKey,
+    ) =>
+      | TransactionInstruction
+      | TransactionInstruction[]
+      | Promise<TransactionInstruction | TransactionInstruction[]>,
     asking: string,
     done: string,
   ) => void sendProgramIx(solana, build, setPhase, setError, reload, asking, done);
+
+  function continueStep(step: FinishFlowInput["step"], asking: string, done: string) {
+    run(
+      (payer) =>
+        deskCrankIxs({
+          v2,
+          payer,
+          currentRound: tape.currentRound,
+          step,
+          totalTickets: tape.totalTickets,
+          winner: tape.draw?.winner,
+          vrfRequest: tape.vrfRequest,
+          connection: solana.connection,
+          programId: tape.programId,
+          roundPda: tape.pot,
+          ticketCount: tape.totalTickets,
+          roundId: tape.round,
+        }),
+      asking,
+      done,
+    );
+  }
 
   async function vrfRequestIx(payer: PublicKey) {
     const program = new PublicKey(tape.programId);
@@ -1413,15 +1420,19 @@ function CrankBar({
       <p className="kicker">Crank the program</p>
       <p className="mt-2 text-sm leading-6 text-[var(--dim)]">
         {v2
-          ? "Anyone with a wallet can run these. After close, request one ORAO job, wait for fulfill, then settle and pay the winner."
-          : "Anyone with a wallet can run these. Settle has a few minutes after the entropy slot before SlotHashes drops it."}
+          ? "Anyone with a wallet can run these. After close, request one ORAO job, wait for fulfill, then settle. Paying the winner opens the next rock in the same transaction."
+          : "Anyone with a wallet can run these. Settle has a few minutes after the entropy slot before SlotHashes drops it. Paying the winner opens the next rock."}
       </p>
       {error ? <LottoAlert text={error} onDismiss={onDismissError} /> : null}
       <div className="mt-4 flex flex-wrap gap-2">
         <HouseButton
           disabled={!canClose || busy}
           onClick={() =>
-            run(() => (v2 ? closeSalesIxV2(tape.currentRound) : closeSalesIx(tape.currentRound)), "Closing sales…", "Sales closed")
+            continueStep(
+              { kind: "close", label: "Close sales", reason: "" },
+              finishFlowAsking("close", tape.totalTickets),
+              finishFlowDone("close", tape.totalTickets),
+            )
           }
         >
           Close sales
@@ -1442,11 +1453,7 @@ function CrankBar({
         <HouseButton
           disabled={!canSettle || busy}
           onClick={() =>
-            run(
-              () => (v2 ? settleIxV2(tape.currentRound, vrfAccount()) : settleIx(tape.currentRound)),
-              "Settling…",
-              "Draw settled",
-            )
+            continueStep({ kind: "settle", label: "Settle draw", reason: "" }, "Settling…", "Draw settled")
           }
         >
           Settle draw
@@ -1454,13 +1461,10 @@ function CrankBar({
         <HouseButton
           disabled={!canClaim || busy}
           onClick={() =>
-            run(
-              (payer) =>
-                v2
-                  ? claimIxV2(tape.currentRound, new PublicKey(tape.draw?.winner || payer.toBase58()))
-                  : claimIx(tape.currentRound, new PublicKey(tape.draw?.winner || payer.toBase58())),
-              "Paying winner…",
-              "Pot claimed",
+            continueStep(
+              { kind: "claim", label: "Pay 85%", reason: "", winner: tape.draw?.winner || "" },
+              finishFlowAsking("claim", tape.totalTickets),
+              finishFlowDone("claim", tape.totalTickets),
             )
           }
         >
@@ -1469,11 +1473,7 @@ function CrankBar({
         <HouseButton
           disabled={!canOpen || busy}
           onClick={() =>
-            run(
-              (payer) => (v2 ? openRoundIxV2(payer, tape.currentRound) : openRoundIx(payer, tape.currentRound)),
-              "Opening round…",
-              "Round open",
-            )
+            continueStep({ kind: "open", label: "Open next round", reason: "" }, "Opening round…", "Round open")
           }
         >
           Open next round

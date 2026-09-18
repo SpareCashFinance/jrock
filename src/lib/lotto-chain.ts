@@ -518,7 +518,7 @@ async function getV2ProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | nu
   if (!config) return null;
   const [roundPk] = roundPda(config.currentRound);
   const roundInfo = await rpc.getAccountInfo(roundPk, "confirmed");
-  const empty = emptyLottoSnapshot("The on-chain round is not open yet. Anyone can crank Open next round.");
+  const empty = emptyLottoSnapshot("The next rock is not open yet. Paying the last winner should have started it. Anyone can still crank Open next round.");
   empty.engine = "program";
   empty.currentRound = config.currentRound;
   empty.ticketLamports = config.ticketLamports;
@@ -554,11 +554,11 @@ async function getV2ProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | nu
     empty.proof.pot = roundPk.toBase58();
     empty.message =
       previous?.round.status === "claimed"
-        ? "Last winner took 85%. Fifteen percent is waiting to seed the next round. Crank Open next round."
+        ? "Last winner took 85%. Fifteen percent is waiting to seed the next rock. Open it to keep selling."
         : previous?.round.status === "void"
-          ? "Last round had no slips. Leftover seed still rolls forward. Crank Open next round."
+          ? "Last round had no slips. Leftover seed still rolls forward. Open the next rock to keep selling."
           : previous?.round.status === "refunded"
-            ? "Last round finished. Leftover seed still rolls forward. Crank Open next round."
+            ? "Last round finished. Leftover seed still rolls forward. Open the next rock to keep selling."
             : empty.message;
     return empty;
   }
@@ -576,11 +576,11 @@ async function getV2ProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | nu
     awaiting_vrf_request: "Sales are closed. Crank Request randomness to bind one ORAO VRF job. A second request is rejected.",
     awaiting_vrf: "Waiting on ORAO to fulfill the bound request. Then crank Settle.",
     awaiting_settle: "ORAO fulfilled. Crank Settle to map the stored randomness onto a slip with rejection sampling.",
-    drawn: "The program picked a winner. Claim pays that wallet 85%. Fifteen percent stays in the pot.",
-    claimed: "Winner took 85%. Crank Open next round to roll the leftover 15% forward.",
-    void: "No slips. Crank Open next round. Any leftover seed rolls forward.",
-    refunding: "This round is closed. Finish the draw, then open the next rock.",
-    refunded: "This round is finished. Crank Open next round to roll leftover seed.",
+    drawn: "The program picked a winner. Paying that wallet 85% opens the next rock in the same transaction. Fifteen percent seeds it.",
+    claimed: "Winner took 85%. The next rock should already be open. If it is not, crank Open next round.",
+    void: "No slips. The next rock should already be open. If it is not, crank Open next round.",
+    refunding: "This round is closed. Finish the draw. Paying the winner opens the next rock.",
+    refunded: "This round is finished. Open the next rock if it did not start with payout.",
   };
   const draw = await drawFromRoundV2(round, config.ticketLamports);
   const rent = await rentExemptLamports(rpc, roundInfo.data.length);
@@ -676,7 +676,7 @@ async function getProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | null
   const [roundPk] = roundPda(config.currentRound);
   const roundInfo = await rpc.getAccountInfo(roundPk, "confirmed");
   const empty = emptyLottoSnapshot(
-    "The on-chain round is not open yet. Anyone can crank Open next round.",
+    "The next rock is not open yet. Paying the last winner should have started it. Anyone can still crank Open next round.",
   );
   empty.engine = "program";
   empty.currentRound = config.currentRound;
@@ -715,9 +715,9 @@ async function getProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | null
     empty.proof.pot = roundPk.toBase58();
     empty.message =
       previous?.round.status === "claimed"
-        ? "Last winner took 85%. Fifteen percent is waiting to seed the next round. Crank Open next round."
+        ? "Last winner took 85%. Fifteen percent is waiting to seed the next rock. Open it to keep selling."
         : previous?.round.status === "void"
-          ? "Last round had no slips. Leftover seed still rolls forward. Crank Open next round."
+          ? "Last round had no slips. Leftover seed still rolls forward. Open the next rock to keep selling."
           : empty.message;
     return empty;
   }
@@ -736,16 +736,16 @@ async function getProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | null
     message = `Sales are closed. Wait until slot ${round.entropySlot} lands in SlotHashes, then crank Settle within a few minutes.`;
   } else if (round.status === "settled") {
     status = "drawn";
-    message = "The program picked a winner. Claim pays that wallet 85%. Fifteen percent stays in the pot.";
+    message = "The program picked a winner. Paying that wallet 85% opens the next rock in the same transaction.";
   } else if (round.status === "claimed") {
     status = "claimed";
-    message = "Winner took 85%. Crank Open next round to roll the leftover 15% forward.";
+    message = "Winner took 85%. The next rock should already be open. If it is not, crank Open next round.";
   } else if (round.status === "void") {
     status = "void";
-    message = "No slips. Crank Open next round. Any leftover seed rolls forward.";
+    message = "No slips. The next rock should already be open. If it is not, crank Open next round.";
   } else if (Date.now() >= round.endTs * 1000) {
     message =
-      "Sales are over. Close, settle, pay the winner, then open the next rock. The page does that automatically when a wallet is connected. Anyone can also press the finish buttons.";
+      "Sales are over. Close, settle, then pay the winner. That payout opens the next rock in the same transaction. The page does that automatically when a wallet is connected.";
   }
   const draw = await drawFromRound(round, config.ticketLamports);
   const rent = await rentExemptLamports(rpc, roundInfo.data.length);
