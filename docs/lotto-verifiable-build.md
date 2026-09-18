@@ -48,7 +48,7 @@ solana-verify verify-from-repo \
 - Source commit: `35de5008f9a5f7746b712386bf77d2cfd39d7db3` (10,000-buy book, `compact_book`, leftover realloc rent stays in the pot)
 - OtterSec verification PDA: `7fYS1EP9gvC2if556WGtvCC8ZQUZYBuaKv3vdwYANRE4`
 - Uploader / upgrade authority: `62C41rN2uUrsZoRkZyTqxD8GJYpa6KtERAtehfNmiXwq`
-- Explorer verified: pending OtterSec rematch against `35de500`.
+- Explorer verified: **yes** (`is_verified: true`, commit `35de500`, job `86894fa3-3923-4deb-a90c-7458661bb29a`).
 - Upgrade tx: `3ifa1s7RFBELfRdCN57ShgADeFyPGJSHvn6D8LvwTusfin3ifLaX2ScyZnvCAGQKbTtjNTghKQyUUxRLM3RZTmnS`
 - Deployed slot: `448216595`
 - Book: 10,000 buy rows. The live account grows with each buy and shrinks unused reserved rows so leftover rent stays in the pot.
@@ -65,4 +65,4 @@ solana-verify verify-from-repo \
 
 Confirm the verified badge on Explorer and Solscan independently. Then either revoke upgrade authority or document Squads signers, threshold, and delay.
 
-CI: `.github/workflows/build-lotto.yml` builds both SBF artifacts. OtterSec job: https://verify.osec.io/job/a200c041-4adc-46d3-990d-a728ede90f33. Status: https://verify.osec.io/status/66FyiUTkw4JMYMi3yErfa7UBqrHm9GZha1meAxcgbjDg
+CI: `.github/workflows/build-lotto.yml` builds both SBF artifacts. OtterSec job: https://verify.osec.io/job/86894fa3-3923-4deb-a90c-7458661bb29a. Status: https://verify.osec.io/status/66FyiUTkw4JMYMi3yErfa7UBqrHm9GZha1meAxcgbjDg
