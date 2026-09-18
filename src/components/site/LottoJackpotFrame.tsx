@@ -3,7 +3,7 @@
 import NumberFlow from "@number-flow/react";
 import { HouseButton } from "@/components/ui/house-button";
 import { LottoClip } from "@/components/site/LottoClip";
-import { formatCount } from "@/lib/format";
+import { CountFlow } from "@/components/motion/LottoFlow";
 import type { LottoSnapshot } from "@/lib/lotto";
 import { useCountdown, useLottoSnapshot } from "@/lib/lotto-client";
 
@@ -40,6 +40,10 @@ export function LottoJackpotFrame({ initial }: { initial?: LottoSnapshot }) {
                 <NumberFlow
                   value={Number.isFinite(jackpot) ? jackpot : 0}
                   format={{ minimumFractionDigits: 2, maximumFractionDigits: 4 }}
+                  trend={1}
+                  willChange
+                  transformTiming={{ duration: 720, easing: "cubic-bezier(0.16, 1, 0.3, 1)" }}
+                  spinTiming={{ duration: 920, easing: "cubic-bezier(0.16, 1, 0.3, 1)" }}
                 />
                 <span className="ml-1.5 text-[0.42em] tracking-wide text-white">SOL</span>
               </p>
@@ -55,7 +59,10 @@ export function LottoJackpotFrame({ initial }: { initial?: LottoSnapshot }) {
             </p>
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] tracking-[0.14em] uppercase text-[var(--stone)]">
               <span>
-                <span className="text-white">{formatCount(tape.totalTickets) ?? "0"}</span> slips
+                <span className="text-white">
+                  <CountFlow value={tape.totalTickets} trend={1} />
+                </span>{" "}
+                slips
               </span>
               <span>
                 {!clock.ready ? "…" : clock.done ? "closed" : `${clock.days}d ${pad(clock.hours)}h ${pad(clock.minutes)}m`}

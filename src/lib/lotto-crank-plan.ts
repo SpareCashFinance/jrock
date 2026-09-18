@@ -74,7 +74,7 @@ export function nextCrankStep(
     return {
       kind: "claim",
       label: "Pay the winner",
-      reason: "Send 85% of the prize pool after rent. 15% stays to seed the next rock.",
+      reason: "Send 85% of the prize pool. 15% stays to seed the next rock.",
       winner: tape.draw.winner,
     };
   }

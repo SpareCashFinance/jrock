@@ -8,7 +8,7 @@ export function BrandMark({
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src="/icon"
+      src="/icon.png"
       alt=""
       width={size}
       height={size}

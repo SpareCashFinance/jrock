@@ -772,6 +772,24 @@ a {
   text-align: center;
 }
 
+.house-flow {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.28em;
+}
+
+.house-flow-unit {
+  font-size: 0.42em;
+  letter-spacing: 0.12em;
+  color: var(--gold);
+}
+
+number-flow-react {
+  --number-flow-char-height: 0.95em;
+  --number-flow-mask-height: 0.16em;
+  font-variant-numeric: tabular-nums;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

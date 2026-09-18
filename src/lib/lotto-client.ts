@@ -3,7 +3,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { emptyLottoSnapshot, type LottoSnapshot } from "@/lib/lotto";
 
-const POLL_MS = 4_000;
+const POLL_MS = 2_000;
 const HIDDEN_POLL_MS = 15_000;
 
 export type RefreshLottoOpts = {

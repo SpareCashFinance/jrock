@@ -52,6 +52,7 @@ import { useCountdown, useLottoSnapshot, type RefreshLottoOpts } from "@/lib/lot
 import { drawPhaseLabel, nextCrankStep, salesHaveEnded } from "@/lib/lotto-crank-plan";
 import { walletActionMessage } from "@/lib/wallet-error";
 import { LottoAlert } from "@/components/site/LottoAlert";
+import { CountFlow, NumberFlowGroup, SolFlow } from "@/components/motion/LottoFlow";
 
 const PRESETS = [1, 2, 5, 10, 20];
 const PURCHASE_PAGE_SIZE = 20;
@@ -333,23 +334,22 @@ export function LottoDesk({ initial }: { initial?: LottoSnapshot }) {
               <ClockBox label="Minutes" value={clock.minutes} ready={clock.ready} />
               <ClockBox label="Seconds" value={clock.seconds} ready={clock.ready} />
             </div>
-            <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <Stat
-                label="Prize pool"
-                value={`${formatAmount((tape.engine === "program" ? tape.split.claimableLamports : tape.roundLamports) / 1_000_000_000, 4) ?? "0"} SOL`}
-              />
-              <Stat label="Winner 85%" value={`${formatAmount(tape.split.winnerLamports / 1_000_000_000, 4) ?? "0"} SOL`} />
-              <Stat label="Next seed 15%" value={`${formatAmount(tape.split.carryLamports / 1_000_000_000, 4) ?? "0"} SOL`} />
-              <Stat label="Your slips" value={formatCount(yours) ?? "0"} />
-            </div>
+            <NumberFlowGroup>
+              <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <Stat
+                  label="Prize pool"
+                  value={(tape.engine === "program" ? tape.split.claimableLamports : tape.roundLamports) / 1_000_000_000}
+                  money
+                  trend={1}
+                />
+                <Stat label="Winner 85%" value={tape.split.winnerLamports / 1_000_000_000} money trend={1} />
+                <Stat label="Next seed 15%" value={tape.split.carryLamports / 1_000_000_000} money trend={1} />
+                <Stat label="Your slips" value={yours} />
+              </div>
+            </NumberFlowGroup>
             <p className="mt-3 text-xs tracking-[0.14em] uppercase text-[var(--gold)]">
-              {formatCount(tape.totalTickets) ?? "0"} slips sold
-              {tape.split.rentLamports > 0
-                ? ` · account holds ${formatAmount(tape.potSol, 4)} SOL including ${formatAmount(tape.split.rentLamports / 1_000_000_000, 4)} SOL rent, which is not prize money`
-                : ""}
-              {tape.split.seedLamports > 0
-                ? ` · ${formatAmount(tape.split.seedLamports / 1_000_000_000, 4)} SOL rolled in from last round`
-                : ""}
+              <CountFlow value={tape.totalTickets} trend={1} /> slips sold
+              {tape.split.seedLamports > 0 ? " · last rock left seed in the pot" : ""}
             </p>
             <p className="serif mt-5 text-lg text-[var(--cream)]">{tape.message}</p>
           </div>
@@ -532,11 +532,23 @@ function SlipReceiptDialog({
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({
+  label,
+  value,
+  money = false,
+  trend,
+}: {
+  label: string;
+  value: number;
+  money?: boolean;
+  trend?: number;
+}) {
   return (
     <div className="rounded-2xl border border-[rgba(232,210,176,0.12)] bg-[#080d16] px-4 py-3">
       <p className="text-[10px] tracking-[0.16em] uppercase text-[var(--gold)]">{label}</p>
-      <p className="display mt-1 text-3xl text-white">{value}</p>
+      <p className="display mt-1 text-3xl text-white">
+        {money ? <SolFlow value={value} trend={trend} /> : <CountFlow value={value} trend={trend} />}
+      </p>
     </div>
   );
 }
@@ -686,7 +698,7 @@ function ProofCard({ tape }: { tape: LottoSnapshot }) {
           "Every slip gets a number, in the order it was bought, from 0 up. Buy again and your numbers continue.",
           "When time is up, anyone can close sales, then request one ORAO VRF job seeded with this program, this round, and the slip count. A second request is rejected.",
           "If anyone bought, settle always maps the stored 256-bit VRF output onto one of those slips with rejection sampling.",
-          "Winner takes 85% of the prize pool after rent. 15% stays to seed the next round. Anyone can press the finish buttons.",
+          "Winner takes 85% of the prize pool. 15% stays to seed the next round. Anyone can press the finish buttons.",
         ]
       : [
           `Buy 1 to 20 slips at a time. You pay ${slipPrice} SOL each. 1% is a kennel fee. The rest goes in the pot.`,
@@ -694,7 +706,7 @@ function ProofCard({ tape }: { tape: LottoSnapshot }) {
           "Every slip gets a number, in the order it was bought, from 0 up. Buy again and your numbers continue.",
           "When time is up, anyone can close sales. The program then locks one future Solana slot (clock.slot + lag). That pick cannot be swapped for a different slot later.",
           "Settle hashes that SlotHashes entry with the round id and slip count, then takes the remainder into 0..tickets-1. This is not a VRF. If SlotHashes expires, settle can fail until a later upgrade.",
-          "Winner takes 85% of the prize pool after rent. 15% stays to seed the next round. Anyone can press the finish buttons.",
+          "Winner takes 85% of the prize pool. 15% stays to seed the next round. Anyone can press the finish buttons.",
         ]
     : [
         "Send the slip price to the pot. 1% is a kennel fee. The rest is your ticket.",
@@ -854,49 +866,74 @@ function BuyCard({
   crankHint?: string;
 }) {
   const solana = useSolanaWallet();
-  const subtotalLamports = count * tape.ticketLamports;
   const feeLamports = slipFeeLamports(tape.ticketLamports, count);
   const totalLamports = slipTotalLamports(tape.ticketLamports, count);
+  const potLamports = totalLamports - feeLamports;
   return (
     <div className="glass-panel rounded-[28px] p-5 sm:p-6">
       <div className="flex items-center gap-2">
         <Dices size={18} className="text-[var(--orange)]" />
         <p className="kicker">Buy a slip</p>
       </div>
-      <p className="display mt-3 text-5xl text-white">
-        {formatAmount(tape.ticketPriceSol, 3)} <span className="text-2xl text-[var(--gold)]">SOL</span>
-      </p>
-      <p className="mt-1 text-xs tracking-[0.14em] uppercase text-[var(--dim)]">per slip · 1% kennel fee inside the price</p>
-      <div className="mt-5 flex flex-wrap gap-2">
-        {PRESETS.map((n) => (
-          <button
-            key={n}
-            type="button"
-            onClick={() => setCount(n)}
-            className={`chip ${count === n ? "border-[var(--orange)] text-white" : ""}`}
-          >
-            {n} {n === 1 ? "slip" : "slips"}
-          </button>
-        ))}
-      </div>
-      <p className="serif mt-5 text-xl text-[var(--cream)]">
-        {count} × {formatAmount(tape.ticketPriceSol, 3)} = {formatAmount(subtotalLamports / 1_000_000_000, 4)} SOL
-      </p>
-      <p className="mt-1 text-sm text-[var(--gold)]">
-        {formatAmount((subtotalLamports - feeLamports) / 1_000_000_000, 4)} SOL in the pot · 1% fee{" "}
-        {formatAmount(feeLamports / 1_000_000_000, 4)} SOL · you pay {formatAmount(totalLamports / 1_000_000_000, 4)} SOL
-      </p>
-      {tape.split.winnerLamports > 0 ? (
-        <p className="mt-2 text-sm text-[var(--gold)]">
-          If the clock died now the winner takes {formatAmount(tape.split.winnerLamports / 1_000_000_000, 4)} SOL.{" "}
-          {formatAmount(tape.split.carryLamports / 1_000_000_000, 4)} SOL stays for the next rock.
+      <NumberFlowGroup>
+        <div>
+        <p className="mt-4 text-[10px] tracking-[0.16em] uppercase text-[var(--gold)]">You pay</p>
+        <p className="display mt-1 text-6xl text-white">
+          <SolFlow value={totalLamports / 1_000_000_000} />
         </p>
-      ) : null}
+        <p className="mt-2 text-xs tracking-[0.14em] uppercase text-[var(--dim)]">
+          <CountFlow value={count} /> {count === 1 ? "slip" : "slips"} · {formatAmount(tape.ticketPriceSol, 3)} SOL each · 1%
+          kennel fee inside
+        </p>
+        <div className="mt-5 grid grid-cols-5 gap-2">
+          {PRESETS.map((n) => {
+            const pay = slipTotalLamports(tape.ticketLamports, n) / 1_000_000_000;
+            const active = count === n;
+            return (
+              <button
+                key={n}
+                type="button"
+                onClick={() => setCount(n)}
+                aria-pressed={active}
+                className={`rounded-2xl border px-1 py-2.5 text-center transition ${
+                  active
+                    ? "border-[var(--orange)] bg-[rgba(247,147,26,0.16)] text-white shadow-[0_0_24px_rgba(247,147,26,0.18)]"
+                    : "border-[rgba(232,210,176,0.12)] text-[var(--dim)] hover:border-[var(--orange)] hover:text-white"
+                }`}
+              >
+                <span className="display block text-2xl leading-none">{n}</span>
+                <span className="mt-1 block text-[9px] tracking-[0.12em] uppercase">{formatAmount(pay, 2)} SOL</span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <div className="rounded-2xl border border-[rgba(232,210,176,0.12)] bg-[#080d16] px-3 py-3">
+            <p className="text-[10px] tracking-[0.16em] uppercase text-[var(--gold)]">Into the pot</p>
+            <p className="display mt-1 text-2xl text-white">
+              <SolFlow value={potLamports / 1_000_000_000} />
+            </p>
+          </div>
+          <div className="rounded-2xl border border-[rgba(232,210,176,0.12)] bg-[#080d16] px-3 py-3">
+            <p className="text-[10px] tracking-[0.16em] uppercase text-[var(--gold)]">Kennel fee</p>
+            <p className="display mt-1 text-2xl text-white">
+              <SolFlow value={feeLamports / 1_000_000_000} />
+            </p>
+          </div>
+        </div>
+        {tape.split.winnerLamports > 0 ? (
+          <p className="mt-3 text-sm text-[var(--gold)]">
+            If the clock died now the winner takes <SolFlow value={tape.split.winnerLamports / 1_000_000_000} className="text-[1.05em]" />.{" "}
+            <SolFlow value={tape.split.carryLamports / 1_000_000_000} className="text-[1.05em]" /> stays for the next rock.
+          </p>
+        ) : null}
+        </div>
+      </NumberFlowGroup>
       <div className="mt-5">
         {solana.connected ? (
           canBuy ? (
             <HouseButton variant="primary" className="w-full" disabled={Boolean(phase)} onClick={onBuy}>
-              {phase || `File ${count} ${count === 1 ? "slip" : "slips"}`}
+              {phase || `File ${count} ${count === 1 ? "slip" : "slips"} · ${formatAmount(totalLamports / 1_000_000_000, 2)} SOL`}
             </HouseButton>
           ) : onFinish && crankLabel ? (
             <HouseButton variant="primary" className="w-full" disabled={Boolean(phase)} onClick={onFinish}>
