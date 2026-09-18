@@ -50,7 +50,7 @@ solana-verify verify-from-repo \
 - PDA initialize tx: `5H9Jop1jmMkFufX68kaZ8kxNRFNgu2BZgxjXDMWf6TdTGdTUhmpqnRzWgHHMhjjkCZJXpMDTeyboA1mxETKHJpix`
 - Uploader / upgrade authority: `62C41rN2uUrsZoRkZyTqxD8GJYpa6KtERAtehfNmiXwq`
 - On-chain ELF hash: `7ca4ee5adf7a24e1b9f4f0eab5dd9e7045dbf31a2d531987a44f9cc98e4ac6e9`
-- Explorer verified: OtterSec job `0aad061e-585a-478c-b67b-3b6041e51e1c` in progress. Badge appears after the rebuild matches the on-chain hash.
+- Explorer verified: **not yet**. OtterSec rebuilt commit `ae90921` (job `a200c041-4adc-46d3-990d-a728ede90f33`). On-chain hash `7ca4ee5a…` does not match executable hash `e11ee6d8…` because the live ELF was built with Agave 4.2.2 and OtterSec’s whitelisted image is 4.0.3. PDA is on-chain. Do not claim explorer-verified until those hashes match.
 - Keep upgradeable for the first mainnet week. Do not revoke on day one.
 
 ```
@@ -63,4 +63,4 @@ solana-verify verify-from-repo \
 
 Confirm the verified badge on Explorer and Solscan independently. Then either revoke upgrade authority or document Squads signers, threshold, and delay.
 
-CI: `.github/workflows/build-lotto.yml` builds both SBF artifacts on `workflow_dispatch`. Re-queue verification from `SpareCashFinance/jrock-lotto` with `.github/workflows/verify.yml`. Job status: https://verify.osec.io/job/0aad061e-585a-478c-b67b-3b6041e51e1c
+CI: `.github/workflows/build-lotto.yml` builds both SBF artifacts. OtterSec job: https://verify.osec.io/job/a200c041-4adc-46d3-990d-a728ede90f33. Status: https://verify.osec.io/status/66FyiUTkw4JMYMi3yErfa7UBqrHm9GZha1meAxcgbjDg
