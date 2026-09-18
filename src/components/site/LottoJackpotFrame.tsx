@@ -16,6 +16,7 @@ export function LottoJackpotFrame({ initial }: { initial?: LottoSnapshot }) {
   const clock = useCountdown(tape.endsAt);
   const jackpot = tape.split.winnerLamports / 1_000_000_000;
   const live = tape.status === "open" && !clock.done;
+  const winner = tape.draw?.winner || tape.last?.winner || "";
 
   return (
     <section className="relative z-1 mx-auto w-[min(1120px,calc(100%-1.5rem))] pb-8 pt-1">
@@ -44,7 +45,11 @@ export function LottoJackpotFrame({ initial }: { initial?: LottoSnapshot }) {
               </p>
             </div>
             <p className="hidden max-w-xs text-sm text-[var(--dim)] md:block">
-              Join the kennel lotto for a chance at 85% of the pot.
+              {winner
+                ? `Winner ${winner.slice(0, 4)}…${winner.slice(-4)}. 15% seeds the next rock.`
+                : live
+                  ? "Join the kennel lotto for a chance at 85% of the pot."
+                  : "Sales ended. Open /lotto to finish the draw, pay the winner, and start the next round."}
             </p>
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] tracking-[0.14em] uppercase text-[var(--stone)]">
               <span>
@@ -57,7 +62,7 @@ export function LottoJackpotFrame({ initial }: { initial?: LottoSnapshot }) {
             </div>
           </div>
           <HouseButton variant="primary" href="/lotto" className="relative h-10 shrink-0 px-4 text-sm">
-            Join lotto
+            {live ? "Join lotto" : winner ? "See winner" : "Finish draw"}
           </HouseButton>
         </div>
       </div>

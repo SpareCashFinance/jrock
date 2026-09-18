@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   PublicKey,
@@ -46,6 +46,7 @@ import { useSolanaWallet } from "@/components/solana/SolanaWalletProvider";
 import { TelegramMark, XMark } from "@/components/brand/SocialMarks";
 import { LottoMachine } from "@/components/site/LottoMachine";
 import { useCountdown, useLottoSnapshot, type RefreshLottoOpts } from "@/lib/lotto-client";
+import { drawPhaseLabel, nextCrankStep, salesHaveEnded } from "@/lib/lotto-crank-plan";
 
 const PRESETS = [1, 2, 5, 10, 20];
 const PURCHASE_PAGE_SIZE = 20;
@@ -79,8 +80,13 @@ export function LottoDesk({ initial }: { initial?: LottoSnapshot }) {
   const [error, setError] = useState("");
   const [receipt, setReceipt] = useState<SlipReceipt | null>(null);
   const clock = useCountdown(tape.endsAt);
+  const ended = clock.done || salesHaveEnded(tape);
   const potReady = tape.pot.length >= 32 && (tape.engine === "program" || hasLottoPot());
-  const canBuy = potReady && tape.status === "open" && !clock.done;
+  const canBuy = potReady && tape.status === "open" && !ended;
+  const [slot, setSlot] = useState<number | null>(null);
+  const autoKey = useRef("");
+  const crankStep = nextCrankStep(tape, { nowMs: Date.now(), slot });
+  const phaseTitle = drawPhaseLabel(tape, ended);
   const yours = useMemo(
     () =>
       solana.address
@@ -88,6 +94,80 @@ export function LottoDesk({ initial }: { initial?: LottoSnapshot }) {
         : 0,
     [solana.address, tape.entries],
   );
+  const solePlayer = tape.wallets.length === 1 ? tape.wallets[0] : null;
+
+  useEffect(() => {
+    if (tape.engine !== "program") return;
+    let live = true;
+    const tick = async () => {
+      try {
+        const next = await solana.connection.getSlot("confirmed");
+        if (live) setSlot(next);
+      } catch {
+        /* tape still works without a live slot */
+      }
+    };
+    void tick();
+    const id = window.setInterval(() => void tick(), 4_000);
+    return () => {
+      live = false;
+      window.clearInterval(id);
+    };
+  }, [solana.connection, tape.engine, tape.status]);
+
+  useEffect(() => {
+    if (tape.engine !== "program" || !solana.connected || phase || !ended) return;
+    if (crankStep.kind === "idle" || crankStep.kind === "wait") return;
+    if (crankStep.kind === "request_vrf" || crankStep.kind === "store_vrf") return;
+    const key = `${tape.round}:${tape.status}:${crankStep.kind}`;
+    if (autoKey.current === key) return;
+    autoKey.current = key;
+    const v2 = isLottoV2(tape.programId);
+    const round = tape.currentRound;
+    if (crankStep.kind === "close") {
+      void sendProgramIx(solana, () => (v2 ? closeSalesIxV2(round) : closeSalesIx(round)), setPhase, setError, reload, "Closing sales…", "Sales closed");
+      return;
+    }
+    if (crankStep.kind === "settle") {
+      if (v2 && !tape.vrfRequest) return;
+      void sendProgramIx(
+        solana,
+        () => (v2 ? settleIxV2(round, new PublicKey(tape.vrfRequest || "")) : settleIx(round)),
+        setPhase,
+        setError,
+        reload,
+        "Settling…",
+        "Draw settled",
+      );
+      return;
+    }
+    if (crankStep.kind === "claim") {
+      void sendProgramIx(
+        solana,
+        (payer) =>
+          v2
+            ? claimIxV2(round, new PublicKey(crankStep.winner || payer.toBase58()))
+            : claimIx(round, new PublicKey(crankStep.winner || payer.toBase58())),
+        setPhase,
+        setError,
+        reload,
+        "Paying winner…",
+        "Pot claimed",
+      );
+      return;
+    }
+    if (crankStep.kind === "open") {
+      void sendProgramIx(
+        solana,
+        (payer) => (v2 ? openRoundIxV2(payer, round) : openRoundIx(payer, round)),
+        setPhase,
+        setError,
+        reload,
+        "Opening round…",
+        "Round open",
+      );
+    }
+  }, [crankStep, ended, phase, reload, solana, tape.currentRound, tape.engine, tape.programId, tape.round, tape.status, tape.vrfRequest]);
 
   return (
     <section className="section pb-16 pt-8">
@@ -110,10 +190,10 @@ export function LottoDesk({ initial }: { initial?: LottoSnapshot }) {
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
                 <p className="kicker">Round {String(tape.round + 1).padStart(2, "0")}</p>
-                <h2 className="display mt-2 text-5xl text-white">This draw</h2>
+                <h2 className="display mt-2 text-5xl text-white">{phaseTitle}</h2>
               </div>
               <p className="text-xs tracking-[0.16em] uppercase text-[var(--gold)]">
-                {tape.status.replaceAll("_", " ")}
+                {ended && tape.status === "open" ? "sales ended" : tape.status.replaceAll("_", " ")}
               </p>
             </div>
             <div className="mt-6 flex flex-wrap gap-2">
@@ -144,9 +224,14 @@ export function LottoDesk({ initial }: { initial?: LottoSnapshot }) {
           </div>
 
           {tape.draw ? (
-            <WinnerCard title="This block picked" draw={tape.draw} jackpotLamports={tape.split.winnerLamports} />
+            <WinnerCard title="This rock picked" draw={tape.draw} jackpotLamports={tape.split.winnerLamports} />
           ) : null}
-          {tape.last && !tape.draw ? <WinnerCard title="Last rock picked" draw={tape.last} /> : null}
+          {tape.last && !tape.draw ? (
+            <WinnerCard title="Last rock picked" draw={tape.last} jackpotLamports={tape.split.winnerLamports} />
+          ) : null}
+          {!tape.draw && !tape.last && solePlayer && ended ? (
+            <SolePlayerCard player={solePlayer} jackpotLamports={tape.split.winnerLamports} />
+          ) : null}
           <ChainStatusCard tape={tape} />
           <ProofCard tape={tape} />
         </div>
@@ -160,10 +245,48 @@ export function LottoDesk({ initial }: { initial?: LottoSnapshot }) {
             potReady={potReady}
             phase={phase}
             error={error}
+            crankLabel={crankStep.kind === "idle" || crankStep.kind === "wait" ? "" : crankStep.label}
+            crankHint={ended || tape.status !== "open" ? crankStep.reason : ""}
             onBuy={() =>
               void (tape.engine === "program"
                 ? buyWithProgram(solana, tape, count, setPhase, setError, reload, setReceipt)
                 : buyWithWallet(solana, tape, count, setPhase, setError, reload, setReceipt))
+            }
+            onFinish={
+              tape.engine === "program" && crankStep.kind !== "idle" && crankStep.kind !== "wait"
+                ? () => {
+                    const v2 = isLottoV2(tape.programId);
+                    const round = tape.currentRound;
+                    if (crankStep.kind === "close") {
+                      void sendProgramIx(solana, () => (v2 ? closeSalesIxV2(round) : closeSalesIx(round)), setPhase, setError, reload, "Closing sales…", "Sales closed");
+                    } else if (crankStep.kind === "settle") {
+                      void sendProgramIx(solana, () => settleIx(round), setPhase, setError, reload, "Settling…", "Draw settled");
+                    } else if (crankStep.kind === "claim") {
+                      void sendProgramIx(
+                        solana,
+                        (payer) =>
+                          v2
+                            ? claimIxV2(round, new PublicKey(crankStep.winner || payer.toBase58()))
+                            : claimIx(round, new PublicKey(crankStep.winner || payer.toBase58())),
+                        setPhase,
+                        setError,
+                        reload,
+                        "Paying winner…",
+                        "Pot claimed",
+                      );
+                    } else if (crankStep.kind === "open") {
+                      void sendProgramIx(
+                        solana,
+                        (payer) => (v2 ? openRoundIxV2(payer, round) : openRoundIx(payer, round)),
+                        setPhase,
+                        setError,
+                        reload,
+                        "Opening round…",
+                        "Round open",
+                      );
+                    }
+                  }
+                : undefined
             }
           />
           <LottoMachine />
@@ -174,7 +297,7 @@ export function LottoDesk({ initial }: { initial?: LottoSnapshot }) {
       {tape.engine === "program" ? (
         <CrankBar
           tape={tape}
-          salesEnded={clock.done}
+          salesEnded={ended}
           solana={solana}
           phase={phase}
           setPhase={setPhase}
@@ -320,6 +443,33 @@ function ChainStatusCard({ tape }: { tape: LottoSnapshot }) {
         ) : null}
         <HouseButton href="/lotto/verify" className="px-3 text-xs">
           Independent check
+        </HouseButton>
+      </div>
+    </div>
+  );
+}
+
+function SolePlayerCard({
+  player,
+  jackpotLamports,
+}: {
+  player: LottoSnapshot["wallets"][number];
+  jackpotLamports: number;
+}) {
+  return (
+    <div className="glass-panel rounded-[28px] p-5 sm:p-7">
+      <p className="kicker">Only player in the book</p>
+      <p className="display mt-2 text-4xl text-[var(--orange)]">{shortenAddress(player.wallet, 6)}</p>
+      {jackpotLamports > 0 ? (
+        <p className="display mt-2 text-3xl text-white">{formatAmount(jackpotLamports / 1_000_000_000, 4)} SOL</p>
+      ) : null}
+      <p className="mt-2 text-sm leading-6 text-[var(--dim)]">
+        This wallet bought every slip ({formatCount(player.tickets)}). The official winner is written on-chain after
+        settle. Connect a wallet to finish close → settle → pay → open the next round.
+      </p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <HouseButton href={explorerAccountUrl(player.wallet)} target="_blank">
+          Player
         </HouseButton>
       </div>
     </div>
@@ -527,6 +677,9 @@ function BuyCard({
   phase,
   error,
   onBuy,
+  onFinish,
+  crankLabel,
+  crankHint,
 }: {
   tape: LottoSnapshot;
   count: number;
@@ -536,6 +689,9 @@ function BuyCard({
   phase: string;
   error: string;
   onBuy: () => void;
+  onFinish?: () => void;
+  crankLabel?: string;
+  crankHint?: string;
 }) {
   const solana = useSolanaWallet();
   const subtotalLamports = count * tape.ticketLamports;
@@ -578,15 +734,26 @@ function BuyCard({
       ) : null}
       <div className="mt-5">
         {solana.connected ? (
-          <HouseButton variant="primary" className="w-full" disabled={!canBuy || Boolean(phase)} onClick={onBuy}>
-            {phase || (canBuy ? `File ${count} ${count === 1 ? "slip" : "slips"}` : "Sales closed")}
-          </HouseButton>
+          canBuy ? (
+            <HouseButton variant="primary" className="w-full" disabled={Boolean(phase)} onClick={onBuy}>
+              {phase || `File ${count} ${count === 1 ? "slip" : "slips"}`}
+            </HouseButton>
+          ) : onFinish && crankLabel ? (
+            <HouseButton variant="primary" className="w-full" disabled={Boolean(phase)} onClick={onFinish}>
+              {phase || crankLabel}
+            </HouseButton>
+          ) : (
+            <HouseButton variant="primary" className="w-full" disabled>
+              {phase || "Sales closed"}
+            </HouseButton>
+          )
         ) : (
           <HouseButton variant="primary" className="w-full" onClick={solana.openModal}>
-            Connect wallet
+            {onFinish && crankLabel ? "Connect to finish this draw" : "Connect wallet"}
           </HouseButton>
         )}
       </div>
+      {crankHint && !canBuy ? <p className="mt-3 text-sm text-[var(--gold)]">{crankHint}</p> : null}
       {!potReady ? (
         <p className="mt-3 text-sm text-[var(--gold)]">Pot wallet is not posted. Slips stay closed.</p>
       ) : tape.status === "awaiting_round" || tape.status === "refunded" ? (
@@ -628,8 +795,8 @@ function PostedWinners({ tape }: { tape: LottoSnapshot }) {
         <div className="px-5 py-8 sm:px-7">
           <p className="display text-4xl text-white">No winner posted yet.</p>
           <p className="mt-3 text-sm leading-6 text-[var(--dim)]">
-            Round {String(tape.round + 1).padStart(2, "0")} is live. When it settles, the wallet, slip, 85% jackpot, and
-            leftover seed land here. Anyone can re-check the math.
+            Round {String(tape.round + 1).padStart(2, "0")} has not settled on-chain. Finish close → settle → pay, and
+            the wallet, slip, 85% jackpot, and leftover seed land here.
           </p>
         </div>
       ) : (

@@ -722,6 +722,9 @@ async function getProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | null
   } else if (round.status === "void") {
     status = "void";
     message = "No slips. Crank Open next round. Any leftover seed rolls forward.";
+  } else if (Date.now() >= round.endTs * 1000) {
+    message =
+      "Sales are over. Close, settle, pay the winner, then open the next rock. The page does that automatically when a wallet is connected. Anyone can also press the finish buttons.";
   }
   const draw = await drawFromRound(round, config.ticketLamports);
   const rent = await rentExemptLamports(rpc, roundInfo.data.length);
