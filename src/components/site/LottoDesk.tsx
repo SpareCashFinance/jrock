@@ -101,7 +101,19 @@ function KennelClockCard({
       <h2 className="display mt-2 text-3xl text-white">Cut this rock to 48 hours.</h2>
       <p className="mt-3 text-sm leading-6 text-[var(--cream)]">
         Nobody has filed a slip. The on-chain clock is still {hours} hours. The leftover seed stays in the pot.
+        Only the lotto authority can cut it
+        {tape.authority ? `: ${shortenAddress(tape.authority, 6)}` : ""}. That is not the 1% fee wallet.
       </p>
+      {tape.authority ? (
+        <a
+          href={explorerAccountUrl(tape.authority)}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-3 block break-all font-mono text-[11px] text-[var(--stone)] hover:text-[var(--orange)]"
+        >
+          {tape.authority}
+        </a>
+      ) : null}
       <div className="mt-4">
         {solana.connected ? (
           isKennel ? (
@@ -128,12 +140,12 @@ function KennelClockCard({
             </HouseButton>
           ) : (
             <HouseButton variant="primary" className="w-full" onClick={solana.openModal}>
-              Switch to the kennel wallet
+              Switch to {tape.authority ? shortenAddress(tape.authority, 4) : "the lotto authority"}
             </HouseButton>
           )
         ) : (
           <HouseButton variant="primary" className="w-full" onClick={solana.openModal}>
-            Connect kennel wallet
+            Connect {tape.authority ? shortenAddress(tape.authority, 4) : "lotto authority"}
           </HouseButton>
         )}
       </div>
