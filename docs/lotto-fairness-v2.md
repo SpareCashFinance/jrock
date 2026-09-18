@@ -10,7 +10,7 @@ Do not reuse v1 PDAs. Product rules stay: 0.05 SOL, 1–20 slips, 1% kennel fee 
 
 `Open → Closed → RandomnessRequested → Fulfilled → Settled → Claimed`
 
-Plus `Void` (close with zero tickets). `Refunding` / `Refunded` stay in the account layout so existing PDAs decode, but `refund_one` now returns `RefundsDisabled`. If anyone bought, settle always picks one of those wallets. The book holds 256 buy rows.
+Plus `Void` (close with zero tickets). `Refunding` / `Refunded` stay in the account layout so existing PDAs decode, but `refund_one` now returns `RefundsDisabled`. If anyone bought, settle always picks one of those wallets. The book holds 10,000 buy rows and grows with each buy.
 
 ## Randomness
 

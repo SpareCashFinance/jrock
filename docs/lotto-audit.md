@@ -125,7 +125,7 @@ The kennel now uses ORAO VRF Classic on `66FyiUTkw4JMYMi3yErfa7UBqrHm9GZha1meAxc
 Still true:
 
 - Upgrade authority is a single wallet (`62C41…`). Do not revoke on day one.
-- Explorer badge depends on OtterSec matching public source. v2 live ELF is `da67752` (256-buy book, refunds disabled, security.txt). OtterSec job `d2b73a5e`. Explorer/Solscan badges can lag.
+- Explorer badge depends on OtterSec matching public source. v2 live ELF is the 10,000-buy book (refunds disabled, security.txt). Explorer/Solscan badges can lag.
 - `$JROCK` mint is still unpublished, so market “Contract pending” remains.
 - v1 leftover seed on `FvQfc…` round 1 cannot be withdrawn. Do not upgrade v1 while any funded round holds ticket SOL.
 

@@ -54,7 +54,7 @@ solana-verify verify-from-repo \
 - Explorer verified: **yes** (`is_verified: true`, commit `da67752`, job `d2b73a5e-3909-4397-884f-8480160a1d42`).
 - Upgrade tx: `3N63rdjtmvjk6LdaR6LLWrDkF7v76vvZ4Dgi3kXsBhFGCVZbXsTmgj3HrJ6GwUYfDPk6tutxmsdqpwcZgh98ssUc`
 - Deployed slot: `448205705`
-- Book: 256 buy rows. Live round 0 realloced to 10686 bytes on the next buy.
+- Book: 10,000 buy rows. The live account grows with each buy instead of reserving the full book up front.
 - `refund_one` returns `RefundsDisabled` (6023). If anyone bought, settle always picks one of those wallets.
 - Keep upgradeable. Do not revoke on day one.
 
