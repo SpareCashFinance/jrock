@@ -236,7 +236,7 @@ async function verifyV2(
           ? "If anyone bought, settle mapped the stored ORAO bytes onto one of those wallets. Recompute from those bytes, not this website."
           : "A winner is always one of the wallets that bought. This round is not settled yet, so there is no stored winner to recompute.",
       "ORAO VRF Classic must fulfill before settle. After close_ts + timeout, refunds open instead of a new winner.",
-      "Explorer verification is filed against SpareCashFinance/jrock-lotto tag lotto-v2-mainnet. Upgrade authority stays through the first mainnet week.",
+      "Explorer verification is filed against SpareCashFinance/jrock-lotto. Upgrade authority stays through the first mainnet week.",
       "Upgrade authority is a single kennel wallet. Do not treat a verified ELF as an immutable program.",
     ],
   };

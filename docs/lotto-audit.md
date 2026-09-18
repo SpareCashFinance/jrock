@@ -16,7 +16,7 @@ Players must trust SlotHashes plus closer timing, and that upgrade authority doe
 | --- | --- | --- | --- |
 | Critical | C1 | Randomness is SlotHashes after close, not a VRF. The closer chooses close time, hence the future slot. | Live, disclosed |
 | Critical | C2 | Upgrade authority is a single wallet and can replace code mid-round. | Live, disclosed |
-| Critical | C3 | Deployed binary is not explorer-verified. | OtterSec job queued against `lotto-v2-mainnet`. Badge pending PDA + hash match. |
+| Critical | C3 | Deployed binary is not explorer-verified. | OtterSec `is_verified: true` for v2. Explorer badge can lag. |
 | Critical | C4 | If SlotHashes expires before settle, the round can stick. No refund instruction. | Live |
 | High | H1 | `u64 % n` has a tiny bias unless `n` divides 2^64. | Live, disclosed |
 | High | H2 | No Anchor integration, local-validator, devnet lifecycle, fuzz, or solana-verify CI. | Program repo builds SBF on push. `solana-verify` is still a manual `verify-from-repo` against tag `lotto-v1-48h`. |
@@ -125,7 +125,7 @@ The kennel now uses ORAO VRF Classic on `66FyiUTkw4JMYMi3yErfa7UBqrHm9GZha1meAxc
 Still true:
 
 - Upgrade authority is a single wallet (`62C41…`). Do not revoke on day one.
-- Explorer badge depends on OtterSec matching tag `lotto-v2-mainnet` and the verification PDA landing on-chain.
+- Explorer badge depends on OtterSec matching public source. v2 is verified on OtterSec (`e11ee6d8…`). Explorer/Solscan badges can lag.
 - `$JROCK` mint is still unpublished, so market “Contract pending” remains.
 - v1 leftover seed on `FvQfc…` round 1 cannot be withdrawn. Do not upgrade v1 while any funded round holds ticket SOL.
 

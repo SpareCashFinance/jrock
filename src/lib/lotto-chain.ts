@@ -58,6 +58,17 @@ function connection() {
   return new Connection(serverSolanaRpcUrl(), { commitment: "confirmed" });
 }
 
+async function ottersecVerified(programId: string) {
+  try {
+    const res = await fetch(`https://verify.osec.io/status/${programId}`, { signal: AbortSignal.timeout(4000) });
+    if (!res.ok) return false;
+    const data = (await res.json()) as { is_verified?: boolean; on_chain_hash?: string; executable_hash?: string };
+    return Boolean(data.is_verified) && Boolean(data.on_chain_hash) && data.on_chain_hash === data.executable_hash;
+  } catch {
+    return false;
+  }
+}
+
 function looksLikePot(value: string) {
   try {
     new PublicKey(value);
@@ -517,7 +528,7 @@ async function getV2ProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | nu
   empty.configPda = configPk.toBase58();
   empty.feeWallet = lottoFeeWallet();
   empty.randomnessProvider = "ORAO VRF Classic";
-  empty.verifiedBuild = false;
+  empty.verifiedBuild = await ottersecVerified(lottoProgramId());
   empty.upgradeable = true;
   empty.roundSecs = config.roundSecs;
   empty.authority = config.authority;
@@ -621,7 +632,7 @@ async function getV2ProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | nu
     randomnessProvider: "ORAO VRF Classic",
     vrfRequest: round.vrfRequest && round.vrfRequest !== defaultRequest ? round.vrfRequest : null,
     vrfTimeoutAt: round.vrfTimeoutTs ? new Date(round.vrfTimeoutTs * 1000).toISOString() : null,
-    verifiedBuild: false,
+    verifiedBuild: empty.verifiedBuild,
     upgradeable: true,
     onchainStatus: round.status,
     roundSecs: config.roundSecs,

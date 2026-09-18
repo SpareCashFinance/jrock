@@ -50,7 +50,7 @@ solana-verify verify-from-repo \
 - PDA initialize tx: `5H9Jop1jmMkFufX68kaZ8kxNRFNgu2BZgxjXDMWf6TdTGdTUhmpqnRzWgHHMhjjkCZJXpMDTeyboA1mxETKHJpix`
 - Uploader / upgrade authority: `62C41rN2uUrsZoRkZyTqxD8GJYpa6KtERAtehfNmiXwq`
 - On-chain ELF hash: `7ca4ee5adf7a24e1b9f4f0eab5dd9e7045dbf31a2d531987a44f9cc98e4ac6e9`
-- Explorer verified: **not yet**. OtterSec rebuilt commit `ae90921` (job `a200c041-4adc-46d3-990d-a728ede90f33`). On-chain hash `7ca4ee5a…` does not match executable hash `e11ee6d8…` because the live ELF was built with Agave 4.2.2 and OtterSec’s whitelisted image is 4.0.3. PDA is on-chain. Do not claim explorer-verified until those hashes match.
+- Explorer verified: **yes** on OtterSec (`is_verified: true`). On-chain hash matches executable hash `e11ee6d86a356e21c8ba407b799028ff46dbdb29f4ca137158d4c6aaf83efbe1`. Explorer/Solscan badges can lag a few minutes. Upgrade tx: `4W1a8LFR3da8yWzEqAKGFytR33kgYp9QMaiZ4kot13Z18y27vGTLz42TBMEUJrmERCFxWYff6VUd2p6Usms35z19`.
 - Keep upgradeable for the first mainnet week. Do not revoke on day one.
 
 ```
