@@ -45,16 +45,13 @@ solana-verify verify-from-repo \
 - Ticket: 50_000_000 lamports
 - Round length: 172800 seconds (48h)
 - VRF timeout: 21600 seconds (6h)
-- Source commit: `da6775229249545330a6993c42d5d8b33b25d9f2` (256-buy book, `refund_one` disabled, `security_txt!`)
+- Source commit: `35de5008f9a5f7746b712386bf77d2cfd39d7db3` (10,000-buy book, `compact_book`, leftover realloc rent stays in the pot)
 - OtterSec verification PDA: `7fYS1EP9gvC2if556WGtvCC8ZQUZYBuaKv3vdwYANRE4`
-- PDA update tx: `4ndBvqJGG9M49rXgaCTuE9AegobMyLmE2U9ZPMtq2CFkshH2w1aiYWp5ppWhTYKtesdevpeqVXEuwn4vqcErho2Z`
 - Uploader / upgrade authority: `62C41rN2uUrsZoRkZyTqxD8GJYpa6KtERAtehfNmiXwq`
-- Docker ELF sha256: `774bcde312fd66353cec9ae61378ca98ccf9c746e8afd7b029d35b403a78679f`
-- OtterSec hash (on-chain = executable): `3c20014bff29c0b7271eb48bb378e4c5a1eecbab306b996299cba7c759df8d24`
-- Explorer verified: **yes** (`is_verified: true`, commit `da67752`, job `d2b73a5e-3909-4397-884f-8480160a1d42`).
-- Upgrade tx: `3N63rdjtmvjk6LdaR6LLWrDkF7v76vvZ4Dgi3kXsBhFGCVZbXsTmgj3HrJ6GwUYfDPk6tutxmsdqpwcZgh98ssUc`
-- Deployed slot: `448205705`
-- Book: 10,000 buy rows. The live account grows with each buy instead of reserving the full book up front.
+- Explorer verified: pending OtterSec rematch against `35de500`.
+- Upgrade tx: `3ifa1s7RFBELfRdCN57ShgADeFyPGJSHvn6D8LvwTusfin3ifLaX2ScyZnvCAGQKbTtjNTghKQyUUxRLM3RZTmnS`
+- Deployed slot: `448216595`
+- Book: 10,000 buy rows. The live account grows with each buy and shrinks unused reserved rows so leftover rent stays in the pot.
 - `refund_one` returns `RefundsDisabled` (6023). If anyone bought, settle always picks one of those wallets.
 - Keep upgradeable. Do not revoke on day one.
 
@@ -63,7 +60,7 @@ solana-verify verify-from-repo \
   https://github.com/SpareCashFinance/jrock-lotto \
   --program-id 66FyiUTkw4JMYMi3yErfa7UBqrHm9GZha1meAxcgbjDg \
   --library-name jrock_lotto_v2 \
-  --commit-hash da6775229249545330a6993c42d5d8b33b25d9f2
+  --commit-hash 35de5008f9a5f7746b712386bf77d2cfd39d7db3
 ```
 
 Confirm the verified badge on Explorer and Solscan independently. Then either revoke upgrade authority or document Squads signers, threshold, and delay.

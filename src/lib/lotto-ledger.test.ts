@@ -51,6 +51,33 @@ test("live round 0 nine 0.05 SOL slips match production independent API", () => 
   assert.ok(assertLedgerConserved(ledger));
 });
 
+test("oversized book rent is not treated as ticket money", () => {
+  const ledger = buildLedger({
+    accountBalanceLamports: 1_450_445_360,
+    rentExemptReserveLamports: 54_935_120,
+    ticketCount: 29,
+    ticketPriceLamports: 50_000_000,
+    currentRound: 0,
+  });
+  assert.equal(ledger.distributablePotLamports, 1_395_510_240);
+  assert.equal(ledger.ticketGrossLamports - ledger.kennelFeeLamports, 1_435_500_000);
+  assert.equal(assertLedgerConserved(ledger), false);
+});
+
+test("compacted live round 0 puts leftover realloc rent back in the pot", () => {
+  const ledger = buildLedger({
+    accountBalanceLamports: 1_450_445_360,
+    rentExemptReserveLamports: 3_073_400,
+    ticketCount: 29,
+    ticketPriceLamports: 50_000_000,
+    currentRound: 0,
+  });
+  assert.equal(ledger.distributablePotLamports, 1_447_371_960);
+  assert.equal(ledger.winnerPayoutLamports, 1_230_266_166);
+  assert.equal(ledger.donationsOrUnexpectedDepositsLamports, 11_871_960);
+  assert.ok(assertLedgerConserved(ledger));
+});
+
 test("twenty slips keep 1% inside the posted price", () => {
   assert.equal(kennelFeeLamports(20 * 50_000_000), 10_000_000);
 });

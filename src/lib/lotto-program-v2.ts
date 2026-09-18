@@ -21,6 +21,7 @@ const IX = {
   settle: [175, 42, 185, 87, 144, 131, 102, 212],
   claim: [62, 198, 214, 193, 213, 159, 108, 210],
   refundOne: [51, 162, 110, 71, 71, 81, 71, 58],
+  compactBook: [10, 31, 187, 65, 146, 127, 211, 225],
 } as const;
 
 const ACCOUNT = {
@@ -397,5 +398,19 @@ export function refundOneIxV2(currentRound: number, buyer: PublicKey, buyerIndex
       { pubkey: buyer, isSigner: false, isWritable: true },
     ],
     data: ixData(concat([disc(IX.refundOne), u32le(buyerIndex)])),
+  });
+}
+
+export function compactBookIxV2(currentRound: number) {
+  const programId = program();
+  const [config] = configPda(programId);
+  const [round] = roundPda(currentRound, programId);
+  return new TransactionInstruction({
+    programId,
+    keys: [
+      { pubkey: config, isSigner: false, isWritable: false },
+      { pubkey: round, isSigner: false, isWritable: true },
+    ],
+    data: ixData(disc(IX.compactBook)),
   });
 }
