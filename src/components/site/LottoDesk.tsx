@@ -93,16 +93,45 @@ function KennelClockCard({
 }) {
   const hours = Math.round((tape.roundSecs ?? 0) / 3600);
   const emptyOpen = tape.engine === "program" && tape.status === "open" && tape.totalTickets === 0;
-  if (!emptyOpen || hours <= 48) return null;
+  const show = emptyOpen && hours > 48;
   const isKennel = Boolean(tape.authority) && solana.address === tape.authority;
+  const [ixLive, setIxLive] = useState<boolean | null>(null);
+  const cutFail =
+    "The live program is still the old 72-hour build. Simulation failed because the 48-hour instruction is not on-chain yet.";
+
+  useEffect(() => {
+    if (!show || !tape.authority) return;
+    let live = true;
+    void (async () => {
+      try {
+        const from = new PublicKey(tape.authority as string);
+        const { blockhash, lastValidBlockHeight } = await solana.connection.getLatestBlockhash("confirmed");
+        const tx = new Transaction({ feePayer: from, blockhash, lastValidBlockHeight });
+        tx.add(
+          isLottoV2(tape.programId)
+            ? setRoundSecsIxV2(from, tape.currentRound, LOTTO_ROUND_SECS_48H)
+            : setRoundSecsIx(from, tape.currentRound, LOTTO_ROUND_SECS_48H),
+        );
+        const sim = await solana.connection.simulateTransaction(tx);
+        if (live) setIxLive(!sim.value.err);
+      } catch {
+        if (live) setIxLive(false);
+      }
+    })();
+    return () => {
+      live = false;
+    };
+  }, [show, solana.connection, tape.authority, tape.currentRound, tape.programId]);
+
+  if (!show) return null;
   return (
     <div className="glass-panel rounded-[28px] p-5 sm:p-6">
       <p className="kicker">Empty book</p>
       <h2 className="display mt-2 text-3xl text-white">Cut this rock to 48 hours.</h2>
       <p className="mt-3 text-sm leading-6 text-[var(--cream)]">
-        Nobody has filed a slip. The on-chain clock is still {hours} hours. The leftover seed stays in the pot.
-        Only the lotto authority can cut it
-        {tape.authority ? `: ${shortenAddress(tape.authority, 6)}` : ""}. That is not the 1% fee wallet.
+        {ixLive
+          ? "Nobody has filed a slip. Press once with the lotto authority and this clock becomes 48 hours. Leftover seed stays."
+          : "Simulation failed because Solana is still running the old 72-hour program. The Cut button cannot work until that same authority wallet deploys the 48-hour program, then presses Cut."}
       </p>
       {tape.authority ? (
         <a
@@ -114,13 +143,21 @@ function KennelClockCard({
           {tape.authority}
         </a>
       ) : null}
+      <a
+        href={`${LOTTO_SOURCE_REPO}/tree/v1-48h`}
+        target="_blank"
+        rel="noreferrer"
+        className="mt-2 block text-[11px] tracking-[0.14em] uppercase text-[var(--gold)] hover:text-[var(--orange)]"
+      >
+        48-hour program source
+      </a>
       <div className="mt-4">
         {solana.connected ? (
           isKennel ? (
             <HouseButton
               variant="primary"
               className="w-full"
-              disabled={Boolean(phase)}
+              disabled={Boolean(phase) || ixLive === false}
               onClick={() =>
                 void sendProgramIx(
                   solana,
@@ -133,10 +170,11 @@ function KennelClockCard({
                   reload,
                   "Cutting to 48 hours…",
                   "Clock is 48 hours",
+                  cutFail,
                 )
               }
             >
-              {phase || "Cut this rock to 48 hours"}
+              {phase || (ixLive === false ? "Program still 72 hours" : "Cut this rock to 48 hours")}
             </HouseButton>
           ) : (
             <HouseButton variant="primary" className="w-full" onClick={solana.openModal}>
@@ -1197,6 +1235,7 @@ async function sendProgramIx(
   reload: (opts?: RefreshLottoOpts) => Promise<unknown>,
   asking: string,
   done: string,
+  fail = "The rock refused.",
 ) {
   const owner = solana.requireWallet();
   if (!owner) return;
@@ -1215,7 +1254,7 @@ async function sendProgramIx(
     window.setTimeout(() => setPhase(""), 1600);
   } catch (error) {
     setPhase("");
-    setError(walletActionMessage(error, "The rock refused."));
+    setError(walletActionMessage(error, fail));
   }
 }
 
