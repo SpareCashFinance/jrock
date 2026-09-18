@@ -17,7 +17,6 @@ const DEFAULT_GENESIS = "2026-09-14T00:00:00.000Z";
 const DEFAULT_ROUND_MS = 48 * 60 * 60 * 1000;
 const DEFAULT_TICKET_SOL = 0.05;
 export const LOTTO_ROUND_SECS_48H = 48 * 60 * 60;
-export const LOTTO_ROUND_SECS_48H = 48 * 60 * 60;
 
 export const LOTTO_RULES = {
   version: LOTTO_PROOF_VERSION,
