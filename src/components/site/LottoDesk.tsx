@@ -922,9 +922,9 @@ function BuyCard({
           </div>
         </div>
         {tape.split.winnerLamports > 0 ? (
-          <p className="mt-3 text-sm text-[var(--gold)]">
-            If the clock died now the winner takes <SolFlow value={tape.split.winnerLamports / 1_000_000_000} className="text-[1.05em]" />.{" "}
-            <SolFlow value={tape.split.carryLamports / 1_000_000_000} className="text-[1.05em]" /> stays for the next rock.
+          <p className="mt-3 text-sm leading-6 text-[var(--gold)]">
+            If the clock died now the winner takes {formatAmount(tape.split.winnerLamports / 1_000_000_000, 4)} SOL.{" "}
+            {formatAmount(tape.split.carryLamports / 1_000_000_000, 4)} SOL stays for the next rock.
           </p>
         ) : null}
         </div>
