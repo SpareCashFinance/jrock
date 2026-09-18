@@ -122,9 +122,9 @@ Production “Check this draw” on 2026-09-15: `Solana shows round 0 open, 9 sl
 
 ## 15. Remaining limitations
 
-SlotHashes interim on the **live** program; upgradeable single wallet; unverified ELF; settle can stick; no VRF bind on v1; no refund on v1; `$JROCK` mint still unpublished so market “Contract pending” remains.
+SlotHashes was the **previous** live program. The kennel now uses ORAO VRF Classic on `66FyiUTkw4JMYMi3yErfa7UBqrHm9GZha1meAxcgbjDg`. Remaining limits: upgradeable single wallet; explorer badge not filed; `$JROCK` mint still unpublished so market “Contract pending” remains.
 
-v2 source (`jrock_lotto_v2` / `66FyiUTkw4JMYMi3yErfa7UBqrHm9GZha1meAxcgbjDg`) is in-tree: ORAO bind, rejection sampling, timeout refund, explicit state machine. It is **not** the live program. Do not flip `NEXT_PUBLIC_LOTTO_PROGRAM` until v2 is initialized on mainnet after round 0 is claimed or refunded. See `docs/lotto-fairness-v2.md` and `docs/lotto-verifiable-build.md`.
+v2 is initialized on mainnet (48h rounds, 6h VRF timeout). See `docs/lotto-fairness-v2.md` and `docs/lotto-verifiable-build.md`.
 
 ## 16. Launch decision
 

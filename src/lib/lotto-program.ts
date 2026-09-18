@@ -51,7 +51,7 @@ export type OnchainRound = {
 };
 
 export function lottoProgramId() {
-  return (process.env.NEXT_PUBLIC_LOTTO_PROGRAM ?? JROCK_LOTTO_PROGRAM_ID).trim();
+  return (process.env.NEXT_PUBLIC_LOTTO_PROGRAM ?? JROCK_LOTTO_V2_PROGRAM_ID).trim();
 }
 
 export function isLottoV2(programId = lottoProgramId()) {
@@ -64,6 +64,10 @@ export function hasLottoProgram() {
 
 export function lottoProgramKey() {
   return new PublicKey(lottoProgramId());
+}
+
+function v1ProgramKey() {
+  return new PublicKey(JROCK_LOTTO_PROGRAM_ID);
 }
 
 export function configPda(program = lottoProgramKey()) {
@@ -203,7 +207,7 @@ export function decodeRound(data: Uint8Array): OnchainRound | null {
 }
 
 export function initializeIx(authority: PublicKey, ticketLamports: number, roundSecs: number, lagSlots: number) {
-  const program = lottoProgramKey();
+  const program = v1ProgramKey();
   const [config] = configPda(program);
   const [round] = roundPda(0, program);
   return new TransactionInstruction({
@@ -219,7 +223,7 @@ export function initializeIx(authority: PublicKey, ticketLamports: number, round
 }
 
 export function setRoundSecsIx(authority: PublicKey, currentRound: number, roundSecs: number) {
-  const program = lottoProgramKey();
+  const program = v1ProgramKey();
   const [config] = configPda(program);
   const [round] = roundPda(currentRound, program);
   return new TransactionInstruction({
@@ -234,7 +238,7 @@ export function setRoundSecsIx(authority: PublicKey, currentRound: number, round
 }
 
 export function openRoundIx(payer: PublicKey, currentRound: number) {
-  const program = lottoProgramKey();
+  const program = v1ProgramKey();
   const [config] = configPda(program);
   const [previous] = roundPda(currentRound - 1, program);
   const [round] = roundPda(currentRound, program);
@@ -252,7 +256,7 @@ export function openRoundIx(payer: PublicKey, currentRound: number) {
 }
 
 export function buyIxForRound(buyer: PublicKey, currentRound: number, tickets: number, feeWallet: PublicKey) {
-  const program = lottoProgramKey();
+  const program = v1ProgramKey();
   const [config] = configPda(program);
   const [round] = roundPda(currentRound, program);
   return new TransactionInstruction({
@@ -269,7 +273,7 @@ export function buyIxForRound(buyer: PublicKey, currentRound: number, tickets: n
 }
 
 export function closeSalesIx(currentRound: number) {
-  const program = lottoProgramKey();
+  const program = v1ProgramKey();
   const [config] = configPda(program);
   const [round] = roundPda(currentRound, program);
   return new TransactionInstruction({
@@ -283,7 +287,7 @@ export function closeSalesIx(currentRound: number) {
 }
 
 export function settleIx(currentRound: number) {
-  const program = lottoProgramKey();
+  const program = v1ProgramKey();
   const [config] = configPda(program);
   const [round] = roundPda(currentRound, program);
   return new TransactionInstruction({
@@ -298,7 +302,7 @@ export function settleIx(currentRound: number) {
 }
 
 export function claimIx(currentRound: number, winner: PublicKey) {
-  const program = lottoProgramKey();
+  const program = v1ProgramKey();
   const [config] = configPda(program);
   const [round] = roundPda(currentRound, program);
   return new TransactionInstruction({

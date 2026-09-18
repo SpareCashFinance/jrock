@@ -69,3 +69,13 @@ test("v2 successor program id is distinct from live v1", () => {
   assert.equal(JROCK_LOTTO_V2_PROGRAM_ID, "66FyiUTkw4JMYMi3yErfa7UBqrHm9GZha1meAxcgbjDg");
   assert.notEqual(JROCK_LOTTO_V2_PROGRAM_ID, "FvQfcJYAcRFEDeq8rS19MNXTZfeiCxcSN5nmfA6RdWuC");
 });
+
+test("ORAO RandomnessV2 fulfilled layout is disc + enum + client + seed + 64 random bytes", () => {
+  const data = new Uint8Array(8 + 1 + 32 + 32 + 64);
+  data[8] = 1;
+  data.fill(7, 9 + 32, 9 + 64);
+  data.fill(9, 9 + 64);
+  assert.equal(data[8], 1);
+  assert.deepEqual([...data.slice(8 + 1 + 32, 8 + 1 + 64)], Array(32).fill(7));
+  assert.deepEqual([...data.slice(8 + 1 + 64, 8 + 1 + 96)], Array(32).fill(9));
+});

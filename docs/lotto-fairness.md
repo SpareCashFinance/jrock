@@ -1,6 +1,6 @@
 # Kennel lotto fairness (jrock-lotto-v3)
 
-This is the disclosed rule set for the live program `FvQfcJYAcRFEDeq8rS19MNXTZfeiCxcSN5nmfA6RdWuC` on Solana mainnet-beta.
+This is the disclosed rule set for the **previous** SlotHashes program `FvQfcJYAcRFEDeq8rS19MNXTZfeiCxcSN5nmfA6RdWuC`. The live kennel is now v2 ORAO VRF: `docs/lotto-fairness-v2.md`.
 
 This document is a specification, not an audit certificate. A matching source hash (when filed) only proves the binary came from public source.
 
@@ -42,7 +42,7 @@ Live freeze: `docs/lotto-v1-snapshot.md`. Successor spec: `docs/lotto-fairness-v
 ## Independent check
 
 - Site: https://petrock.fun/lotto/verify
-- Program source: https://github.com/SpareCashFinance/jrock-lotto (`lotto-v1-48h`)
+- Program source: https://github.com/SpareCashFinance/jrock-lotto (`lotto-v2-mainnet`)
 - CLI: `node scripts/verify-lotto.mjs [roundId|roundPda]`
 - Audit findings: `docs/lotto-audit.md` (launch decision: FAIL for a trustless production lottery)
 

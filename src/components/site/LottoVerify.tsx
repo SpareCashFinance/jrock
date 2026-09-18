@@ -4,7 +4,8 @@ import { useCallback, useState } from "react";
 import { HouseButton } from "@/components/ui/house-button";
 import { LottoAlert } from "@/components/site/LottoAlert";
 import { formatAmount, formatCount, shortenAddress } from "@/lib/format";
-import { explorerAccountUrl, LOTTO_SOURCE_REPO, LOTTO_SOURCE_TAG } from "@/lib/links";
+import { explorerAccountUrl, LOTTO_SOURCE_REPO } from "@/lib/links";
+import { JROCK_LOTTO_V2_PROGRAM_ID } from "@/lib/lotto-program";
 import type { IndependentReceipt } from "@/lib/lotto-verify";
 
 export function LottoVerifyDesk({ defaultRound = 0 }: { defaultRound?: number }) {
@@ -51,25 +52,25 @@ export function LottoVerifyDesk({ defaultRound = 0 }: { defaultRound?: number })
         <p className="kicker">Public program source</p>
         <h2 className="display mt-2 text-4xl text-white sm:text-5xl">Match the ELF. Not the luck.</h2>
         <p className="serif mt-4 max-w-2xl text-lg text-[var(--cream)]">
-          The live kennel still uses SlotHashes. A verified build proves the deployed binary came from the public
-          program repo. It does not make this draw a VRF or 100% fair.
+          The live kennel uses ORAO VRF Classic. A verified build proves the deployed binary came from the public
+          program repo. It does not make the upgrade authority disappear.
         </p>
         <p className="mt-4 break-all font-mono text-xs text-[var(--stone)]">{LOTTO_SOURCE_REPO}</p>
         <pre className="mt-4 overflow-x-auto rounded-2xl bg-[#080d16] p-4 font-mono text-[11px] leading-6 text-[var(--gold)]">
 {`solana-verify verify-from-repo \\
   ${LOTTO_SOURCE_REPO} \\
-  --program-id FvQfcJYAcRFEDeq8rS19MNXTZfeiCxcSN5nmfA6RdWuC \\
-  --library-name jrock_lotto \\
-  --commit-hash ${LOTTO_SOURCE_TAG}`}
+  --program-id ${JROCK_LOTTO_V2_PROGRAM_ID} \\
+  --library-name jrock_lotto_v2 \\
+  --commit-hash lotto-v2-mainnet`}
         </pre>
         <div className="mt-4 flex flex-wrap gap-2">
           <HouseButton href={LOTTO_SOURCE_REPO} target="_blank">
             Program repo
           </HouseButton>
-          <HouseButton href={`${LOTTO_SOURCE_REPO}/releases/tag/${LOTTO_SOURCE_TAG}`} target="_blank">
-            Live 48h tag
+          <HouseButton href={`${LOTTO_SOURCE_REPO}/releases/tag/lotto-v2-mainnet`} target="_blank">
+            Live VRF tag
           </HouseButton>
-          <HouseButton href={explorerAccountUrl("FvQfcJYAcRFEDeq8rS19MNXTZfeiCxcSN5nmfA6RdWuC")} target="_blank">
+          <HouseButton href={explorerAccountUrl(JROCK_LOTTO_V2_PROGRAM_ID)} target="_blank">
             Program on Solscan
           </HouseButton>
         </div>
