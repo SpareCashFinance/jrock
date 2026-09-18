@@ -130,13 +130,18 @@ function ReceiptCard({ receipt }: { receipt: IndependentReceipt }) {
         {formatAmount(ledger.rentExemptReserveLamports / 1e9, 4)} SOL · conserved {receipt.conserved ? "yes" : "no"}
       </p>
       <p className="mt-4 text-sm text-[var(--cream)]">
-        Stored winner {receipt.storedWinner ? shortenAddress(receipt.storedWinner, 6) : "none"} · slip{" "}
-        {receipt.storedWinnerIndex ?? "—"}
+        {receipt.totalTickets === 0
+          ? "Nobody has bought this round yet. After a slip is filed, settle always picks one of those wallets."
+          : receipt.matches == null
+            ? "This round is not settled yet. After ORAO answers, this page recomputes the winner from the stored bytes."
+            : `Stored winner ${receipt.storedWinner ? shortenAddress(receipt.storedWinner, 6) : "none"} · slip ${receipt.storedWinnerIndex ?? "—"}`}
       </p>
-      <p className="mt-1 text-sm text-[var(--cream)]">
-        Recomputed {receipt.computedWinner ? shortenAddress(receipt.computedWinner, 6) : "n/a"} · slip{" "}
-        {receipt.computedWinnerIndex ?? "—"}
-      </p>
+      {receipt.totalTickets > 0 ? (
+        <p className="mt-1 text-sm text-[var(--cream)]">
+          Recomputed {receipt.computedWinner ? shortenAddress(receipt.computedWinner, 6) : "n/a"} · slip{" "}
+          {receipt.computedWinnerIndex ?? "—"}
+        </p>
+      ) : null}
       <p className="mt-4 text-xs leading-6 text-[var(--dim)]">{receipt.mapping}</p>
       <div className="mt-4 flex flex-wrap gap-2">
         <HouseButton href={explorerAccountUrl(receipt.programId)} target="_blank">

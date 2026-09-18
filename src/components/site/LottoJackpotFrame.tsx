@@ -45,10 +45,12 @@ export function LottoJackpotFrame({ initial }: { initial?: LottoSnapshot }) {
               </p>
             </div>
             <p className="hidden max-w-xs text-sm text-[var(--dim)] md:block">
-              {winner
-                ? `Winner ${winner.slice(0, 4)}…${winner.slice(-4)}. 15% seeds the next rock.`
-                : live
-                  ? "Join the kennel lotto for a chance at 85% of the pot."
+              {live
+                ? winner
+                  ? `Last rock paid ${winner.slice(0, 4)}…${winner.slice(-4)}. This rock is live.`
+                  : "If anyone buys a slip, this rock always picks one of those wallets."
+                : winner
+                  ? `Winner ${winner.slice(0, 4)}…${winner.slice(-4)}. 15% seeds the next rock.`
                   : "Sales ended. Open /lotto to finish the draw, pay the winner, and start the next round."}
             </p>
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] tracking-[0.14em] uppercase text-[var(--stone)]">

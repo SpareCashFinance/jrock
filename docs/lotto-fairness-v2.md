@@ -24,9 +24,9 @@ After `close_sales` with tickets:
 6. `winner_index` uses rejection sampling on that 256-bit value into `0..n-1` (not raw `% n`).
 7. Winner wallet is the buyer whose `[from_index, from_index + tickets)` contains that index. Never an instruction argument.
 
-## Timeout refund
+## Always a winner when slips exist
 
-If VRF has not been consumed into a winner by `close_ts + vrf_timeout_secs`, anyone may `refund_one` for each unrefunded buyer. Payout is `tickets * price * 99/100` (the 1% kennel fee stays paid). After refunds start, settle is rejected. When every buyer is refunded the round is `Refunded` and `open_round` may roll leftover lamports.
+`settle` requires `ticket_count > 0` and then **always** writes one `winner` from the buyer ranges. An empty book cannot pick a wallet (`Void` on close). The only tickets-but-no-winner path is the timeout refund: if ORAO is silent through `close_ts + vrf_timeout_secs` (6h), anyone may `refund_one` for each unrefunded buyer. Payout is `tickets * price * 99/100` (the 1% kennel fee stays paid). After refunds start, settle is rejected. When every buyer is refunded the round is `Refunded` and `open_round` may roll leftover lamports.
 
 ## Independent check
 

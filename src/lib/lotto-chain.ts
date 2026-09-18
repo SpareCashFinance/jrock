@@ -28,6 +28,8 @@ import {
   type LottoPostedWin,
   type LottoSnapshot,
   type LottoSplit,
+  drawFromPostedWin,
+  lastPostedWin,
 } from "@/lib/lotto";
 import { lottoProgramId, type OnchainConfig, type OnchainRound } from "@/lib/lotto-program";
 import { decodeConfigV2, decodeRoundV2, type OnchainRoundV2 } from "@/lib/lotto-program-v2";
@@ -520,11 +522,13 @@ async function getV2ProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | nu
   empty.roundSecs = config.roundSecs;
   empty.authority = config.authority;
   const previous = await getPreviousRoundV2(rpc, config.currentRound);
-  const last = previous ? await drawFromRoundV2(previous.round, config.ticketLamports) : null;
   const posted = [
     ...(await loadPostedRoundsV2(rpc, config.currentRound, config.ticketLamports)),
     ...(await historicalV1RoundZero(rpc, 50_000_000)),
   ];
+  const last =
+    (previous ? await drawFromRoundV2(previous.round, config.ticketLamports) : null) ??
+    drawFromPostedWin(lastPostedWin(posted));
   empty.posted = posted;
   if (!roundInfo?.data) {
     empty.status = "awaiting_round";
@@ -557,7 +561,7 @@ async function getV2ProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | nu
   const roundLamports = slipPotLamports(config.ticketLamports, slips.length);
   const status = v2TapeStatus(round.status);
   const messages: Record<string, string> = {
-    open: "Buy a slip on-chain. After close, the kennel asks ORAO for one VRF. Winner takes 85%. Fifteen percent seeds the next rock.",
+    open: "Buy a slip on-chain. If anyone bought, this rock always picks one of those wallets after ORAO answers. Winner takes 85%. Fifteen percent seeds the next rock.",
     awaiting_vrf_request: "Sales are closed. Crank Request randomness to bind one ORAO VRF job. A second request is rejected.",
     awaiting_vrf: "Waiting on ORAO to fulfill the bound request. Then crank Settle. If the timeout hits first, refunds open.",
     awaiting_settle: "ORAO fulfilled. Crank Settle to map the stored randomness onto a slip with rejection sampling.",

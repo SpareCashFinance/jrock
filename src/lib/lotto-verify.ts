@@ -230,10 +230,14 @@ async function verifyV2(
     ledger,
     conserved: assertLedgerConserved(ledger),
     limitations: [
-      "Production env still points at v1 until this program is initialized on mainnet and round 0 on FvQfc is claimed or refunded.",
-      "ORAO VRF Classic must fulfill before settle. After close_ts + timeout, refunds open and no new winner can be chosen.",
-      "A verified build is not filed until solana-verify runs against the deployed v2 ELF.",
-      "Upgrade authority stays in place through the first mainnet week, then revoke or a disclosed Squads timelock.",
+      round.ticketCount === 0
+        ? "This round is still open with 0 slips. A winner is always one of the wallets that bought. An empty book cannot pick a wallet."
+        : settled
+          ? "If anyone bought, settle mapped the stored ORAO bytes onto one of those wallets. Recompute from those bytes, not this website."
+          : "A winner is always one of the wallets that bought. This round is not settled yet, so there is no stored winner to recompute.",
+      "ORAO VRF Classic must fulfill before settle. After close_ts + timeout, refunds open instead of a new winner.",
+      "Explorer verification is filed against SpareCashFinance/jrock-lotto tag lotto-v2-mainnet. Upgrade authority stays through the first mainnet week.",
+      "Upgrade authority is a single kennel wallet. Do not treat a verified ELF as an immutable program.",
     ],
   };
 }

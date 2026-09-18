@@ -1,10 +1,8 @@
 # Kennel lotto audit (round 0)
 
-**Launch decision: FAIL** for a production-ready trustless lottery.
+**Launch decision: live kennel, remaining ops.** v1 SlotHashes on this snapshot was not production-ready as a trustless VRF lottery. v2 ORAO is live. Do not upgrade a funded round.
 
-The kennel is an honest, disclosed entertainment draw. It is not VRF, not explorer-verified, and not immutable. Do not upgrade the live program while round 0 is funded.
-
-Snapshot: 2026-09-15. Live confirmation: Solana mainnet RPC + https://petrock.fun/api/lotto/independent?round=0 + https://petrock.fun/lotto.
+Snapshot: 2026-09-15 (v1 round 0). Live confirmation later: Solana mainnet RPC + https://petrock.fun/api/lotto/independent?round=0 + https://petrock.fun/lotto.
 
 ## 1. Architecture and trust model
 
@@ -18,7 +16,7 @@ Players must trust SlotHashes plus closer timing, and that upgrade authority doe
 | --- | --- | --- | --- |
 | Critical | C1 | Randomness is SlotHashes after close, not a VRF. The closer chooses close time, hence the future slot. | Live, disclosed |
 | Critical | C2 | Upgrade authority is a single wallet and can replace code mid-round. | Live, disclosed |
-| Critical | C3 | Deployed binary is not explorer-verified. | Program repo published (`SpareCashFinance/jrock-lotto`, tag `lotto-v1-48h`). Explorer badge still not filed. |
+| Critical | C3 | Deployed binary is not explorer-verified. | OtterSec job queued against `lotto-v2-mainnet`. Badge pending PDA + hash match. |
 | Critical | C4 | If SlotHashes expires before settle, the round can stick. No refund instruction. | Live |
 | High | H1 | `u64 % n` has a tiny bias unless `n` divides 2^64. | Live, disclosed |
 | High | H2 | No Anchor integration, local-validator, devnet lifecycle, fuzz, or solana-verify CI. | Program repo builds SBF on push. `solana-verify` is still a manual `verify-from-repo` against tag `lotto-v1-48h`. |
@@ -120,12 +118,19 @@ Not run to completion: `cargo test` (no cached `anchor-lang` in this environment
 
 Production “Check this draw” on 2026-09-15: `Solana shows round 0 open, 9 slips, prize pool 0.4455 SOL. No settled winner to recompute yet.`
 
-## 15. Remaining limitations
+## 15. Remaining limitations (live v2)
 
-SlotHashes was the **previous** live program. The kennel now uses ORAO VRF Classic on `66FyiUTkw4JMYMi3yErfa7UBqrHm9GZha1meAxcgbjDg`. Remaining limits: upgradeable single wallet; explorer badge not filed; `$JROCK` mint still unpublished so market “Contract pending” remains.
+The kennel now uses ORAO VRF Classic on `66FyiUTkw4JMYMi3yErfa7UBqrHm9GZha1meAxcgbjDg`. Round 0 is **open** with **0 slips**. That is not “no winner forever”: if anyone buys, settle always maps ORAO onto one of those wallets. Last paid rock remains the claimed v1 round 0 winner.
 
-v2 is initialized on mainnet (48h rounds, 6h VRF timeout). See `docs/lotto-fairness-v2.md` and `docs/lotto-verifiable-build.md`.
+Still true:
+
+- Upgrade authority is a single wallet (`62C41…`). Do not revoke on day one.
+- Explorer badge depends on OtterSec matching tag `lotto-v2-mainnet` and the verification PDA landing on-chain.
+- `$JROCK` mint is still unpublished, so market “Contract pending” remains.
+- v1 leftover seed on `FvQfc…` round 1 cannot be withdrawn. Do not upgrade v1 while any funded round holds ticket SOL.
+
+See `docs/lotto-fairness-v2.md` and `docs/lotto-verifiable-build.md`.
 
 ## 16. Launch decision
 
-**FAIL.** Do not describe this as production-ready, trustless, or cryptographically fair. The desk may stay up as a disclosed kennel with the copy now on the page.
+**Live kennel, remaining ops.** v2 is initialized (48h rounds, 6h VRF timeout). Do not describe SlotHashes v1 as 100% fair. Do not describe v2 as immutable until upgrade authority is revoked or moved to a disclosed timelock.

@@ -25,6 +25,8 @@ import {
   verifyDraw,
   winnerIndexFromBlockhash,
   slipRange,
+  drawFromPostedWin,
+  lastPostedWin,
   type LottoPostedWin,
   type LottoSnapshot,
 } from "@/lib/lotto";
@@ -215,6 +217,9 @@ export function LottoDesk({ initial }: { initial?: LottoSnapshot }) {
     [solana.address, tape.entries],
   );
   const solePlayer = tape.wallets.length === 1 ? tape.wallets[0] : null;
+  const lastWin = lastPostedWin(tape.posted);
+  const lastDraw = tape.draw ? null : tape.last ?? drawFromPostedWin(lastWin);
+  const lastJackpot = lastWin?.jackpotLamports ?? 0;
 
   useEffect(() => {
     if (tape.engine !== "program") return;
@@ -306,7 +311,7 @@ export function LottoDesk({ initial }: { initial?: LottoSnapshot }) {
         </h1>
         <p className="serif mt-5 max-w-xl text-xl text-[var(--cream)] sm:text-2xl">
           {tape.engine === "program"
-            ? "Buy a slip in SOL. One price. 1% of that price is the kennel fee. The rest goes in the pot. The winner takes 85%. Fifteen percent stays to seed the next rock."
+            ? "Buy a slip in SOL. One price. 1% of that price is the kennel fee. The rest goes in the pot. If anyone bought, this rock always picks one of those wallets. The winner takes 85%. Fifteen percent stays to seed the next rock."
             : `Buy a slip in SOL. Sales die with the clock. ${DRAW_LAG_SECONDS} seconds later a finalized Solana blockhash is hashed. That number modulo the book is the winner. The rock does not pick.`}
         </p>
       </div>
@@ -353,10 +358,10 @@ export function LottoDesk({ initial }: { initial?: LottoSnapshot }) {
           {tape.draw ? (
             <WinnerCard title="This rock picked" draw={tape.draw} jackpotLamports={tape.split.winnerLamports} />
           ) : null}
-          {tape.last && !tape.draw ? (
-            <WinnerCard title="Last rock picked" draw={tape.last} jackpotLamports={tape.split.winnerLamports} />
+          {lastDraw ? (
+            <WinnerCard title="Last rock picked" draw={lastDraw} jackpotLamports={lastJackpot} />
           ) : null}
-          {!tape.draw && !tape.last && solePlayer && ended ? (
+          {!tape.draw && !lastDraw && solePlayer && ended ? (
             <SolePlayerCard player={solePlayer} jackpotLamports={tape.split.winnerLamports} />
           ) : null}
           <ChainStatusCard tape={tape} />
@@ -544,7 +549,7 @@ function ChainStatusCard({ tape }: { tape: LottoSnapshot }) {
     ["Network", "Solana mainnet-beta"],
     ["Program", tape.programId || "Not posted"],
     ["This round", tape.pot || "Not open"],
-    ["Build", tape.verifiedBuild ? "Explorer-verified." : "Source is public. Explorer verification is not filed yet."],
+    ["Build", tape.verifiedBuild ? "Explorer-verified." : "Source is public. OtterSec verification PDA is on-chain; explorer badge pending hash match."],
     ["Upgrade", tape.upgradeable === false ? "Immutable." : "Upgradeable. Authority is a single kennel wallet."],
     [
       "Round length",
@@ -681,7 +686,7 @@ function ProofCard({ tape }: { tape: LottoSnapshot }) {
           "A buy only counts while this round is still open.",
           "Every slip gets a number, in the order it was bought, from 0 up. Buy again and your numbers continue.",
           "When time is up, anyone can close sales, then request one ORAO VRF job seeded with this program, this round, and the slip count. A second request is rejected.",
-          "Settle maps the stored 256-bit VRF output into 0..tickets-1 with rejection sampling. If ORAO does not fulfill before the timeout, anyone can refund 99% per slip.",
+          "If anyone bought, settle always maps the stored 256-bit VRF output onto one of those slips with rejection sampling. Refunds only if ORAO is silent for 6 hours.",
           "Winner takes 85% of the prize pool after rent. 15% stays to seed the next round. Anyone can press the finish buttons.",
         ]
       : [
@@ -713,8 +718,11 @@ function ProofCard({ tape }: { tape: LottoSnapshot }) {
         > & { error?: string };
         if (!response.ok) throw new Error(independent.error || "Public Solana RPC did not answer.");
         if (independent.matches == null) {
+          const prize = independent.ledger.distributablePotLamports / 1_000_000_000;
           setLocal(
-            `Solana shows round ${independent.roundId} ${independent.status}, ${independent.totalTickets} slips, prize pool ${independent.ledger.distributablePotLamports / 1_000_000_000} SOL. No settled winner to recompute yet.`,
+            independent.totalTickets === 0
+              ? `Solana shows round ${independent.roundId} ${independent.status} with 0 slips and prize pool ${prize} SOL. Nobody has bought yet, so there is no winner to recompute. After a slip is filed and sales close, ORAO always maps onto one of those wallets.`
+              : `Solana shows round ${independent.roundId} ${independent.status}, ${independent.totalTickets} slips, prize pool ${prize} SOL. Sales or VRF still in progress. After settle, this check recomputes the winner from the stored ORAO bytes.`,
           );
           return;
         }
@@ -1085,7 +1093,9 @@ function PurchaseLog({ tape, you }: { tape: LottoSnapshot; you: string }) {
     return (
       <div className="glass-panel mt-8 rounded-[28px] p-6">
         <p className="kicker">Every purchase</p>
-        <p className="serif mt-3 text-xl text-[var(--dim)]">No slips this round. The rock is patient.</p>
+        <p className="serif mt-3 text-xl text-[var(--dim)]">
+          No slips this round yet. After the first slip, this rock always picks one of those wallets.
+        </p>
       </div>
     );
   }
