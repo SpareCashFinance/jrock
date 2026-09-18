@@ -19,7 +19,7 @@ const UPDATE_DISC = Buffer.from([219, 200, 88, 176, 158, 63, 253, 127]);
 const RPC = process.env.SOLANA_RPC || "https://api.mainnet-beta.solana.com";
 const KEY_PATH = process.env.SOLANA_KEYPAIR || join(homedir(), ".config", "solana", "jrock-deployer.json");
 const REPO = "https://github.com/SpareCashFinance/jrock-lotto";
-const COMMIT = process.env.LOTTO_VERIFY_COMMIT || "da6775229249545330a6993c42d5d8b33b25d9f2";
+const COMMIT = process.env.LOTTO_VERIFY_COMMIT || "9e7f665706bbc96d60a29e08795923ab3fe948ad";
 const VERSION = "0.5.1";
 const ARGS = ["--library-name", "jrock_lotto_v2"];
 
