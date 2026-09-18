@@ -26,7 +26,7 @@ const newsreader = Newsreader({
 });
 
 const title = `${project.name} (${project.ticker})`;
-const description = `${project.coreLine} A Solana memecoin launching on pump.fun. Eligible holders may receive variable WBTC from Holder Rewards. Independent parody. Not financial advice.`;
+const description = `${project.coreLine} A Solana memecoin launching on stonk.fun. Eligible holders may receive variable WBTC from StonkFun holder rewards. Independent parody. Not financial advice.`;
 
 export const viewport: Viewport = {
   width: "device-width",

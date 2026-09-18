@@ -11,8 +11,8 @@ export const project = {
   quote:
     "They said Bitcoin does nothing. We taught the rock to stack WBTC.",
   network: "Solana",
-  launchpad: "pump.fun",
-  launchpadName: "pump.fun",
+  launchpad: "stonk.fun",
+  launchpadName: "StonkFun",
   rewardAsset: "WBTC",
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://petrock.fun",
   mint: process.env.NEXT_PUBLIC_JROCK_MINT ?? "",
@@ -31,6 +31,9 @@ export const project = {
 
 export const holderFeePercent = Number(process.env.NEXT_PUBLIC_HOLDER_FEE_PERCENT || 3) || 3;
 
+const defaultEligibility =
+  "StonkFun typically requires about $20 of $JROCK to receive payouts. A slice of each distribution covers their costs. Exact rules live on the token page.";
+
 export const copy = {
   heroKicker: "Official parody pet. Unofficial Bitcoin attitude.",
   story: [
@@ -47,7 +50,7 @@ export const copy = {
     {
       stamp: "03",
       title: "This rock pays in Bitcoin.",
-      body: "Eligible holders may receive variable WBTC from pump.fun Holder Rewards. Same rock. Higher standards.",
+      body: "Eligible holders may receive variable WBTC from StonkFun holder rewards. Same rock. Higher standards.",
     },
   ],
   steps: [
@@ -64,25 +67,30 @@ export const copy = {
     {
       n: "03",
       title: "Get fed WBTC",
-      body: `${holderFeePercent}% of trading fees is routed to holders in WBTC through pump.fun Holder Rewards. Same rock. Higher standards.`,
+      body: `${holderFeePercent}% Token-2022 transfer tax is collected in WBTC and paid to eligible holders on StonkFun. Same rock. Higher standards.`,
     },
   ],
   caveats: [
     "Rewards depend on actual trading activity.",
     "Amounts and timing can vary.",
     "Rewards may be small or zero.",
-    "Eligibility and distribution rules are controlled by the live pump.fun Holder Rewards implementation.",
+    "Eligibility, tax, and payout timing follow the live StonkFun reward implementation, not this site.",
+    "JROCK launches as a StonkFun reward coin paired with WBTC (Wormhole). The tax is paid in that quote token.",
     "Verify transactions and reward distributions on-chain.",
-    `${holderFeePercent}% of trading fees is planned to go to eligible holders in WBTC. Amounts follow live volume and are not a yield.`,
+    `${holderFeePercent}% of each transfer is planned to go toward eligible holders in WBTC. Amounts follow live volume and are not a yield.`,
     "At launch, 60% of supply is planned to be purchased and burned. Verify that transaction on-chain when the receipt is filed.",
     "A smaller float does not guarantee larger or faster WBTC payouts.",
   ],
   disclaimer:
-    "Jamie’s Pet Rock is an independent parody memecoin created for entertainment. It is not affiliated with, sponsored by or endorsed by Jamie Dimon, JPMorgan Chase, Bitcoin, Wrapped Bitcoin or pump.fun. Holder rewards are variable, depend on platform activity and are not guaranteed. Cryptocurrency is highly speculative and may lose all value.",
+    "Jamie’s Pet Rock is an independent parody memecoin created for entertainment. It is not affiliated with, sponsored by or endorsed by Jamie Dimon, JPMorgan Chase, Bitcoin, Wrapped Bitcoin or StonkFun. Holder rewards are variable, depend on platform activity and are not guaranteed. Cryptocurrency is highly speculative and may lose all value.",
 } as const;
 
 export function displayValue(value: string, fallback = "To be confirmed") {
   return value.trim() ? value : fallback;
+}
+
+export function eligibilityCopy() {
+  return displayValue(project.eligibility, defaultEligibility);
 }
 
 export function hasMint() {

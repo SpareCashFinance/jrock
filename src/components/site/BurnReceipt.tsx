@@ -19,8 +19,8 @@ export function BurnReceipt({ burn }: { burn: BurnSnapshot }) {
       </h2>
       <p className="mt-4 max-w-2xl text-sm leading-6 text-[var(--dim)]">
         At launch we buy {project.burnPercent}% of {project.ticker} supply and send it to the
-        burn. Holder Rewards stay separate: a 3% trading fee is meant to pay eligible
-        holders in WBTC. Smaller float. Variable Bitcoin. Not a promise.
+        burn. StonkFun holder rewards stay separate: a 3% Token-2022 tax is meant to pay
+        eligible holders in WBTC. Smaller float. Variable Bitcoin. Not a promise.
       </p>
 
       <div className="mt-8">

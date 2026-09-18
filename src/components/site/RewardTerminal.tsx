@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { displayValue, holderFeePercent, project } from "@/lib/config";
 import { formatAmount, formatCount, formatUsd, shortenAddress, timeAgo } from "@/lib/format";
-import { explorerUrl } from "@/lib/links";
+import { explorerUrl, stonkfunTokenUrl } from "@/lib/links";
 import type { MarketSnapshot } from "@/lib/market";
 import { useMarketSnapshot } from "@/lib/market-client";
 import { HouseButton } from "@/components/ui/house-button";
@@ -17,7 +17,7 @@ import { CopyButton } from "./CopyButton";
 
 const statusLabel: Record<MarketSnapshot["status"], string> = {
   awaiting_launch: "Awaiting launch",
-  awaiting_index: "Waiting on pump.fun",
+  awaiting_index: "Waiting on StonkFun",
   standard_mode: "Standard launch",
   no_distribution: "No verified distribution yet",
   unavailable: "Live data unavailable",
@@ -33,12 +33,12 @@ export function RewardTerminal({ market: initial }: { market: MarketSnapshot }) 
   const figures = [
     { label: `Total ${market.totalDistributedSymbol} distributed`, value: formatAmount(market.totalDistributed, 6), hint: market.totalDistributedSymbol },
     { label: "Pending pot", value: formatAmount(market.pendingDistributed, 6), hint: "Accrued, not paid yet" },
-    { label: "Eligible holders", value: formatCount(market.holders), hint: "From pump.fun Holder Rewards when live" },
+    { label: "Eligible holders", value: formatCount(market.holders), hint: "From StonkFun holder rewards when live" },
     { label: "Distributions", value: formatCount(market.payoutCount), hint: "Confirmed payouts" },
     { label: "24h volume", value: formatUsd(market.volume24hUsd), hint: "Official market only" },
     { label: "Market cap", value: formatUsd(market.marketCapUsd), hint: "Not a promise" },
     { label: "Liquidity", value: formatUsd(market.liquidityUsd), hint: displayValue(project.liquidityStatus, "To be confirmed") },
-    { label: "Holder Rewards", value: tax, hint: "Of trades, paid to holders in WBTC" },
+    { label: "Holder Rewards", value: tax, hint: market.quoteOnlyFees ? `Of transfers, paid in ${market.rewardSymbol}` : "Of transfers, paid to holders" },
     { label: "Last payout", value: timeAgo(market.lastDistribution?.at) ?? "None yet", hint: market.nextRewardStatus },
   ];
 
@@ -86,17 +86,20 @@ export function RewardTerminal({ market: initial }: { market: MarketSnapshot }) 
         <div className="mt-8 flex flex-wrap items-center gap-3 text-sm text-[var(--dim)]">
           <span>Mint {shortenAddress(project.mint || "pending")}</span>
           <CopyButton value={project.mint} className="px-3 text-[11px]" />
+          <HouseButton className="px-3 text-[11px]" href={stonkfunTokenUrl()} target="_blank">
+            stonk.fun
+          </HouseButton>
           {explorerUrl() ? (
             <HouseButton className="px-3 text-[11px]" href={explorerUrl()} target="_blank">
               Solscan
             </HouseButton>
           ) : null}
-          {explorerUrl(project.rewardMint) ? (
-            <HouseButton className="px-3 text-[11px]" href={explorerUrl(project.rewardMint)} target="_blank">
-              WBTC mint
+          {explorerUrl(market.rewardMint) ? (
+            <HouseButton className="px-3 text-[11px]" href={explorerUrl(market.rewardMint)} target="_blank">
+              {market.rewardSymbol} mint
             </HouseButton>
           ) : (
-            <span>WBTC mint · To be confirmed</span>
+            <span>{market.rewardSymbol} mint · To be confirmed</span>
           )}
         </div>
       </Card>

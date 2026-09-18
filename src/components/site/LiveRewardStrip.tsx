@@ -11,7 +11,7 @@ export function LiveRewardStrip({ market: initial }: { market: MarketSnapshot })
     <section className="relative z-1 border-y border-[rgba(232,210,176,0.1)] bg-[#080d16]/80">
       <div className="mx-auto grid w-[min(1120px,calc(100%-1.5rem))] gap-6 py-5 sm:grid-cols-2 lg:grid-cols-4">
         <Stat
-          label="WBTC distributed"
+          label={`${market.totalDistributedSymbol} distributed`}
           value={formatAmount(market.totalDistributed, 6)}
           note={
             market.totalDistributed == null
@@ -24,7 +24,7 @@ export function LiveRewardStrip({ market: initial }: { market: MarketSnapshot })
         <Stat
           label="Market cap"
           value={formatUsd(market.marketCapUsd)}
-          note={market.marketCapUsd == null ? "Live after mint" : "pump.fun"}
+          note={market.marketCapUsd == null ? "Live after mint" : "StonkFun"}
         />
         <Stat
           label="24h volume"

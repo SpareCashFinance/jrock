@@ -151,7 +151,7 @@ export async function getBurnSnapshot(): Promise<BurnSnapshot> {
   if (!hasMint() || !looksLikeMint(project.mint)) {
     return snapshot({
       status: "awaiting_launch",
-      message: `Launch burn is armed at ${project.burnPercent}%. Holder Rewards stay on a separate 3% WBTC track after the mint is live.`,
+      message: `Launch burn is armed at ${project.burnPercent}%. StonkFun holder rewards stay on a separate 3% WBTC tax after the mint is live.`,
     });
   }
 
@@ -159,7 +159,7 @@ export async function getBurnSnapshot(): Promise<BurnSnapshot> {
 
   try {
     const [burnHit, circulating] = await Promise.all([
-      readJson(`${STONKFUN}/tokens/${encodeURIComponent(mint)}/burns?limit=8`),
+      readJson(`${STONKFUN}/tokens/${encodeURIComponent(mint)}/burns?limit=8&pageSize=8`),
       onChainSupply(mint),
     ]);
 
@@ -202,7 +202,7 @@ export async function getBurnSnapshot(): Promise<BurnSnapshot> {
       status: live ? "live" : "armed",
       message: live
         ? "Live incinerator. Launch buyback plus later on-chain burns. Amounts can move."
-        : `Mint is set. ${project.burnPercent}% launch burn is armed. Holder Rewards pay WBTC from trading fees, not from the burn.`,
+        : `Mint is set. ${project.burnPercent}% launch burn is armed. StonkFun pays eligible holders in WBTC from the transfer tax, not from the burn.`,
       circulatingSupply: circulating,
       launchBurned,
       platformBurned: indexed ? platformBurned : 0,

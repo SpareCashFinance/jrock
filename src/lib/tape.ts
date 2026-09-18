@@ -66,18 +66,18 @@ export async function getPriceTape(market?: MarketSnapshot): Promise<PriceTapeSn
   ]);
 
   let priceUsd = snap.priceUsd;
-  let change24hPct: number | null = null;
+  let change24hPct = snap.priceChange24hPct;
 
   if (priceUsd == null && geckoJrock) {
     priceUsd = geckoJrock.priceUsd;
     change24hPct = geckoJrock.change24hPct;
   }
 
-  if (priceUsd == null && minted) {
+  if (minted && (priceUsd == null || change24hPct == null)) {
     const dex = await dexScreenerUsd(project.mint);
     if (dex) {
-      priceUsd = dex.priceUsd;
-      change24hPct = dex.change24hPct;
+      priceUsd = priceUsd ?? dex.priceUsd;
+      change24hPct = change24hPct ?? dex.change24hPct;
     }
   }
 

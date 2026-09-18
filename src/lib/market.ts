@@ -1,4 +1,4 @@
-import { hasMint, project } from "./config";
+import { hasMint, holderFeePercent, project } from "./config";
 import { explorerTxUrl } from "./links";
 
 export type MarketStatus =
@@ -26,7 +26,12 @@ export type MarketSnapshot = {
   rewardSymbol: string;
   mode: "reward" | "standard" | "";
   transferFeeBps: number | null;
+  quoteOnlyFees: boolean;
+  flywheelActive: boolean;
+  launchpad: string;
+  launchStatus: string;
   priceUsd: number | null;
+  priceChange24hPct: number | null;
   marketCapUsd: number | null;
   volume24hUsd: number | null;
   liquidityUsd: number | null;
@@ -43,6 +48,7 @@ export type MarketSnapshot = {
 
 const STONKFUN = "https://www.stonkfun.xyz/api/public/v1";
 const FETCH_MS = 8_000;
+const WBTC_MINT = "3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh";
 
 function emptySnapshot(status: MarketStatus, message: string): MarketSnapshot {
   return {
@@ -53,7 +59,12 @@ function emptySnapshot(status: MarketStatus, message: string): MarketSnapshot {
     rewardSymbol: project.rewardAsset,
     mode: "",
     transferFeeBps: null,
+    quoteOnlyFees: true,
+    flywheelActive: false,
+    launchpad: "",
+    launchStatus: "",
     priceUsd: null,
+    priceChange24hPct: null,
     marketCapUsd: null,
     volume24hUsd: null,
     liquidityUsd: null,
@@ -89,6 +100,10 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 
 function looksLikeMint(value: string) {
   return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(value.trim());
+}
+
+function expectedRewardMint() {
+  return project.rewardMint.trim() || WBTC_MINT;
 }
 
 async function readJson(url: string) {
@@ -132,14 +147,19 @@ function mapHistory(raw: unknown, symbol: string, mint: string): RewardEvent[] {
       } satisfies RewardEvent;
     })
     .filter((row): row is RewardEvent => Boolean(row))
-    .slice(0, 12);
+    .sort((a, b) => {
+      const aTime = a.at ? Date.parse(a.at) : 0;
+      const bTime = b.at ? Date.parse(b.at) : 0;
+      return bTime - aTime;
+    })
+    .slice(0, 24);
 }
 
 export async function getMarketSnapshot(): Promise<MarketSnapshot> {
   if (!hasMint() || !looksLikeMint(project.mint)) {
     return emptySnapshot(
       "awaiting_launch",
-      "Awaiting launch. Live market and reward figures will appear after the official $JROCK mint is published.",
+      "Awaiting launch. Live market and WBTC reward figures will appear after the official $JROCK mint is published on StonkFun.",
     );
   }
 
@@ -160,7 +180,7 @@ export async function getMarketSnapshot(): Promise<MarketSnapshot> {
     if (tokenHit.status === 404) {
       return emptySnapshot(
         "awaiting_index",
-        "Mint is set. Waiting for pump.fun Holder Rewards to index $JROCK.",
+        "Mint is set. Waiting for StonkFun to adopt the $JROCK LaunchLab pool and start the WBTC reward cycle.",
       );
     }
 
@@ -177,14 +197,19 @@ export async function getMarketSnapshot(): Promise<MarketSnapshot> {
     if (!token) {
       return emptySnapshot(
         "awaiting_index",
-        "Mint is set. The official market has not returned a token record yet.",
+        "Mint is set. StonkFun has not returned a token record yet.",
       );
     }
 
     const market = asRecord(token.market);
     const tokenQuote = asRecord(token.quote);
     const transferFee = asRecord(token.transferFee);
+    const flywheel = asRecord(token.flywheel);
     const mode = text(token.mode) === "standard" ? "standard" : text(token.mode) === "reward" ? "reward" : "";
+    const quoteOnlyFees = token.quoteOnlyFees !== false;
+    const flywheelActive = flywheel?.active === true;
+    const launchpad = text(token.launchpad);
+    const launchStatus = text(token.status);
 
     const rewardBody = rewardHit.ok ? asRecord(rewardHit.body) : null;
     const rewardData = asRecord(rewardBody?.data) ?? rewardBody;
@@ -192,29 +217,39 @@ export async function getMarketSnapshot(): Promise<MarketSnapshot> {
     const rewards = asRecord(rewardData?.rewards);
     const rewardMode = text(rewardData?.mode) || mode;
 
+    const liveQuoteMint = text(rewardQuote?.mint) || text(tokenQuote?.mint);
+    const symbol =
+      text(rewardQuote?.symbol) ||
+      text(tokenQuote?.symbol) ||
+      project.rewardAsset;
+    const rewardMint = liveQuoteMint || expectedRewardMint();
+    const quoteMismatch =
+      Boolean(liveQuoteMint) &&
+      liveQuoteMint.toLowerCase() !== expectedRewardMint().toLowerCase();
+
     if (rewardMode === "standard" || (rewardHit.ok && rewardData && rewards == null)) {
       return {
         ...emptySnapshot(
           "standard_mode",
-          "This mint is live without Holder Rewards. WBTC distributions will not appear unless the coin launched in Holder Rewards mode.",
+          "This mint is live as a standard StonkFun launch. WBTC holder rewards only run on a reward-mode Token-2022 tax.",
         ),
         mode: "standard",
+        transferFeeBps: num(transferFee?.bps),
+        quoteOnlyFees,
+        flywheelActive,
+        launchpad,
+        launchStatus,
+        rewardMint,
+        rewardSymbol: symbol,
+        totalDistributedSymbol: symbol,
         priceUsd: num(market?.priceUsd),
+        priceChange24hPct: num(market?.priceChange24h),
         marketCapUsd: num(market?.marketCapUsd) ?? num(market?.fdvUsd),
         volume24hUsd: num(market?.volume24hUsd),
         liquidityUsd: num(market?.liquidityUsd),
         updatedAt: new Date().toISOString(),
       };
     }
-
-    const symbol =
-      text(rewardQuote?.symbol) ||
-      text(tokenQuote?.symbol) ||
-      project.rewardAsset;
-    const rewardMint =
-      project.rewardMint ||
-      text(rewardQuote?.mint) ||
-      text(tokenQuote?.mint);
 
     const totalDistributed =
       num(rewards?.distributedTokens) ??
@@ -226,17 +261,20 @@ export async function getMarketSnapshot(): Promise<MarketSnapshot> {
     const lastPayoutAt = text(rewards?.lastPayoutAt) || null;
 
     const history = mapHistory(
-      rewards?.history ?? rewards?.distributions ?? rewards?.recentDistributions ?? rewards?.payouts,
+      rewards?.history ??
+        rewards?.distributions ??
+        rewards?.recentDistributions ??
+        rewards?.payouts,
       symbol,
       mint,
     );
 
     const lastDistribution =
       history[0] ??
-      (lastPayoutAt || (totalDistributed != null && totalDistributed > 0)
+      (lastPayoutAt
         ? {
             at: lastPayoutAt,
-            amount: totalDistributed,
+            amount: null,
             symbol,
             signature: null,
             explorerUrl: null,
@@ -244,19 +282,35 @@ export async function getMarketSnapshot(): Promise<MarketSnapshot> {
           }
         : null);
 
+    const taxPct =
+      num(transferFee?.bps) != null
+        ? `${((num(transferFee?.bps) as number) / 100).toFixed(0)}%`
+        : `${holderFeePercent}%`;
     const noPayouts = !payoutCount && !(totalDistributed && totalDistributed > 0) && !lastPayoutAt;
+
+    const mismatchNote = quoteMismatch
+      ? ` This pool is paying ${symbol}, not WBTC. JROCK should launch against Wrapped BTC (Wormhole).`
+      : "";
+    const taxNote = quoteOnlyFees
+      ? ` ${taxPct} Token-2022 tax is collected in ${symbol}.`
+      : ` ${taxPct} Token-2022 tax is collected in $JROCK.`;
 
     return {
       status: noPayouts ? "no_distribution" : "live",
       message: noPayouts
-        ? "Pool is live. No verified distribution yet — the terminal lights up when the first on-chain payout is confirmed."
-        : "Verified on-chain figures. Amounts can change and are not a promise of future rewards.",
+        ? `Pool is live on StonkFun. No verified distribution yet — the terminal lights up when the first on-chain ${symbol} payout is confirmed.${taxNote}${mismatchNote}`
+        : `Verified StonkFun figures. Amounts can change and are not a promise of future rewards.${taxNote}${mismatchNote}`,
       mint,
       rewardMint,
       rewardSymbol: symbol,
       mode: "reward",
       transferFeeBps: num(transferFee?.bps),
+      quoteOnlyFees,
+      flywheelActive,
+      launchpad,
+      launchStatus,
       priceUsd: num(market?.priceUsd),
+      priceChange24hPct: num(market?.priceChange24h),
       marketCapUsd: num(market?.marketCapUsd) ?? num(market?.fdvUsd),
       volume24hUsd: num(market?.volume24hUsd),
       liquidityUsd: num(market?.liquidityUsd),
