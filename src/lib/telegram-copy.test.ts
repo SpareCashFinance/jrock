@@ -108,13 +108,13 @@ test("remaining clock is stable for a fixed now", () => {
 test("pulse names pot, slips, payout, and last winner without refund copy", () => {
   const text = formatPulse(pot(), NOW);
   assert.match(text, /Rock 1/);
-  assert.match(text, /0\.594 SOL/);
-  assert.match(text, /12 slips/);
-  assert.match(text, /If this rock pays now/);
   assert.match(text, /0\.5049 SOL/);
+  assert.match(text, /12 slips/);
+  assert.doesNotMatch(text, /0\.594 SOL/);
+  assert.doesNotMatch(text, /If this rock pays now/);
   assert.match(text, /1d 5h left/);
   assert.match(text, /petrock\.fun\/lotto/);
-  assert.match(text, /Last rock paid slip 30/);
+  assert.match(text, /Last rock/);
   assert.match(text, /solscan\.io\/account\/62C41rN2uUrsZoRkZyTqxD8GJYpa6KtERAtehfNmiXwq#transfers/);
   assert.doesNotMatch(text, /refund/i);
   assert.doesNotMatch(text, /immutable/i);
@@ -130,8 +130,9 @@ test("jackpot adds the end time and seed note", () => {
 
 test("empty book pulse does not invent a payout", () => {
   const text = formatPulse(pot({ totalTickets: 0, split: { ...pot().split, winnerLamports: 0 } }), NOW);
-  assert.match(text, /Nobody has bought a slip yet/);
+  assert.match(text, /No slips yet/);
   assert.doesNotMatch(text, /If this rock pays now/);
+  assert.doesNotMatch(text, /0\.5049 SOL/);
 });
 
 test("winner card includes wallet, slip, rematch, and verify links", () => {

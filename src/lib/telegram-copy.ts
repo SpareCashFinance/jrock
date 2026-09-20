@@ -128,7 +128,7 @@ function lastWinLine(posted: LottoPostedWin[] | undefined) {
       (row.status === "claimed" || row.status === "settled"),
   );
   if (!win?.winner || win.winnerIndex == null) return "";
-  return `\nLast rock paid slip ${formatCount(win.winnerIndex)} · ${solFromLamports(win.jackpotLamports)} · ${walletLink(win.winner, true)}`;
+  return `🏆 Last rock · slip ${formatCount(win.winnerIndex)} · ${solFromLamports(win.jackpotLamports)} · ${walletLink(win.winner, true)}`;
 }
 
 export function formatPulse(tape: TelegramPotTape, nowMs: number, opts: { jackpot?: boolean } = {}) {
@@ -136,27 +136,28 @@ export function formatPulse(tape: TelegramPotTape, nowMs: number, opts: { jackpo
   const phase = phaseLine(tape.status, ended);
   const clock = ended ? phaseLine(tape.status, true) : remainingLabel(tape.endsAt, nowMs);
   const slips = formatCount(tape.totalTickets) ?? "0";
-  const pot = solFromLamports(tape.split.claimableLamports);
   const payout = solFromLamports(tape.split.winnerLamports);
   const seed = solFromLamports(tape.split.carryLamports);
+  const potLine =
+    tape.totalTickets > 0
+      ? ` <b>${escapeHtml(payout)}</b>`
+      : " No slips yet";
   const extra = opts.jackpot
-    ? `\nEnds ${escapeHtml(tape.endsAt)}\n15% of this pot seeds the next rock (${seed}).`
-    : "";
+    ? [`📅 Ends ${escapeHtml(tape.endsAt)}`, `🌱 15% seeds the next rock (${escapeHtml(seed)})`]
+    : [];
   return [
-    `<b>Rock ${tape.round}</b> is ${escapeHtml(phase)}.`,
+    `🪨 <b>Rock ${tape.round}</b> · ${escapeHtml(phase)}`,
     "",
-    `Pot <b>${escapeHtml(pot)}</b>`,
-    `${escapeHtml(slips)} slips · ${escapeHtml(String(tape.ticketPriceSol))} SOL a slip`,
-    tape.totalTickets > 0 ? `If this rock pays now: <b>${escapeHtml(payout)}</b>` : "Nobody has bought a slip yet.",
-    escapeHtml(clock),
-    extra,
+    potLine,
+    `🎫 ${escapeHtml(slips)} slips · ${escapeHtml(String(tape.ticketPriceSol))} SOL a slip`,
+    `⏱ ${escapeHtml(clock)}`,
+    ...extra,
     "",
-    `<a href="${TELEGRAM_PLAY_URL}">Play</a> · <a href="${programUrl(tape.programId || TELEGRAM_PROGRAM_ID)}">Verified contract</a>`,
+    `▶️ <a href="${TELEGRAM_PLAY_URL}">Play</a> · 📜 <a href="${programUrl(tape.programId || TELEGRAM_PROGRAM_ID)}">Verified contract</a>`,
     lastWinLine(tape.posted),
   ]
     .filter((line) => line !== "")
-    .join("\n")
-    .replace(/\n{3,}/g, "\n\n");
+    .join("\n");
 }
 
 export function formatJackpot(tape: TelegramPotTape, nowMs: number) {
@@ -175,18 +176,18 @@ export function formatWinner(win: TelegramWinTape, receipt?: TelegramReceiptTape
         ? "Rematch: matches"
         : "Rematch: does not match stored winner";
   return [
-    `<b>Rock ${win.round} is paid.</b>`,
+    `🏆 <b>Rock ${win.round} is paid.</b>`,
     "",
     `Winner\n${walletLink(win.winner)}`,
-    `Slip ${formatCount(win.winnerIndex)}`,
+    `🎫 Slip ${formatCount(win.winnerIndex)}`,
     "",
-    `Paid <b>${escapeHtml(paid)}</b> (85%)`,
-    `${escapeHtml(formatCount(win.tickets) ?? "0")} slips · ${escapeHtml(tickets)} tickets`,
-    `${escapeHtml(seed)} seeded the next rock`,
+    ` <b>${escapeHtml(paid)}</b>`,
+    `🎫 ${escapeHtml(formatCount(win.tickets) ?? "0")} slips · ${escapeHtml(tickets)} tickets`,
+    `🌱 ${escapeHtml(seed)} seeded the next rock`,
     "",
-    escapeHtml(rematch),
-    `<a href="${verifyUrl(win.round)}">Verify</a> · <a href="${walletUrl(win.winner)}">Solscan txs</a>`,
-    `<a href="${TELEGRAM_PLAY_URL}">Play the next rock</a> · <a href="${programUrl(programId)}">Verified contract</a>`,
+    rematch.startsWith("Rematch: matches") ? `✅ ${escapeHtml(rematch)}` : `🔎 ${escapeHtml(rematch)}`,
+    `🔗 <a href="${verifyUrl(win.round)}">Verify</a> · <a href="${walletUrl(win.winner)}">Solscan txs</a>`,
+    `▶️ <a href="${TELEGRAM_PLAY_URL}">Play the next rock</a> · 📜 <a href="${programUrl(programId)}">Verified contract</a>`,
   ].join("\n");
 }
 
@@ -199,35 +200,35 @@ export function formatVerify(win: TelegramWinTape | null, receipt?: TelegramRece
         ? "Independent rematch matches the stored winner."
         : "Independent rematch does not match the stored winner.";
   return [
-    `<b>Rock ${win.round}</b>`,
+    `🔎 <b>Rock ${win.round}</b>`,
     `Stored ${walletLink(receipt?.storedWinner || win.winner)} · slip ${formatCount(receipt?.storedWinnerIndex ?? win.winnerIndex)}`,
     receipt?.computedWinner
       ? `Recomputed ${walletLink(receipt.computedWinner)} · slip ${formatCount(receipt.computedWinnerIndex ?? -1)}`
       : "Recomputed winner pending.",
-    escapeHtml(match),
-    `<a href="${verifyUrl(win.round)}">Open the rematch page</a> · <a href="${programUrl(receipt?.programId || win.programId)}">Verified contract</a>`,
+    receipt?.matches ? `✅ ${escapeHtml(match)}` : `🔎 ${escapeHtml(match)}`,
+    `🔗 <a href="${verifyUrl(win.round)}">Open the rematch page</a> · 📜 <a href="${programUrl(receipt?.programId || win.programId)}">Verified contract</a>`,
   ].join("\n");
 }
 
 export function formatHelp() {
   return [
-    "<b>Kennel desk</b>",
+    "🪨 <b>Kennel desk</b>",
     "",
-    "/jackpot — live pot, slips, time left",
-    "/verify — rematch the last paid rock",
-    `/help — this list`,
+    " /jackpot — live pot, slips, time left",
+    "🔎 /verify — rematch the last paid rock",
+    "❓ /help — this list",
     "",
-    `<a href="${TELEGRAM_PLAY_URL}">Play</a> · <a href="${programUrl()}">Verified contract</a>`,
+    `▶️ <a href="${TELEGRAM_PLAY_URL}">Play</a> · 📜 <a href="${programUrl()}">Verified contract</a>`,
   ].join("\n");
 }
 
 export function formatStart() {
   return [
-    "The kennel lotto is on-chain.",
+    "🪨 The kennel lotto is on-chain.",
     "",
     "Buy a slip. 0.05 SOL. 48 hours. If anyone buys, the rock always picks one of those wallets.",
     "",
-    "/jackpot for the live pot.",
-    `<a href="${TELEGRAM_PLAY_URL}">petrock.fun/lotto</a>`,
+    " /jackpot for the live pot.",
+    `▶️ <a href="${TELEGRAM_PLAY_URL}">petrock.fun/lotto</a>`,
   ].join("\n");
 }
