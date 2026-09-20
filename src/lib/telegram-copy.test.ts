@@ -11,6 +11,7 @@ import {
   formatWinner,
   isLastHour,
   isLastHourOpen,
+  kennelPhotoUrl,
   parseTelegramCommand,
   remainingLabel,
   type TelegramPotTape,
@@ -179,6 +180,13 @@ test("new-rock post names the seed and clock", () => {
   assert.match(text, /Seeded with/);
   assert.match(text, /0\.05 SOL a slip/);
   assert.match(text, /1d 5h left/);
+});
+
+test("kennel photos come from the public carousel", () => {
+  assert.match(kennelPhotoUrl("hour", 0), /\/memes\/08-red-rings/);
+  assert.match(kennelPhotoUrl("open", 0), /\/memes\/09-green-rings/);
+  assert.match(kennelPhotoUrl("winner", 0), /\/memes\/20-throne/);
+  assert.match(kennelPhotoUrl("pulse", 0), /\/memes\/01-rebuttal/);
 });
 
 test("help and start stay kennel-voiced", () => {

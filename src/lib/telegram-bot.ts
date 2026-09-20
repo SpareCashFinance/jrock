@@ -103,6 +103,27 @@ export async function sendKennelMessage(html: string) {
   return { skipped: false as const, messageId: sent.message_id };
 }
 
+export async function sendKennelPhoto(html: string, photoUrl: string) {
+  if (!telegramConfigured()) return { skipped: true as const, reason: "TELEGRAM_BOT_TOKEN is not set." };
+  try {
+    const sent = await telegramCall<{ message_id: number }>("sendPhoto", {
+      chat_id: telegramChatId(),
+      photo: photoUrl,
+      caption: html.slice(0, 1024),
+      parse_mode: "HTML",
+      show_caption_above_media: false,
+    });
+    return { skipped: false as const, messageId: sent.message_id, photo: true as const };
+  } catch {
+    return sendKennelMessage(html);
+  }
+}
+
+export async function sendKennelCard(html: string, photoUrl?: string | null) {
+  if (photoUrl) return sendKennelPhoto(html, photoUrl);
+  return sendKennelMessage(html);
+}
+
 export async function setTelegramWebhook() {
   if (!telegramConfigured()) return { ok: false, reason: "TELEGRAM_BOT_TOKEN is not set." };
   const secret = telegramWebhookSecret();

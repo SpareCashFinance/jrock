@@ -17,6 +17,21 @@ function shortenAddress(value: string, size = 4) {
 export const TELEGRAM_PLAY_URL = "https://petrock.fun/lotto";
 export const TELEGRAM_VERIFY_URL = "https://petrock.fun/lotto/verify";
 export const TELEGRAM_PROGRAM_ID = "66FyiUTkw4JMYMi3yErfa7UBqrHm9GZha1meAxcgbjDg";
+export const TELEGRAM_SITE = "https://petrock.fun";
+
+export type KennelPhotoKind = "hour" | "open" | "winner" | "pulse";
+
+const PHOTO_SRC: Record<KennelPhotoKind, string[]> = {
+  hour: ["/memes/08-red-rings.jpg", "/memes/03-here-we-go.jpg", "/memes/07-paper-hands.jpg"],
+  open: ["/memes/09-green-rings.jpg", "/memes/02-lining.jpg", "/memes/06-first-class.jpg", "/memes/19-premiere.png"],
+  winner: ["/memes/20-throne.jpg", "/memes/21-hodl.jpg", "/memes/24-posted.png", "/memes/33-peek.png"],
+  pulse: ["/memes/01-rebuttal.jpg", "/memes/05-chart-eye.jpg", "/memes/25-executive.png"],
+};
+
+export function kennelPhotoUrl(kind: KennelPhotoKind, salt = 0) {
+  const files = PHOTO_SRC[kind];
+  return `${TELEGRAM_SITE}${files[Math.abs(salt) % files.length]}`;
+}
 
 export type TelegramPotTape = Pick<
   LottoSnapshot,

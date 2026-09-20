@@ -4,7 +4,7 @@ import { getLottoSnapshot } from "@/lib/lotto-chain";
 import { lastPostedWin } from "@/lib/lotto-history";
 import type { LottoSnapshot } from "@/lib/lotto";
 import { verifyRoundIndependent } from "@/lib/lotto-verify";
-import { sendKennelMessage, telegramConfigured } from "@/lib/telegram-bot";
+import { sendKennelCard, telegramConfigured } from "@/lib/telegram-bot";
 import {
   formatJackpot,
   formatLastHour,
@@ -14,6 +14,7 @@ import {
   formatWinner,
   isLastHour,
   isLastHourOpen,
+  kennelPhotoUrl,
 } from "@/lib/telegram-copy";
 import { markedRound, markRound, telegramStatePersistent } from "@/lib/telegram-state";
 
@@ -56,7 +57,7 @@ export async function maybeAnnounceWinner(input: { tape?: LottoSnapshot; justPai
   }
 
   const receipt = await receiptFor(win.round);
-  const sent = await sendKennelMessage(formatWinner(win, receipt));
+  const sent = await sendKennelCard(formatWinner(win, receipt), kennelPhotoUrl("winner", win.round));
   await markRound("win", win.round);
   return { skipped: sent.skipped, reason: "reason" in sent ? sent.reason : undefined, round: win.round, messageId: "messageId" in sent ? sent.messageId : undefined };
 }
@@ -77,7 +78,7 @@ export async function maybeAnnounceNewRock(input: { tape?: LottoSnapshot; justOp
     return { skipped: true as const, reason: "remembered live rock without posting", round: tape.round };
   }
 
-  const sent = await sendKennelMessage(formatNewRock(tape, input.nowMs ?? Date.now()));
+  const sent = await sendKennelCard(formatNewRock(tape, input.nowMs ?? Date.now()), kennelPhotoUrl("open", tape.round));
   await markRound("open", tape.round);
   return { skipped: sent.skipped, reason: "reason" in sent ? sent.reason : undefined, round: tape.round, messageId: "messageId" in sent ? sent.messageId : undefined };
 }
@@ -98,7 +99,7 @@ export async function maybeAnnounceLastHour(input: { tape?: LottoSnapshot; nowMs
     return { skipped: true as const, reason: "missed the first minute of last hour", round: tape.round };
   }
 
-  const sent = await sendKennelMessage(formatLastHour(tape, nowMs));
+  const sent = await sendKennelCard(formatLastHour(tape, nowMs), kennelPhotoUrl("hour", tape.round));
   await markRound("hour", tape.round);
   return { skipped: sent.skipped, reason: "reason" in sent ? sent.reason : undefined, round: tape.round, messageId: "messageId" in sent ? sent.messageId : undefined };
 }
@@ -116,7 +117,7 @@ export async function runKennelDesk(input: { tape?: LottoSnapshot; justPaid?: bo
 export async function pulseKennel(nowMs = Date.now()) {
   if (!telegramConfigured()) return { skipped: true as const, reason: "telegram not configured" };
   const tape = await getLottoSnapshot(true);
-  const sent = await sendKennelMessage(formatPulse(tape, nowMs));
+  const sent = await sendKennelCard(formatPulse(tape, nowMs), kennelPhotoUrl("pulse", tape.round));
   const desk = await runKennelDesk({ tape, justPaid: false, justOpened: false });
   return { skipped: sent.skipped, pulse: sent, desk };
 }
