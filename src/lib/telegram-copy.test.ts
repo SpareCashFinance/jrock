@@ -115,6 +115,7 @@ test("pulse names pot, slips, payout, and last winner without refund copy", () =
   assert.match(text, /1d 5h left/);
   assert.match(text, /petrock\.fun\/lotto/);
   assert.match(text, /Last rock paid slip 30/);
+  assert.match(text, /solscan\.io\/account\/62C41rN2uUrsZoRkZyTqxD8GJYpa6KtERAtehfNmiXwq#transfers/);
   assert.doesNotMatch(text, /refund/i);
   assert.doesNotMatch(text, /immutable/i);
   assert.doesNotMatch(text, /provably fair/i);
@@ -136,7 +137,7 @@ test("empty book pulse does not invent a payout", () => {
 test("winner card includes wallet, slip, rematch, and verify links", () => {
   const text = formatWinner(win(), receipt());
   assert.match(text, /Rock 0 is paid/);
-  assert.match(text, /62C41rN2uUrsZoRkZyTqxD8GJYpa6KtERAtehfNmiXwq/);
+  assert.match(text, /href="https:\/\/solscan\.io\/account\/62C41rN2uUrsZoRkZyTqxD8GJYpa6KtERAtehfNmiXwq#transfers"/);
   assert.match(text, /Slip 30/);
   assert.match(text, /1\.3142 SOL/);
   assert.match(text, /Rematch: matches/);
@@ -148,7 +149,7 @@ test("winner card includes wallet, slip, rematch, and verify links", () => {
 test("verify command reports a rematch miss", () => {
   const text = formatVerify(win(), receipt({ matches: false, computedWinner: "So11111111111111111111111111111111111111112", computedWinnerIndex: 1 }));
   assert.match(text, /does not match/);
-  assert.match(text, /So11111111111111111111111111111111111111112/);
+  assert.match(text, /href="https:\/\/solscan\.io\/account\/So11111111111111111111111111111111111111112#transfers"/);
 });
 
 test("help and start stay kennel-voiced", () => {

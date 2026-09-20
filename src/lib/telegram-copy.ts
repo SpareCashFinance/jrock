@@ -106,7 +106,14 @@ export function programUrl(programId = TELEGRAM_PROGRAM_ID) {
 }
 
 export function walletUrl(wallet: string) {
-  return `https://solscan.io/account/${wallet}`;
+  return `https://solscan.io/account/${wallet}#transfers`;
+}
+
+export function walletLink(wallet: string, short = false) {
+  const raw = wallet.trim();
+  if (!raw) return "";
+  const label = short ? shortenAddress(raw, 6) : raw;
+  return `<a href="${walletUrl(raw)}">${escapeHtml(label)}</a>`;
 }
 
 export function verifyUrl(round: number) {
@@ -121,7 +128,7 @@ function lastWinLine(posted: LottoPostedWin[] | undefined) {
       (row.status === "claimed" || row.status === "settled"),
   );
   if (!win?.winner || win.winnerIndex == null) return "";
-  return `\nLast rock paid slip ${formatCount(win.winnerIndex)} · ${solFromLamports(win.jackpotLamports)} · ${escapeHtml(shortenAddress(win.winner, 6))}`;
+  return `\nLast rock paid slip ${formatCount(win.winnerIndex)} · ${solFromLamports(win.jackpotLamports)} · ${walletLink(win.winner, true)}`;
 }
 
 export function formatPulse(tape: TelegramPotTape, nowMs: number, opts: { jackpot?: boolean } = {}) {
@@ -167,11 +174,10 @@ export function formatWinner(win: TelegramWinTape, receipt?: TelegramReceiptTape
       : receipt.matches
         ? "Rematch: matches"
         : "Rematch: does not match stored winner";
-  const wallet = escapeHtml(win.winner);
   return [
     `<b>Rock ${win.round} is paid.</b>`,
     "",
-    `Winner\n<code>${wallet}</code>`,
+    `Winner\n${walletLink(win.winner)}`,
     `Slip ${formatCount(win.winnerIndex)}`,
     "",
     `Paid <b>${escapeHtml(paid)}</b> (85%)`,
@@ -179,7 +185,7 @@ export function formatWinner(win: TelegramWinTape, receipt?: TelegramReceiptTape
     `${escapeHtml(seed)} seeded the next rock`,
     "",
     escapeHtml(rematch),
-    `<a href="${verifyUrl(win.round)}">Verify</a> · <a href="${walletUrl(win.winner)}">Winner on Solscan</a>`,
+    `<a href="${verifyUrl(win.round)}">Verify</a> · <a href="${walletUrl(win.winner)}">Solscan txs</a>`,
     `<a href="${TELEGRAM_PLAY_URL}">Play the next rock</a> · <a href="${programUrl(programId)}">Verified contract</a>`,
   ].join("\n");
 }
@@ -194,9 +200,9 @@ export function formatVerify(win: TelegramWinTape | null, receipt?: TelegramRece
         : "Independent rematch does not match the stored winner.";
   return [
     `<b>Rock ${win.round}</b>`,
-    `Stored <code>${escapeHtml(receipt?.storedWinner || win.winner)}</code> · slip ${formatCount(receipt?.storedWinnerIndex ?? win.winnerIndex)}`,
+    `Stored ${walletLink(receipt?.storedWinner || win.winner)} · slip ${formatCount(receipt?.storedWinnerIndex ?? win.winnerIndex)}`,
     receipt?.computedWinner
-      ? `Recomputed <code>${escapeHtml(receipt.computedWinner)}</code> · slip ${formatCount(receipt.computedWinnerIndex ?? -1)}`
+      ? `Recomputed ${walletLink(receipt.computedWinner)} · slip ${formatCount(receipt.computedWinnerIndex ?? -1)}`
       : "Recomputed winner pending.",
     escapeHtml(match),
     `<a href="${verifyUrl(win.round)}">Open the rematch page</a> · <a href="${programUrl(receipt?.programId || win.programId)}">Verified contract</a>`,
