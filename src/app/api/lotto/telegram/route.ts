@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { maybeAnnounceWinner, pulseKennel } from "@/lib/telegram-announce";
+import { pulseKennel, runKennelDesk } from "@/lib/telegram-announce";
 import { setTelegramWebhook, telegramConfigured } from "@/lib/telegram-bot";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
     } catch (error) {
       webhook = { ok: false, reason: error instanceof Error ? error.message : "webhook failed" };
     }
-    const result = pulse ? await pulseKennel() : await maybeAnnounceWinner();
+    const result = pulse ? await pulseKennel() : await runKennelDesk();
     return NextResponse.json({ ok: true, webhook, result }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Telegram cron failed";

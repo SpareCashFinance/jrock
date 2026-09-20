@@ -3,10 +3,14 @@ import test from "node:test";
 import {
   formatHelp,
   formatJackpot,
+  formatLastHour,
+  formatNewRock,
   formatPulse,
   formatStart,
   formatVerify,
   formatWinner,
+  isLastHour,
+  isLastHourOpen,
   parseTelegramCommand,
   remainingLabel,
   type TelegramPotTape,
@@ -151,6 +155,30 @@ test("verify command reports a rematch miss", () => {
   const text = formatVerify(win(), receipt({ matches: false, computedWinner: "So11111111111111111111111111111111111111112", computedWinnerIndex: 1 }));
   assert.match(text, /does not match/);
   assert.match(text, /href="https:\/\/solscan\.io\/account\/So11111111111111111111111111111111111111112#transfers"/);
+});
+
+test("last hour window is only the final 60 minutes", () => {
+  assert.equal(isLastHour("2026-09-21T13:00:00.000Z", NOW), true);
+  assert.equal(isLastHourOpen("2026-09-21T13:00:00.000Z", NOW), true);
+  assert.equal(isLastHour("2026-09-21T13:10:00.000Z", NOW), false);
+  assert.equal(isLastHour("2026-09-21T12:30:00.000Z", NOW), true);
+  assert.equal(isLastHourOpen("2026-09-21T12:30:00.000Z", NOW), false);
+});
+
+test("last-hour post is the real payout and a play link", () => {
+  const text = formatLastHour(pot({ endsAt: "2026-09-21T13:00:00.000Z" }), NOW);
+  assert.match(text, /Last hour/);
+  assert.match(text, /0\.5049 SOL/);
+  assert.doesNotMatch(text, /If this rock pays now/);
+  assert.match(text, /petrock\.fun\/lotto/);
+});
+
+test("new-rock post names the seed and clock", () => {
+  const text = formatNewRock(pot({ totalTickets: 0, split: { ...pot().split, winnerLamports: 0 } }), NOW);
+  assert.match(text, /Rock 1 is open/);
+  assert.match(text, /Seeded with/);
+  assert.match(text, /0\.05 SOL a slip/);
+  assert.match(text, /1d 5h left/);
 });
 
 test("help and start stay kennel-voiced", () => {

@@ -7,7 +7,7 @@ import { deskCrankIxs } from "@/lib/lotto-continue";
 import { isLottoV2 } from "@/lib/lotto-program";
 import { serverSolanaRpcUrl } from "@/lib/solana";
 import type { LottoSnapshot } from "@/lib/lotto";
-import { maybeAnnounceWinner } from "@/lib/telegram-announce";
+import { runKennelDesk } from "@/lib/telegram-announce";
 
 function loadCranker() {
   const raw = (process.env.LOTTO_CRANK_SECRET ?? "").trim();
@@ -26,9 +26,12 @@ export function crankerPublicKey() {
   return loadCranker()?.publicKey.toBase58() ?? "";
 }
 
-async function withTelegram<T extends Record<string, unknown>>(result: T, justPaid = false, tape?: LottoSnapshot) {
+async function withTelegram<T extends Record<string, unknown>>(
+  result: T,
+  flags: { justPaid?: boolean; justOpened?: boolean; tape?: LottoSnapshot } = {},
+) {
   try {
-    const telegram = await maybeAnnounceWinner({ tape, justPaid });
+    const telegram = await runKennelDesk(flags);
     return { ...result, telegram };
   } catch (error) {
     const message = error instanceof Error ? error.message : "telegram failed";
@@ -53,8 +56,7 @@ export async function runLottoCrank() {
   if (step.kind === "idle" || step.kind === "wait") {
     return withTelegram(
       { ok: true, skipped: true, reason: step.reason, step: step.kind, slot, round: tape.round },
-      false,
-      tape,
+      { tape },
     );
   }
 
@@ -74,13 +76,15 @@ export async function runLottoCrank() {
     ticketCount: tape.totalTickets,
     roundId: tape.round,
   });
-  if (!ixs.length) return withTelegram({ ok: false, reason: "No crank instruction was built." }, false, tape);
+  if (!ixs.length) return withTelegram({ ok: false, reason: "No crank instruction was built." }, { tape });
 
   const { blockhash, lastValidBlockHeight } = await rpc.getLatestBlockhash("confirmed");
   const tx = new Transaction({ feePayer: cranker.publicKey, blockhash, lastValidBlockHeight }).add(...ixs);
   tx.sign(cranker);
   const signature = await rpc.sendRawTransaction(tx.serialize(), { skipPreflight: false, maxRetries: 4 });
   await rpc.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, "confirmed");
+  const justPaid = step.kind === "claim" || step.kind === "settle";
+  const justOpened = justPaid || (step.kind === "close" && tape.totalTickets === 0);
   return withTelegram(
     {
       ok: true,
@@ -91,6 +95,6 @@ export async function runLottoCrank() {
       round: tape.round,
       slot,
     },
-    step.kind === "claim" || step.kind === "settle",
+    { justPaid, justOpened },
   );
 }

@@ -1,46 +1,41 @@
 import "server-only";
 
-const KEY = "lotto:tg:last-win";
+export type TelegramMark = "win" | "hour" | "open";
 
-let memoryAnnounced: number | null = null;
+const KEYS: Record<TelegramMark, string> = {
+  win: "lotto:tg:last-win",
+  hour: "lotto:tg:last-hour",
+  open: "lotto:tg:last-open",
+};
+
+const memory: Record<TelegramMark, number | null> = {
+  win: null,
+  hour: null,
+  open: null,
+};
 
 function kvConfigured() {
   return Boolean((process.env.KV_REST_API_URL ?? "").trim() && (process.env.KV_REST_API_TOKEN ?? "").trim());
 }
 
-async function kv<T>(path: string): Promise<T | null> {
+async function kvGet(key: string) {
   const url = (process.env.KV_REST_API_URL ?? "").trim();
   const token = (process.env.KV_REST_API_TOKEN ?? "").trim();
   if (!url || !token) return null;
-  const res = await fetch(`${url.replace(/\/$/, "")}${path}`, {
+  const res = await fetch(`${url.replace(/\/$/, "")}/get/${encodeURIComponent(key)}`, {
     headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
   });
   if (!res.ok) return null;
-  const data = (await res.json()) as { result?: T | null };
+  const data = (await res.json()) as { result?: string | number | null };
   return data.result ?? null;
 }
 
-export function telegramStatePersistent() {
-  return kvConfigured();
-}
-
-export async function lastAnnouncedRound() {
-  if (memoryAnnounced != null) return memoryAnnounced;
-  const raw = await kv<string | number>(`/get/${encodeURIComponent(KEY)}`);
-  if (raw == null || raw === "") return null;
-  const n = typeof raw === "number" ? raw : Number.parseInt(String(raw), 10);
-  if (!Number.isFinite(n)) return null;
-  memoryAnnounced = n;
-  return n;
-}
-
-export async function markAnnouncedRound(round: number) {
-  memoryAnnounced = round;
-  if (!kvConfigured()) return false;
+async function kvSet(key: string, value: number) {
   const url = (process.env.KV_REST_API_URL ?? "").trim().replace(/\/$/, "");
   const token = (process.env.KV_REST_API_TOKEN ?? "").trim();
-  const res = await fetch(`${url}/set/${encodeURIComponent(KEY)}/${encodeURIComponent(String(round))}`, {
+  if (!url || !token) return false;
+  const res = await fetch(`${url}/set/${encodeURIComponent(key)}/${encodeURIComponent(String(value))}`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
@@ -48,6 +43,33 @@ export async function markAnnouncedRound(round: number) {
   return res.ok;
 }
 
+export function telegramStatePersistent() {
+  return kvConfigured();
+}
+
+export async function markedRound(kind: TelegramMark) {
+  if (memory[kind] != null) return memory[kind];
+  const raw = await kvGet(KEYS[kind]);
+  if (raw == null || raw === "") return null;
+  const n = typeof raw === "number" ? raw : Number.parseInt(String(raw), 10);
+  if (!Number.isFinite(n)) return null;
+  memory[kind] = n;
+  return n;
+}
+
+export async function markRound(kind: TelegramMark, round: number) {
+  memory[kind] = round;
+  return kvSet(KEYS[kind], round);
+}
+
+export async function lastAnnouncedRound() {
+  return markedRound("win");
+}
+
+export async function markAnnouncedRound(round: number) {
+  return markRound("win", round);
+}
+
 export function rememberedRound() {
-  return memoryAnnounced;
+  return memory.win;
 }

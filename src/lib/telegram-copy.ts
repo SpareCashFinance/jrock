@@ -65,10 +65,28 @@ export function solFromLamports(lamports: number, digits = 4) {
   return `${formatAmount(lamports / 1e9, digits) ?? "0"} SOL`;
 }
 
-export function remainingLabel(endsAt: string, nowMs: number) {
+export const LAST_HOUR_MS = 60 * 60 * 1000;
+export const LAST_HOUR_OPEN_MS = 58 * 60 * 1000;
+
+export function remainingMs(endsAt: string, nowMs: number) {
   const end = Date.parse(endsAt);
-  if (!Number.isFinite(end)) return "clock unknown";
-  const ms = end - nowMs;
+  if (!Number.isFinite(end)) return null;
+  return end - nowMs;
+}
+
+export function isLastHour(endsAt: string, nowMs: number) {
+  const ms = remainingMs(endsAt, nowMs);
+  return ms != null && ms > 0 && ms <= LAST_HOUR_MS;
+}
+
+export function isLastHourOpen(endsAt: string, nowMs: number) {
+  const ms = remainingMs(endsAt, nowMs);
+  return ms != null && ms > LAST_HOUR_OPEN_MS && ms <= LAST_HOUR_MS;
+}
+
+export function remainingLabel(endsAt: string, nowMs: number) {
+  const ms = remainingMs(endsAt, nowMs);
+  if (ms == null) return "clock unknown";
   if (ms <= 0) return "sales ended";
   const totalMin = Math.floor(ms / 60_000);
   const days = Math.floor(totalMin / 1_440);
@@ -162,6 +180,36 @@ export function formatPulse(tape: TelegramPotTape, nowMs: number, opts: { jackpo
 
 export function formatJackpot(tape: TelegramPotTape, nowMs: number) {
   return formatPulse(tape, nowMs, { jackpot: true });
+}
+
+export function formatLastHour(tape: TelegramPotTape, nowMs: number) {
+  const payout = solFromLamports(tape.split.winnerLamports);
+  const slips = formatCount(tape.totalTickets) ?? "0";
+  const potLine =
+    tape.totalTickets > 0 ? ` <b>${escapeHtml(payout)}</b>` : " No slips yet";
+  return [
+    "⏱ <b>Last hour</b>",
+    "",
+    `🪨 Rock ${tape.round}`,
+    potLine,
+    `🎫 ${escapeHtml(slips)} slips · ${escapeHtml(String(tape.ticketPriceSol))} SOL a slip`,
+    `⏱ ${escapeHtml(remainingLabel(tape.endsAt, nowMs))}`,
+    "",
+    `▶️ <a href="${TELEGRAM_PLAY_URL}">Play</a> · 📜 <a href="${programUrl(tape.programId || TELEGRAM_PROGRAM_ID)}">Verified contract</a>`,
+  ].join("\n");
+}
+
+export function formatNewRock(tape: TelegramPotTape, nowMs: number) {
+  const seed = solFromLamports(tape.split.claimableLamports);
+  return [
+    `🪨 <b>Rock ${tape.round} is open</b>`,
+    "",
+    `🌱 Seeded with <b>${escapeHtml(seed)}</b>`,
+    `🎫 ${escapeHtml(String(tape.ticketPriceSol))} SOL a slip`,
+    `⏱ ${escapeHtml(remainingLabel(tape.endsAt, nowMs))}`,
+    "",
+    `▶️ <a href="${TELEGRAM_PLAY_URL}">Play</a> · 📜 <a href="${programUrl(tape.programId || TELEGRAM_PROGRAM_ID)}">Verified contract</a>`,
+  ].join("\n");
 }
 
 export function formatWinner(win: TelegramWinTape, receipt?: TelegramReceiptTape | null) {
