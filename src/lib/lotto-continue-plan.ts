@@ -1,17 +1,17 @@
 export type FinishKind = "close" | "settle" | "claim" | "open" | "request_vrf" | "store_vrf" | string;
 
-export function finishFlowPlan(kind: FinishKind, totalTickets: number, v2 = true) {
+export function finishFlowPlan(kind: FinishKind, totalTickets: number, v2 = true): string[] {
   if (kind === "close") {
-    if (totalTickets === 0) return ["close", "open_next"] as const;
-    return v2 ? (["close", "request_vrf"] as const) : (["close"] as const);
+    if (totalTickets === 0) return ["close", "open_next"];
+    return v2 ? ["close", "request_vrf"] : ["close"];
   }
-  if (kind === "claim") return ["claim", "open_next"] as const;
+  if (kind === "claim") return ["claim", "open_next"];
   if (kind === "settle" || kind === "store_vrf") {
-    return v2 ? (["settle", "claim", "open_next"] as const) : (["settle"] as const);
+    return v2 ? ["settle", "claim", "open_next"] : ["settle"];
   }
-  if (kind === "open") return ["open_current"] as const;
-  if (kind === "request_vrf") return ["request_vrf"] as const;
-  return [] as const;
+  if (kind === "open") return ["open_current"];
+  if (kind === "request_vrf") return ["request_vrf"];
+  return [];
 }
 
 export function finishFlowAsking(kind: FinishKind, totalTickets: number) {
