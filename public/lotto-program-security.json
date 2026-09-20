@@ -1,0 +1,18 @@
+{
+  "name": "JROCK Lotto",
+  "logo": "https://petrock.fun/icon.png",
+  "description": "Jamie's Pet Rock kennel lotto. 48-hour draws, ORAO VRF, 85% to the winning slip.",
+  "project_url": "https://petrock.fun/lotto",
+  "contacts": [
+    "link:https://t.me/Jamiespetrock",
+    "link:https://x.com/petrockbtc"
+  ],
+  "policy": "https://petrock.fun/lotto/verify",
+  "preferred_languages": ["en"],
+  "source_code": "https://github.com/SpareCashFinance/jrock-lotto",
+  "source_release": "lotto-v2-mainnet",
+  "source_revision": "35de5008f9a5f7746b712386bf77d2cfd39d7db3",
+  "acknowledgements": "https://github.com/SpareCashFinance/jrock-lotto",
+  "expiry": "2027-09-14",
+  "version": "0.2.3"
+}
