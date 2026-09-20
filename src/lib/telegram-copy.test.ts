@@ -17,7 +17,7 @@ import {
   mentionUser,
   parseTelegramCommand,
   remainingLabel,
-  TELEGRAM_LOTTO_STICKER,
+  TELEGRAM_LOTTO_CLIP,
   type TelegramPotTape,
   type TelegramReceiptTape,
   type TelegramWinTape,
@@ -213,7 +213,7 @@ test("join welcomes @ the user and name the live payout", () => {
   assert.match(text, /\/jackpot/);
   assert.doesNotMatch(text, /refund/i);
   assert.doesNotMatch(text, /provably fair/i);
-  assert.match(TELEGRAM_LOTTO_STICKER, /\/media\/tg\/lotto-rock\.webm/);
+  assert.match(TELEGRAM_LOTTO_CLIP, /\/media\/tg\/lotto-rock\.mp4/);
 });
 
 test("join welcomes without a username still mention the person", () => {

@@ -18,7 +18,6 @@ export const TELEGRAM_PLAY_URL = "https://petrock.fun/lotto";
 export const TELEGRAM_VERIFY_URL = "https://petrock.fun/lotto/verify";
 export const TELEGRAM_PROGRAM_ID = "66FyiUTkw4JMYMi3yErfa7UBqrHm9GZha1meAxcgbjDg";
 export const TELEGRAM_SITE = "https://petrock.fun";
-export const TELEGRAM_LOTTO_STICKER = `${TELEGRAM_SITE}/media/tg/lotto-rock.webm`;
 export const TELEGRAM_LOTTO_CLIP = `${TELEGRAM_SITE}/media/tg/lotto-rock.mp4`;
 
 export type TelegramGuest = {
