@@ -19,6 +19,27 @@ export const TELEGRAM_VERIFY_URL = "https://petrock.fun/lotto/verify";
 export const TELEGRAM_PROGRAM_ID = "66FyiUTkw4JMYMi3yErfa7UBqrHm9GZha1meAxcgbjDg";
 export const TELEGRAM_SITE = "https://petrock.fun";
 export const TELEGRAM_LOTTO_CLIP = `${TELEGRAM_SITE}/media/tg/lotto-rock.mp4`;
+export const TELEGRAM_X_HANDLE = "petrockbtc";
+
+export type KennelTweet = {
+  id: string;
+  text: string;
+};
+
+export function tweetUrl(id: string) {
+  return `https://x.com/${TELEGRAM_X_HANDLE}/status/${id}`;
+}
+
+export function formatXPost(tweet: KennelTweet) {
+  const body = escapeHtml(tweet.text.trim()).slice(0, 800);
+  return [
+    `𝕏 <b>New from @${TELEGRAM_X_HANDLE}</b>`,
+    "",
+    body,
+    "",
+    `<a href="${tweetUrl(tweet.id)}">Open on X</a> · ▶️ <a href="${TELEGRAM_PLAY_URL}">Play</a>`,
+  ].join("\n");
+}
 
 export type TelegramGuest = {
   id: number;

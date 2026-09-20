@@ -4,7 +4,7 @@ import { getLottoSnapshot } from "@/lib/lotto-chain";
 import { lastPostedWin } from "@/lib/lotto-history";
 import type { LottoSnapshot } from "@/lib/lotto";
 import { verifyRoundIndependent } from "@/lib/lotto-verify";
-import { sendKennelCard, sendKennelClip, telegramConfigured } from "@/lib/telegram-bot";
+import { sendKennelCard, sendKennelClip, sendKennelXPost, telegramConfigured } from "@/lib/telegram-bot";
 import {
   crossedPotMilestones,
   formatBuyCheer,
@@ -18,6 +18,7 @@ import {
   formatVerify,
   formatWelcome,
   formatWinner,
+  formatXPost,
   highestPotMilestone,
   humanJoiners,
   isLastHour,
@@ -30,7 +31,8 @@ import {
   unpackRoundTickets,
   type TelegramGuest,
 } from "@/lib/telegram-copy";
-import { markedRound, markRound, telegramStatePersistent } from "@/lib/telegram-state";
+import { markedRound, markedText, markRound, markText, telegramStatePersistent } from "@/lib/telegram-state";
+import { latestKennelTweets, xConfigured } from "@/lib/x-feed";
 
 function winFromTape(tape: LottoSnapshot) {
   const posted = lastPostedWin(tape.posted);
@@ -198,7 +200,36 @@ export async function runKennelDesk(
   const hour = await maybeAnnounceLastHour({ tape });
   const rolling = await maybeAnnounceRolling({ tape, justRolling: input.justRolling });
   const heat = await maybeAnnounceHeat({ tape });
-  return { skipped: false as const, winner, opened, hour, rolling, heat, round: tape.round };
+  const x = await maybeAnnounceXPosts();
+  return { skipped: false as const, winner, opened, hour, rolling, heat, x, round: tape.round };
+}
+
+export async function maybeAnnounceXPosts() {
+  if (!telegramConfigured()) return { skipped: true as const, reason: "telegram not configured" };
+  if (!xConfigured()) return { skipped: true as const, reason: "X_BEARER_TOKEN is not set." };
+
+  const since = await markedText("x");
+  const feed = await latestKennelTweets(since);
+  if (feed.reason && !feed.tweets.length && !feed.latestId) {
+    return { skipped: true as const, reason: feed.reason };
+  }
+
+  if (!since) {
+    const newest = feed.tweets.at(-1)?.id ?? feed.latestId;
+    if (newest) await markText("x", newest);
+    return { skipped: true as const, reason: "remembered live X without dumping history", id: newest };
+  }
+
+  const fresh = feed.tweets.filter((row) => row.id > since);
+  if (!fresh.length) return { skipped: true as const, reason: feed.reason || "no new X posts" };
+
+  const posted: string[] = [];
+  for (const tweet of fresh) {
+    const sent = await sendKennelXPost(formatXPost(tweet));
+    if (!sent.skipped) posted.push(tweet.id);
+    await markText("x", tweet.id);
+  }
+  return { skipped: posted.length === 0, posted: posted.length, lastId: posted.at(-1) };
 }
 
 export async function pulseKennel(nowMs = Date.now()) {

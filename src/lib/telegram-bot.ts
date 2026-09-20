@@ -91,16 +91,23 @@ export async function sendTelegramMessage(
   chatId: string | number,
   html: string,
   replyTo?: number,
+  opts: { preview?: boolean } = {},
 ) {
   return telegramCall<{ message_id: number }>("sendMessage", {
     chat_id: chatId,
     text: html,
     parse_mode: "HTML",
-    disable_web_page_preview: true,
+    disable_web_page_preview: !opts.preview,
     reply_to_message_id: replyTo,
     allow_sending_without_reply: true,
     reply_markup: playReplyMarkup(),
   });
+}
+
+export async function sendKennelXPost(html: string) {
+  if (!telegramConfigured()) return { skipped: true as const, reason: "TELEGRAM_BOT_TOKEN is not set." };
+  const sent = await sendTelegramMessage(telegramChatId(), html, undefined, { preview: true });
+  return { skipped: false as const, messageId: sent.message_id };
 }
 
 export async function sendKennelMessage(html: string) {

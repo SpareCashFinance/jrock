@@ -15,6 +15,7 @@ import {
   formatVerify,
   formatWelcome,
   formatWinner,
+  formatXPost,
   highestPotMilestone,
   humanJoiners,
   isLastHour,
@@ -243,6 +244,16 @@ test("rolling post says the rock is picking", () => {
   assert.equal(isRollingStatus("open"), false);
   assert.doesNotMatch(text, /provably fair/i);
   assert.equal(playReplyMarkup().inline_keyboard[0]?.[0]?.url, "https://petrock.fun/lotto");
+});
+
+test("X forwards keep the tweet text and a play link", () => {
+  const text = formatXPost({ id: "123", text: "Come take a slip" });
+  assert.match(text, /@petrockbtc/);
+  assert.match(text, /Come take a slip/);
+  assert.match(text, /x\.com\/petrockbtc\/status\/123/);
+  assert.match(text, /petrock\.fun\/lotto/);
+  assert.doesNotMatch(text, /refund/i);
+  assert.doesNotMatch(text, /provably fair/i);
 });
 
 test("join welcomes @ the user and name the live payout", () => {

@@ -37,7 +37,7 @@ async function kvGet(key: string) {
   return data.result ?? null;
 }
 
-async function kvSet(key: string, value: number) {
+async function kvSet(key: string, value: string | number) {
   const url = (process.env.KV_REST_API_URL ?? "").trim().replace(/\/$/, "");
   const token = (process.env.KV_REST_API_TOKEN ?? "").trim();
   if (!url || !token) return false;
@@ -47,6 +47,23 @@ async function kvSet(key: string, value: number) {
     cache: "no-store",
   });
   return res.ok;
+}
+
+const TEXT_KEYS = { x: "lotto:tg:last-x" };
+const textMemory: Record<keyof typeof TEXT_KEYS, string | null> = { x: null };
+
+export async function markedText(kind: keyof typeof TEXT_KEYS) {
+  if (textMemory[kind]) return textMemory[kind];
+  const raw = await kvGet(TEXT_KEYS[kind]);
+  if (raw == null || raw === "") return null;
+  const value = String(raw);
+  textMemory[kind] = value;
+  return value;
+}
+
+export async function markText(kind: keyof typeof TEXT_KEYS, value: string) {
+  textMemory[kind] = value;
+  return kvSet(TEXT_KEYS[kind], value);
 }
 
 export function telegramStatePersistent() {
