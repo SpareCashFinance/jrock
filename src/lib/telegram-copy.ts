@@ -29,6 +29,32 @@ export type KennelTweet = {
   text: string;
 };
 
+export type TweetUrlEntity = {
+  url: string;
+  expanded_url?: string;
+  display_url?: string;
+};
+
+export function expandTweetLinks(text: string, urls: TweetUrlEntity[] = []) {
+  let next = text;
+  const longestFirst = [...urls].sort((a, b) => b.url.length - a.url.length);
+  for (const row of longestFirst) {
+    const short = row.url.trim();
+    const expanded = (row.expanded_url ?? "").trim();
+    if (!short) continue;
+    if (!expanded || /pic\.twitter\.com|\/photo\/\d+/i.test(expanded)) {
+      next = next.replaceAll(short, "");
+      continue;
+    }
+    next = next.replaceAll(short, expanded);
+  }
+  return next
+    .replace(/https?:\/\/t\.co\/\w+/g, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 export function tweetUrl(id: string) {
   return `https://x.com/${TELEGRAM_X_HANDLE}/status/${id}`;
 }

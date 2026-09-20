@@ -1,6 +1,6 @@
 import "server-only";
 
-import { TELEGRAM_X_HANDLE, type KennelTweet } from "@/lib/telegram-copy";
+import { expandTweetLinks, TELEGRAM_X_HANDLE, type KennelTweet, type TweetUrlEntity } from "@/lib/telegram-copy";
 
 const X_API = "https://api.twitter.com/2";
 
@@ -13,7 +13,9 @@ export function xConfigured() {
 }
 
 type XUserResponse = { data?: { id?: string } };
-type XTweetsResponse = { data?: { id: string; text: string }[] };
+type XTweetsResponse = {
+  data?: { id: string; text: string; entities?: { urls?: TweetUrlEntity[] } }[];
+};
 
 let cachedUserId: string | null = null;
 
@@ -44,7 +46,7 @@ export async function latestKennelTweets(sinceId?: string | null) {
   const params = new URLSearchParams({
     max_results: "5",
     exclude: "replies,retweets",
-    "tweet.fields": "created_at",
+    "tweet.fields": "created_at,entities",
   });
   if (sinceId) params.set("since_id", sinceId);
 
@@ -58,7 +60,7 @@ export async function latestKennelTweets(sinceId?: string | null) {
 
   const tweets = (result.data?.data ?? [])
     .filter((row) => row.id && row.text)
-    .map((row) => ({ id: row.id, text: row.text }))
+    .map((row) => ({ id: row.id, text: expandTweetLinks(row.text, row.entities?.urls ?? []) }))
     .sort((a, b) => (a.id < b.id ? -1 : 1));
   const latestId = tweets.at(-1)?.id ?? sinceId ?? null;
   return { tweets, latestId };

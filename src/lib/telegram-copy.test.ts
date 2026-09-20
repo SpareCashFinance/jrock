@@ -15,6 +15,7 @@ import {
   formatVerify,
   formatWelcome,
   formatWinner,
+  expandTweetLinks,
   formatXPost,
   highestPotMilestone,
   humanJoiners,
@@ -258,6 +259,16 @@ test("X forwards keep the tweet text and a play link", () => {
   assert.match(text, /petrock\.fun\/lotto/);
   assert.doesNotMatch(text, /refund/i);
   assert.doesNotMatch(text, /provably fair/i);
+});
+
+test("X short links expand to the real URL", () => {
+  const text = expandTweetLinks("Come take a slip https://t.co/abc extra https://t.co/pic", [
+    { url: "https://t.co/abc", expanded_url: "https://petrock.fun/lotto" },
+    { url: "https://t.co/pic", expanded_url: "https://pic.twitter.com/xyz" },
+  ]);
+  assert.match(text, /petrock\.fun\/lotto/);
+  assert.doesNotMatch(text, /t\.co/);
+  assert.doesNotMatch(text, /pic\.twitter\.com/);
 });
 
 test("join welcomes @ the user and name the live payout", () => {
