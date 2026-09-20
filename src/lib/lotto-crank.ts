@@ -6,6 +6,8 @@ import { nextCrankStep } from "@/lib/lotto-crank-plan";
 import { deskCrankIxs } from "@/lib/lotto-continue";
 import { isLottoV2 } from "@/lib/lotto-program";
 import { serverSolanaRpcUrl } from "@/lib/solana";
+import type { LottoSnapshot } from "@/lib/lotto";
+import { maybeAnnounceWinner } from "@/lib/telegram-announce";
 
 function loadCranker() {
   const raw = (process.env.LOTTO_CRANK_SECRET ?? "").trim();
@@ -24,10 +26,24 @@ export function crankerPublicKey() {
   return loadCranker()?.publicKey.toBase58() ?? "";
 }
 
+async function withTelegram<T extends Record<string, unknown>>(result: T, justPaid = false, tape?: LottoSnapshot) {
+  try {
+    const telegram = await maybeAnnounceWinner({ tape, justPaid });
+    return { ...result, telegram };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "telegram failed";
+    return { ...result, telegram: { skipped: true, reason: message } };
+  }
+}
+
 export async function runLottoCrank() {
   const cranker = loadCranker();
   if (!cranker) {
-    return { ok: true, skipped: true, reason: "LOTTO_CRANK_SECRET is not set. Connect a wallet on /lotto to finish the draw." };
+    return withTelegram({
+      ok: true,
+      skipped: true,
+      reason: "LOTTO_CRANK_SECRET is not set. Connect a wallet on /lotto to finish the draw.",
+    });
   }
 
   const rpc = new Connection(serverSolanaRpcUrl(), "confirmed");
@@ -35,7 +51,11 @@ export async function runLottoCrank() {
   const slot = await rpc.getSlot("confirmed");
   const step = nextCrankStep(tape, { slot, nowMs: Date.now() });
   if (step.kind === "idle" || step.kind === "wait") {
-    return { ok: true, skipped: true, reason: step.reason, step: step.kind, slot, round: tape.round };
+    return withTelegram(
+      { ok: true, skipped: true, reason: step.reason, step: step.kind, slot, round: tape.round },
+      false,
+      tape,
+    );
   }
 
   const ixs = await deskCrankIxs({
@@ -54,20 +74,23 @@ export async function runLottoCrank() {
     ticketCount: tape.totalTickets,
     roundId: tape.round,
   });
-  if (!ixs.length) return { ok: false, reason: "No crank instruction was built." };
+  if (!ixs.length) return withTelegram({ ok: false, reason: "No crank instruction was built." }, false, tape);
 
   const { blockhash, lastValidBlockHeight } = await rpc.getLatestBlockhash("confirmed");
   const tx = new Transaction({ feePayer: cranker.publicKey, blockhash, lastValidBlockHeight }).add(...ixs);
   tx.sign(cranker);
   const signature = await rpc.sendRawTransaction(tx.serialize(), { skipPreflight: false, maxRetries: 4 });
   await rpc.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, "confirmed");
-  return {
-    ok: true,
-    skipped: false,
-    step: step.kind,
-    signature,
-    cranker: cranker.publicKey.toBase58(),
-    round: tape.round,
-    slot,
-  };
+  return withTelegram(
+    {
+      ok: true,
+      skipped: false,
+      step: step.kind,
+      signature,
+      cranker: cranker.publicKey.toBase58(),
+      round: tape.round,
+      slot,
+    },
+    step.kind === "claim" || step.kind === "settle",
+  );
 }

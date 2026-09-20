@@ -3,6 +3,10 @@
     {
       "path": "/api/lotto/crank",
       "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/lotto/telegram",
+      "schedule": "0 */4 * * *"
     }
   ]
 }
