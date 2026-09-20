@@ -47,7 +47,7 @@ export function expandTweetLinks(text: string, urls: TweetUrlEntity[] = []) {
     const short = row.url.trim();
     const expanded = (row.expanded_url ?? "").trim();
     if (!short) continue;
-    if (!expanded || /pic\.twitter\.com|\/photo\/\d+/i.test(expanded)) {
+    if (!expanded || /pic\.twitter\.com|\/(?:photo|video)\/\d+/i.test(expanded)) {
       next = next.replaceAll(short, "");
       continue;
     }
@@ -55,6 +55,7 @@ export function expandTweetLinks(text: string, urls: TweetUrlEntity[] = []) {
   }
   return next
     .replace(/https?:\/\/t\.co\/\w+/g, "")
+    .replace(/https?:\/\/(?:www\.)?(?:x|twitter)\.com\/\S+\/(?:photo|video)\/\d+/gi, "")
     .replace(/[ \t]{2,}/g, " ")
     .replace(/\n{3,}/g, "\n\n")
     .trim();

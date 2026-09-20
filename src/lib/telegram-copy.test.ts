@@ -262,13 +262,15 @@ test("X forwards keep the tweet text and a play link", () => {
 });
 
 test("X short links expand to the real URL", () => {
-  const text = expandTweetLinks("Come take a slip https://t.co/abc extra https://t.co/pic", [
+  const text = expandTweetLinks("Come take a slip https://t.co/abc extra https://t.co/pic https://t.co/vid", [
     { url: "https://t.co/abc", expanded_url: "https://petrock.fun/lotto" },
     { url: "https://t.co/pic", expanded_url: "https://pic.twitter.com/xyz" },
+    { url: "https://t.co/vid", expanded_url: "https://x.com/petrockbtc/status/1/video/1" },
   ]);
   assert.match(text, /petrock\.fun\/lotto/);
   assert.doesNotMatch(text, /t\.co/);
   assert.doesNotMatch(text, /pic\.twitter\.com/);
+  assert.doesNotMatch(text, /\/video\/1/);
 });
 
 test("join welcomes @ the user and name the live payout", () => {
