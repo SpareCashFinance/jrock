@@ -182,11 +182,11 @@ test("new-rock post names the seed and clock", () => {
   assert.match(text, /1d 5h left/);
 });
 
-test("kennel photos come from the public carousel", () => {
-  assert.match(kennelPhotoUrl("hour", 0), /\/memes\/08-red-rings/);
-  assert.match(kennelPhotoUrl("open", 0), /\/memes\/09-green-rings/);
-  assert.match(kennelPhotoUrl("winner", 0), /\/memes\/20-throne/);
-  assert.match(kennelPhotoUrl("pulse", 0), /\/memes\/01-rebuttal/);
+test("kennel photos come from compact sticker thumbs", () => {
+  assert.match(kennelPhotoUrl("hour", 0), /\/memes\/tg\/08-red-rings\.webp/);
+  assert.match(kennelPhotoUrl("open", 0), /\/memes\/tg\/09-green-rings\.webp/);
+  assert.match(kennelPhotoUrl("winner", 0), /\/memes\/tg\/20-throne\.webp/);
+  assert.match(kennelPhotoUrl("pulse", 0), /\/memes\/tg\/01-rebuttal\.webp/);
 });
 
 test("help and start stay kennel-voiced", () => {

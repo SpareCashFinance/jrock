@@ -106,17 +106,16 @@ export async function sendKennelMessage(html: string) {
 export async function sendKennelPhoto(html: string, photoUrl: string) {
   if (!telegramConfigured()) return { skipped: true as const, reason: "TELEGRAM_BOT_TOKEN is not set." };
   try {
-    const sent = await telegramCall<{ message_id: number }>("sendPhoto", {
+    await telegramCall<{ message_id: number }>("sendSticker", {
       chat_id: telegramChatId(),
-      photo: photoUrl,
-      caption: html.slice(0, 1024),
-      parse_mode: "HTML",
-      show_caption_above_media: false,
+      sticker: photoUrl,
+      disable_notification: true,
     });
-    return { skipped: false as const, messageId: sent.message_id, photo: true as const };
   } catch {
     return sendKennelMessage(html);
   }
+  const sent = await sendKennelMessage(html);
+  return sent.skipped ? sent : { ...sent, photo: true as const };
 }
 
 export async function sendKennelCard(html: string, photoUrl?: string | null) {
