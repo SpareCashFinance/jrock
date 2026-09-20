@@ -23,6 +23,11 @@ export const TELEGRAM_PROGRAM_ID = "66FyiUTkw4JMYMi3yErfa7UBqrHm9GZha1meAxcgbjDg
 export const TELEGRAM_SITE = "https://petrock.fun";
 export const TELEGRAM_LOTTO_CLIP = `${TELEGRAM_SITE}/media/tg/lotto-rock.mp4`;
 export const TELEGRAM_X_HANDLE = "petrockbtc";
+export const TELEGRAM_X_PROFILE = `https://x.com/${TELEGRAM_X_HANDLE}`;
+
+export function xProfileLink(label = `@${TELEGRAM_X_HANDLE}`) {
+  return `<a href="${TELEGRAM_X_PROFILE}">${escapeHtml(label)}</a>`;
+}
 
 export type KennelTweet = {
   id: string;
@@ -60,9 +65,10 @@ export function tweetUrl(id: string) {
 }
 
 export function formatXPost(tweet: KennelTweet) {
-  const body = escapeHtml(tweet.text.trim()).slice(0, 800);
+  const handle = new RegExp(`@${TELEGRAM_X_HANDLE}`, "gi");
+  const body = escapeHtml(tweet.text.trim()).replaceAll(handle, xProfileLink()).slice(0, 800);
   return [
-    `𝕏 <b>New from @${TELEGRAM_X_HANDLE}</b>`,
+    `𝕏 <b>New from ${xProfileLink()}</b>`,
     "",
     body,
     "",

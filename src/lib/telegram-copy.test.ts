@@ -253,7 +253,7 @@ test("rolling post says the rock is picking", () => {
 
 test("X forwards keep the tweet text and a play link", () => {
   const text = formatXPost({ id: "123", text: "Come take a slip" });
-  assert.match(text, /@petrockbtc/);
+  assert.match(text, /href="https:\/\/x\.com\/petrockbtc"/);
   assert.match(text, /Come take a slip/);
   assert.match(text, /x\.com\/petrockbtc\/status\/123/);
   assert.match(text, /petrock\.fun\/lotto/);
