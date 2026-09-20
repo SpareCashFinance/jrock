@@ -13,9 +13,16 @@ export function BurnReceipt({ burn }: { burn: BurnSnapshot }) {
   return (
     <section id="burn" className="section">
       <p className="kicker">Exhibit C · Incinerator</p>
-      <h2 className="display mt-3 max-w-4xl text-6xl text-white sm:text-8xl">
-        Buy {project.burnPercent}. Burn {project.burnPercent}.
-        <span className="block text-[var(--orange)]">Leave more rock per holder.</span>
+      <h2 className="display mt-3 text-white">
+        <span className="block text-6xl leading-[0.88] sm:text-8xl">
+          Buy <span className="text-[var(--orange)]">{project.burnPercent}%</span>
+        </span>
+        <span className="block text-6xl leading-[0.88] sm:text-8xl">
+          Burn <span className="text-[var(--orange)]">{project.burnPercent}%</span>
+        </span>
+        <span className="mt-3 block max-w-xl text-5xl leading-[0.95] text-[var(--orange)] sm:text-7xl">
+          Leave more rock per holder
+        </span>
       </h2>
       <p className="mt-4 max-w-2xl text-sm leading-6 text-[var(--dim)]">
         At launch we buy {project.burnPercent}% of {project.ticker} supply and send it to the
