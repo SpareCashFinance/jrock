@@ -247,7 +247,6 @@ export function LottoDesk({ initial }: { initial?: LottoSnapshot }) {
   useEffect(() => {
     if (tape.engine !== "program" || !solana.connected || phase || !ended) return;
     if (crankStep.kind === "idle" || crankStep.kind === "wait") return;
-    if (crankStep.kind === "request_vrf" || crankStep.kind === "store_vrf") return;
     const key = `${tape.round}:${tape.status}:${crankStep.kind}`;
     if (autoKey.current === key) return;
     autoKey.current = key;
@@ -263,8 +262,10 @@ export function LottoDesk({ initial }: { initial?: LottoSnapshot }) {
           currentRound: round,
           step: crankStep,
           totalTickets: tape.totalTickets,
-          winner: crankStep.kind === "claim" ? crankStep.winner : tape.draw?.winner,
+          winner: crankStep.kind === "claim" ? crankStep.winner : tape.pendingWinner ?? tape.draw?.winner,
           vrfRequest: tape.vrfRequest,
+          buyers: tape.entries.map((row) => ({ wallet: row.wallet, tickets: row.tickets, fromIndex: row.slot })),
+          vrfEntropy: tape.vrfEntropy,
           connection: solana.connection,
           programId: tape.programId,
           roundPda: tape.pot,
@@ -378,8 +379,10 @@ export function LottoDesk({ initial }: { initial?: LottoSnapshot }) {
                           currentRound: tape.currentRound,
                           step: crankStep,
                           totalTickets: tape.totalTickets,
-                          winner: crankStep.kind === "claim" ? crankStep.winner : tape.draw?.winner,
+                          winner: crankStep.kind === "claim" ? crankStep.winner : tape.pendingWinner ?? tape.draw?.winner,
                           vrfRequest: tape.vrfRequest,
+                          buyers: tape.entries.map((row) => ({ wallet: row.wallet, tickets: row.tickets, fromIndex: row.slot })),
+                          vrfEntropy: tape.vrfEntropy,
                           connection: solana.connection,
                           programId: tape.programId,
                           roundPda: tape.pot,
@@ -668,9 +671,9 @@ function ProofCard({ tape }: { tape: LottoSnapshot }) {
           `Buy 1 to 20 slips at a time. The book holds 10,000 buys this round, so thousands of slips can land. You pay ${slipPrice} SOL each. 1% is a kennel fee. The rest goes in the pot.`,
           "A buy only counts while this round is still open.",
           "Every slip gets a number, in the order it was bought, from 0 up. Buy again and your numbers continue.",
-          "When time is up, anyone can close sales, then request one ORAO VRF job seeded with this program, this round, and the slip count. A second request is rejected.",
-          "If anyone bought, settle always maps the stored 256-bit VRF output onto one of those slips with rejection sampling.",
-          "Winner takes 85% of the prize pool. 15% stays to seed the next round. Anyone can press the finish buttons.",
+          "When time is up, one transaction closes the book and binds one ORAO job. A second request is rejected.",
+          "ORAO has to write the number. That cannot happen in the same transaction as the request.",
+          "When ORAO answers, one transaction maps the slip, pays 85%, and opens the next rock.",
         ]
       : [
           `Buy 1 to 20 slips at a time. You pay ${slipPrice} SOL each. 1% is a kennel fee. The rest goes in the pot.`,
@@ -964,8 +967,8 @@ function PostedWinners({ tape }: { tape: LottoSnapshot }) {
         <div className="px-5 py-8 sm:px-7">
           <p className="display text-4xl text-white">No winner posted yet.</p>
           <p className="mt-3 text-sm leading-6 text-[var(--dim)]">
-            Round {String(tape.round + 1).padStart(2, "0")} has not settled on-chain. Finish close → settle → pay, and
-            the wallet, slip, 85% jackpot, and leftover seed land here.
+            Round {String(tape.round + 1).padStart(2, "0")} has not settled on-chain. Close and ask ORAO, then pay
+            and open. The wallet, slip, 85% jackpot, and leftover seed land here.
           </p>
         </div>
       ) : (
@@ -1384,8 +1387,10 @@ function CrankBar({
           currentRound: tape.currentRound,
           step,
           totalTickets: tape.totalTickets,
-          winner: tape.draw?.winner,
+          winner: tape.pendingWinner ?? tape.draw?.winner,
           vrfRequest: tape.vrfRequest,
+          buyers: tape.entries.map((row) => ({ wallet: row.wallet, tickets: row.tickets, fromIndex: row.slot })),
+          vrfEntropy: tape.vrfEntropy,
           connection: solana.connection,
           programId: tape.programId,
           roundPda: tape.pot,
@@ -1420,7 +1425,7 @@ function CrankBar({
       <p className="kicker">Crank the program</p>
       <p className="mt-2 text-sm leading-6 text-[var(--dim)]">
         {v2
-          ? "Anyone with a wallet can run these. After close, request one ORAO job, wait for fulfill, then settle. Paying the winner opens the next rock in the same transaction."
+          ? "Two transactions. Close binds ORAO. After ORAO answers, one click pays the winner and opens the next rock."
           : "Anyone with a wallet can run these. Settle has a few minutes after the entropy slot before SlotHashes drops it. Paying the winner opens the next rock."}
       </p>
       {error ? <LottoAlert text={error} onDismiss={onDismissError} /> : null}

@@ -89,6 +89,15 @@ export function oraoTreasuryFromNetworkState(data: Uint8Array) {
   return new PublicKey(data.slice(8 + 32, 8 + 64));
 }
 
+export function oraoIsFulfilled(data: Uint8Array) {
+  return data.length >= 8 + 1 + 32 + 32 + 64 && data[8] === 1;
+}
+
+export function oraoFulfilledEntropy(data: Uint8Array) {
+  if (!oraoIsFulfilled(data)) return null;
+  return data.slice(8 + 1 + 32 + 32, 8 + 1 + 32 + 32 + 32);
+}
+
 function textBytes(value: string) {
   return new TextEncoder().encode(value);
 }

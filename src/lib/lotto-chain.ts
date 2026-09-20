@@ -32,9 +32,9 @@ import {
   lastPostedWin,
 } from "@/lib/lotto";
 import { lottoProgramId, type OnchainConfig, type OnchainRound } from "@/lib/lotto-program";
-import { decodeConfigV2, decodeRoundV2, type OnchainRoundV2 } from "@/lib/lotto-program-v2";
-import { buildLedger } from "@/lib/lotto-ledger";
-import { hexToBytes, winnerFromVrfEntropy } from "@/lib/lotto-vrf";
+import { decodeConfigV2, decodeRoundV2, oraoFulfilledEntropy, oraoIsFulfilled, type OnchainRoundV2 } from "@/lib/lotto-program-v2";
+import { buildLedger, ownerForTicket } from "@/lib/lotto-ledger";
+import { hexToBytes, toHex, winnerFromVrfEntropy } from "@/lib/lotto-vrf";
 
 const SIG_PAGE = 100;
 const SIG_PAGES = 15;
@@ -573,10 +573,10 @@ async function getV2ProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | nu
   const status = v2TapeStatus(round.status);
   const messages: Record<string, string> = {
     open: "Buy a slip on-chain. If anyone bought, this rock always picks one of those wallets after ORAO answers. Winner takes 85%. Fifteen percent seeds the next rock.",
-    awaiting_vrf_request: "Sales are closed. Crank Request randomness to bind one ORAO VRF job. A second request is rejected.",
-    awaiting_vrf: "Waiting on ORAO to fulfill the bound request. Then crank Settle.",
-    awaiting_settle: "ORAO fulfilled. Crank Settle to map the stored randomness onto a slip with rejection sampling.",
-    drawn: "The program picked a winner. Paying that wallet 85% opens the next rock in the same transaction. Fifteen percent seeds it.",
+    awaiting_vrf_request: "Sales are closed. One click binds ORAO. A second request is rejected.",
+    awaiting_vrf: "Waiting on ORAO. When it answers, one click pays the winner and opens the next rock.",
+    awaiting_settle: "ORAO answered. One click maps the slip, pays 85%, and opens the next rock.",
+    drawn: "The program picked a winner. One click pays 85% and opens the next rock.",
     claimed: "Winner took 85%. The next rock should already be open. If it is not, crank Open next round.",
     void: "No slips. The next rock should already be open. If it is not, crank Open next round.",
     refunding: "This round is closed. Finish the draw. Paying the winner opens the next rock.",
@@ -600,6 +600,18 @@ async function getV2ProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | nu
     round.roundId,
   );
   const defaultRequest = "11111111111111111111111111111111";
+  const vrfRequest = round.vrfRequest && round.vrfRequest !== defaultRequest ? round.vrfRequest : null;
+  const zero = "0".repeat(64);
+  const storedEntropy = round.vrfRandomness && round.vrfRandomness !== zero ? round.vrfRandomness : null;
+  const oraoInfo = vrfRequest ? await rpc.getAccountInfo(new PublicKey(vrfRequest), "confirmed") : null;
+  const vrfFulfilled = Boolean(storedEntropy) || Boolean(oraoInfo?.data && oraoIsFulfilled(oraoInfo.data));
+  const oraoEntropy = oraoInfo?.data ? oraoFulfilledEntropy(oraoInfo.data) : null;
+  const vrfEntropy = storedEntropy ?? (oraoEntropy ? toHex(oraoEntropy) : null);
+  let pendingWinner: string | null = draw?.winner ?? null;
+  if (!pendingWinner && vrfEntropy && round.ticketCount > 0) {
+    const math = await winnerFromVrfEntropy(hexToBytes(vrfEntropy), round.ticketCount);
+    pendingWinner = ownerForTicket(round.buyers, math.index);
+  }
   return {
     pot: roundPk.toBase58(),
     round: round.roundId,
@@ -630,7 +642,10 @@ async function getV2ProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | nu
     posted,
     ledger,
     randomnessProvider: "ORAO VRF Classic",
-    vrfRequest: round.vrfRequest && round.vrfRequest !== defaultRequest ? round.vrfRequest : null,
+    vrfRequest,
+    vrfFulfilled,
+    vrfEntropy,
+    pendingWinner,
     vrfTimeoutAt: round.vrfTimeoutTs ? new Date(round.vrfTimeoutTs * 1000).toISOString() : null,
     verifiedBuild: empty.verifiedBuild,
     upgradeable: true,
@@ -745,7 +760,7 @@ async function getProgramSnapshot(rpc: Connection): Promise<LottoSnapshot | null
     message = "No slips. The next rock should already be open. If it is not, crank Open next round.";
   } else if (Date.now() >= round.endTs * 1000) {
     message =
-      "Sales are over. Close, settle, then pay the winner. That payout opens the next rock in the same transaction. The page does that automatically when a wallet is connected.";
+      "Sales are over. One click closes and asks ORAO. After ORAO answers, one click pays the winner and opens the next rock.";
   }
   const draw = await drawFromRound(round, config.ticketLamports);
   const rent = await rentExemptLamports(rpc, roundInfo.data.length);

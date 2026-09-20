@@ -187,6 +187,9 @@ export type LottoSnapshot = {
   ledger?: import("./lotto-ledger").LottoLedger;
   randomnessProvider?: string;
   vrfRequest?: string | null;
+  vrfFulfilled?: boolean;
+  vrfEntropy?: string | null;
+  pendingWinner?: string | null;
   vrfTimeoutAt?: string | null;
   verifiedBuild?: boolean;
   upgradeable?: boolean;
@@ -522,6 +525,9 @@ export function emptyLottoSnapshot(message: string): LottoSnapshot {
     ledger: EMPTY_LEDGER,
     randomnessProvider: programmed ? (isLottoV2() ? "ORAO VRF Classic" : "Solana SlotHashes") : "wallet blockhash",
     vrfRequest: null,
+    vrfFulfilled: false,
+    vrfEntropy: null,
+    pendingWinner: null,
     vrfTimeoutAt: null,
     verifiedBuild: false,
     upgradeable: true,

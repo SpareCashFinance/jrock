@@ -8,16 +8,19 @@ test("paying the winner also opens the next round", () => {
 
 test("an empty book closes and opens the next rock together", () => {
   assert.deepEqual(finishFlowPlan("close", 0), ["close", "open_next"]);
-  assert.deepEqual(finishFlowPlan("close", 4), ["close"]);
+  assert.deepEqual(finishFlowPlan("close", 4), ["close", "request_vrf"]);
+  assert.deepEqual(finishFlowPlan("close", 4, false), ["close"]);
 });
 
-test("settle stays one step so ORAO can still fulfill first", () => {
-  assert.deepEqual(finishFlowPlan("settle", 29), ["settle"]);
+test("after ORAO answers, settle pays and opens in one breath", () => {
+  assert.deepEqual(finishFlowPlan("settle", 29), ["settle", "claim", "open_next"]);
+  assert.deepEqual(finishFlowPlan("store_vrf", 29), ["settle", "claim", "open_next"]);
 });
 
 test("finish copy names the next rock on pay and empty close", () => {
   assert.match(finishFlowAsking("claim", 29), /opening next rock/i);
   assert.match(finishFlowDone("claim", 29), /next rock open/i);
   assert.match(finishFlowAsking("close", 0), /opening next rock/i);
-  assert.equal(finishFlowDone("close", 4), "Sales closed");
+  assert.equal(finishFlowDone("close", 4), "ORAO asked");
+  assert.match(finishFlowAsking("settle", 29), /opening next rock/i);
 });

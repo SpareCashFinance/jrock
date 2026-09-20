@@ -40,8 +40,8 @@ export function nextCrankStep(
     }
     return {
       kind: "close",
-      label: "Finish this draw",
-      reason: "Sales are over. Close the book so the program can lock a slot and pick a winner.",
+      label: "Close and ask ORAO",
+      reason: "Sales are over. One transaction closes the book and binds one ORAO job.",
     };
   }
 
@@ -68,13 +68,21 @@ export function nextCrankStep(
   }
 
   if (v2 && tape.status === "awaiting_vrf_request") {
-    return { kind: "request_vrf", label: "Request randomness", reason: "Bind one ORAO VRF job to this round." };
+    return { kind: "request_vrf", label: "Ask ORAO", reason: "Bind one ORAO job. This is leftover if close did not include the request." };
   }
-  if (v2 && tape.status === "awaiting_vrf") {
-    return { kind: "store_vrf", label: "Store VRF", reason: "Read the fulfilled ORAO output onto the round." };
+  if (v2 && tape.status === "awaiting_vrf" && !tape.vrfFulfilled) {
+    return {
+      kind: "wait",
+      label: "Waiting on ORAO",
+      reason: "The request is bound. ORAO still has to write the number. One click finishes the rest after that.",
+    };
   }
-  if (v2 && tape.status === "awaiting_settle") {
-    return { kind: "settle", label: "Settle draw", reason: "Map stored VRF output onto one slip." };
+  if (v2 && (tape.status === "awaiting_vrf" || tape.status === "awaiting_settle")) {
+    return {
+      kind: "settle",
+      label: "Pay winner & open next",
+      reason: "ORAO answered. One transaction maps the slip, pays 85%, and opens the next rock.",
+    };
   }
 
   if (tape.status === "drawn" && tape.draw?.winner) {

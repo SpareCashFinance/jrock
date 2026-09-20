@@ -75,4 +75,6 @@ test("ORAO RandomnessV2 fulfilled layout is disc + enum + client + seed + 64 ran
   assert.equal(data[8], 1);
   assert.deepEqual([...data.slice(8 + 1 + 32, 8 + 1 + 64)], Array(32).fill(7));
   assert.deepEqual([...data.slice(8 + 1 + 64, 8 + 1 + 96)], Array(32).fill(9));
+  assert.equal(data.length >= 8 + 1 + 32 + 32 + 64 && data[8] === 1, true);
+  assert.deepEqual([...data.slice(8 + 1 + 32 + 32, 8 + 1 + 32 + 32 + 32)], Array(32).fill(9));
 });
