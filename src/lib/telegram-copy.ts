@@ -318,24 +318,22 @@ export function formatStart() {
 export function formatWelcome(guests: TelegramGuest[], tape?: TelegramPotTape | null, nowMs = Date.now()) {
   const who = humanJoiners(guests).map(mentionUser).join(" · ") || "rock";
   const price = tape ? String(tape.ticketPriceSol) : "0.05";
-  const potLine = !tape
-    ? " The kennel pot is live"
-    : tape.totalTickets > 0
-      ? ` <b>${escapeHtml(solFromLamports(tape.split.winnerLamports))}</b> sitting in rock ${tape.round}`
-      : `🌱 Rock ${tape.round} is open · first slips start the pot`;
+  const pot = tape ? solFromLamports(tape.split.winnerLamports) : null;
+  const potLine =
+    pot && tape && tape.split.winnerLamports > 0
+      ? ` The pot is <b>${escapeHtml(pot)}</b>`
+      : " The pot is open · first slips fill it";
   const clock = tape ? remainingLabel(tape.endsAt, nowMs) : "48h rounds";
   const slips = tape ? `${formatCount(tape.totalTickets) ?? "0"} slips in` : "buy a slip";
   return [
     `🪨 Welcome ${who}`,
     "",
-    "The kennel lotto is on-chain. One rock. One wallet.",
     potLine,
     `🎫 ${escapeHtml(price)} SOL a slip · ${escapeHtml(slips)}`,
     `⏱ ${escapeHtml(clock)}`,
     "",
-    "Buy a slip. If anyone buys, the rock always picks one of those wallets.",
+    "Enter for your chance to win!",
     "",
     `▶️ <a href="${TELEGRAM_PLAY_URL}">Play</a> · 📜 <a href="${programUrl(tape?.programId)}">Verified contract</a>`,
-    " /jackpot for the live pot",
   ].join("\n");
 }

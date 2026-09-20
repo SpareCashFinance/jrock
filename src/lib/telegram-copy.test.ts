@@ -207,19 +207,24 @@ test("join welcomes @ the user and name the live payout", () => {
     NOW,
   );
   assert.match(text, /Welcome @jamie/);
-  assert.match(text, /0\.5049 SOL/);
+  assert.match(text, /The pot is <b>0\.5049 SOL<\/b>/);
+  assert.match(text, /Enter for your chance to win!/);
   assert.match(text, /0\.05 SOL a slip/);
   assert.match(text, /petrock\.fun\/lotto/);
-  assert.match(text, /\/jackpot/);
   assert.doesNotMatch(text, /refund/i);
   assert.doesNotMatch(text, /provably fair/i);
   assert.match(TELEGRAM_LOTTO_CLIP, /\/media\/tg\/lotto-rock\.mp4/);
 });
 
 test("join welcomes without a username still mention the person", () => {
-  const text = formatWelcome([{ id: 9, first_name: "Rock" }], pot({ totalTickets: 0 }), NOW);
+  const text = formatWelcome(
+    [{ id: 9, first_name: "Rock" }],
+    pot({ totalTickets: 0, split: { ...pot().split, winnerLamports: 0 } }),
+    NOW,
+  );
   assert.match(text, /tg:\/\/user\?id=9/);
-  assert.match(text, /first slips start the pot/);
+  assert.match(text, /The pot is open/);
+  assert.match(text, /Enter for your chance to win!/);
   assert.equal(humanJoiners([{ id: 1, is_bot: true }, { id: 2, first_name: "A" }]).length, 1);
   assert.match(mentionUser({ id: 2, username: "kennel" }), /@kennel/);
 });
