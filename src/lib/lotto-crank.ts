@@ -28,7 +28,7 @@ export function crankerPublicKey() {
 
 async function withTelegram<T extends Record<string, unknown>>(
   result: T,
-  flags: { justPaid?: boolean; justOpened?: boolean; tape?: LottoSnapshot } = {},
+  flags: { justPaid?: boolean; justOpened?: boolean; justRolling?: boolean; tape?: LottoSnapshot } = {},
 ) {
   try {
     const telegram = await runKennelDesk(flags);
@@ -85,6 +85,7 @@ export async function runLottoCrank() {
   await rpc.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, "confirmed");
   const justPaid = step.kind === "claim" || step.kind === "settle";
   const justOpened = justPaid || (step.kind === "close" && tape.totalTickets === 0);
+  const justRolling = (step.kind === "close" && tape.totalTickets > 0) || step.kind === "request_vrf";
   return withTelegram(
     {
       ok: true,
@@ -95,6 +96,6 @@ export async function runLottoCrank() {
       round: tape.round,
       slot,
     },
-    { justPaid, justOpened },
+    { justPaid, justOpened, justRolling },
   );
 }

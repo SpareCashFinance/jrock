@@ -1,23 +1,33 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  crossedPotMilestones,
+  formatBuyCheer,
   formatHelp,
   formatJackpot,
   formatLastHour,
+  formatLastWin,
+  formatMilestone,
   formatNewRock,
   formatPulse,
+  formatRolling,
   formatStart,
   formatVerify,
   formatWelcome,
   formatWinner,
+  highestPotMilestone,
   humanJoiners,
   isLastHour,
   isLastHourOpen,
+  isRollingStatus,
   kennelPhotoUrl,
   mentionUser,
+  packRoundTickets,
   parseTelegramCommand,
+  playReplyMarkup,
   remainingLabel,
   TELEGRAM_LOTTO_CLIP,
+  unpackRoundTickets,
   type TelegramPotTape,
   type TelegramReceiptTape,
   type TelegramWinTape,
@@ -102,6 +112,8 @@ test("slash commands map jackpot aliases and ignore noise", () => {
   assert.equal(parseTelegramCommand("/pot@jrockkennel_bot"), "jackpot");
   assert.equal(parseTelegramCommand("/rock"), "jackpot");
   assert.equal(parseTelegramCommand("/verify"), "verify");
+  assert.equal(parseTelegramCommand("/last"), "last");
+  assert.equal(parseTelegramCommand("/winner"), "last");
   assert.equal(parseTelegramCommand("/help"), "help");
   assert.equal(parseTelegramCommand("/start"), "start");
   assert.equal(parseTelegramCommand("jackpot"), null);
@@ -195,9 +207,42 @@ test("kennel photos come from compact sticker thumbs", () => {
 
 test("help and start stay kennel-voiced", () => {
   assert.match(formatHelp(), /\/jackpot/);
+  assert.match(formatHelp(), /\/last/);
   assert.match(formatStart(), /0\.05 SOL/);
   assert.doesNotMatch(formatHelp(), /refund/i);
   assert.doesNotMatch(formatStart(), /provably fair/i);
+});
+
+test("last win names the wallet, slip, and payout", () => {
+  const text = formatLastWin(win());
+  assert.match(text, /Last rock 0/);
+  assert.match(text, /1\.3142 SOL/);
+  assert.match(text, /solscan\.io\/account\/62C41rN2uUrsZoRkZyTqxD8GJYpa6KtERAtehfNmiXwq#transfers/);
+  assert.match(text, /petrock\.fun\/lotto/);
+  assert.doesNotMatch(text, /refund/i);
+  assert.match(formatLastWin(null), /No paid rock yet/);
+});
+
+test("buy cheer and pot marks name the live payout", () => {
+  assert.match(formatBuyCheer(pot(), 3), /\+3 slips/);
+  assert.match(formatBuyCheer(pot(), 3), /The pot is now <b>0\.5049 SOL<\/b>/);
+  assert.match(formatBuyCheer(pot(), 1), /\+1 slip/);
+  assert.match(formatMilestone(pot(), 5), /crossed <b>5 SOL<\/b>/);
+  assert.deepEqual(crossedPotMilestones(0, 12e9), [5, 10]);
+  assert.equal(highestPotMilestone(4.9e9), 0);
+  assert.equal(highestPotMilestone(5e9), 5);
+  assert.deepEqual(unpackRoundTickets(packRoundTickets(2, 80)), { round: 2, tickets: 80 });
+});
+
+test("rolling post says the rock is picking", () => {
+  const text = formatRolling(pot({ status: "awaiting_vrf" }));
+  assert.match(text, /Rock 1 is rolling/);
+  assert.match(text, /picking a wallet/);
+  assert.match(text, /0\.5049 SOL/);
+  assert.equal(isRollingStatus("awaiting_vrf"), true);
+  assert.equal(isRollingStatus("open"), false);
+  assert.doesNotMatch(text, /provably fair/i);
+  assert.equal(playReplyMarkup().inline_keyboard[0]?.[0]?.url, "https://petrock.fun/lotto");
 });
 
 test("join welcomes @ the user and name the live payout", () => {

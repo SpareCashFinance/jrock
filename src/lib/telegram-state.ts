@@ -1,17 +1,23 @@
 import "server-only";
 
-export type TelegramMark = "win" | "hour" | "open";
+export type TelegramMark = "win" | "hour" | "open" | "roll" | "tickets" | "mile";
 
 const KEYS: Record<TelegramMark, string> = {
   win: "lotto:tg:last-win",
   hour: "lotto:tg:last-hour",
   open: "lotto:tg:last-open",
+  roll: "lotto:tg:last-roll",
+  tickets: "lotto:tg:last-tickets",
+  mile: "lotto:tg:last-mile",
 };
 
 const memory: Record<TelegramMark, number | null> = {
   win: null,
   hour: null,
   open: null,
+  roll: null,
+  tickets: null,
+  mile: null,
 };
 
 function kvConfigured() {

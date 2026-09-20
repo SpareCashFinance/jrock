@@ -6,17 +6,28 @@ import type { LottoSnapshot } from "@/lib/lotto";
 import { verifyRoundIndependent } from "@/lib/lotto-verify";
 import { sendKennelCard, sendKennelClip, telegramConfigured } from "@/lib/telegram-bot";
 import {
+  crossedPotMilestones,
+  formatBuyCheer,
   formatJackpot,
   formatLastHour,
+  formatLastWin,
+  formatMilestone,
   formatNewRock,
   formatPulse,
+  formatRolling,
   formatVerify,
   formatWelcome,
   formatWinner,
+  highestPotMilestone,
   humanJoiners,
   isLastHour,
   isLastHourOpen,
+  isRollingStatus,
   kennelPhotoUrl,
+  packRoundMile,
+  packRoundTickets,
+  unpackRoundMile,
+  unpackRoundTickets,
   type TelegramGuest,
 } from "@/lib/telegram-copy";
 import { markedRound, markRound, telegramStatePersistent } from "@/lib/telegram-state";
@@ -107,14 +118,87 @@ export async function maybeAnnounceLastHour(input: { tape?: LottoSnapshot; nowMs
   return { skipped: sent.skipped, reason: "reason" in sent ? sent.reason : undefined, round: tape.round, messageId: "messageId" in sent ? sent.messageId : undefined };
 }
 
-export async function runKennelDesk(input: { tape?: LottoSnapshot; justPaid?: boolean; justOpened?: boolean } = {}) {
+export async function maybeAnnounceRolling(input: { tape?: LottoSnapshot; justRolling?: boolean } = {}) {
+  if (!telegramConfigured()) return { skipped: true as const, reason: "telegram not configured" };
+  const tape = input.tape ?? (await getLottoSnapshot(true));
+  if (!isRollingStatus(tape.status) || tape.totalTickets <= 0) {
+    return { skipped: true as const, reason: "rock is not rolling", round: tape.round };
+  }
+
+  const announced = await markedRound("roll");
+  if (announced != null && announced >= tape.round) {
+    return { skipped: true as const, reason: "already rolling", round: tape.round };
+  }
+  if (announced == null && !input.justRolling && !telegramStatePersistent()) {
+    await markRound("roll", tape.round);
+    return { skipped: true as const, reason: "remembered a live roll without posting", round: tape.round };
+  }
+
+  const sent = await sendKennelCard(formatRolling(tape), kennelPhotoUrl("hour", tape.round));
+  await markRound("roll", tape.round);
+  return { skipped: sent.skipped, reason: "reason" in sent ? sent.reason : undefined, round: tape.round, messageId: "messageId" in sent ? sent.messageId : undefined };
+}
+
+export async function maybeAnnounceHeat(input: { tape?: LottoSnapshot } = {}) {
+  if (!telegramConfigured()) return { skipped: true as const, reason: "telegram not configured" };
+  const tape = input.tape ?? (await getLottoSnapshot(true));
+  if (tape.status !== "open") {
+    return { skipped: true as const, reason: "sales are not open", round: tape.round };
+  }
+
+  const packedTickets = await markedRound("tickets");
+  const packedMile = await markedRound("mile");
+  if (packedTickets == null) {
+    await markRound("tickets", packRoundTickets(tape.round, tape.totalTickets));
+    await markRound("mile", packRoundMile(tape.round, highestPotMilestone(tape.split.winnerLamports)));
+    return { skipped: true as const, reason: "remembered live slips without posting", round: tape.round };
+  }
+
+  const prevTickets = unpackRoundTickets(packedTickets);
+  const prevMile = packedMile == null ? { round: tape.round, mile: 0 } : unpackRoundMile(packedMile);
+  if (prevTickets.round !== tape.round) {
+    await markRound("tickets", packRoundTickets(tape.round, tape.totalTickets));
+    await markRound("mile", packRoundMile(tape.round, highestPotMilestone(tape.split.winnerLamports)));
+    return { skipped: true as const, reason: "new rock slip baseline", round: tape.round };
+  }
+
+  const added = tape.totalTickets - prevTickets.tickets;
+  const miles = prevMile.round === tape.round ? crossedPotMilestones(prevMile.mile, tape.split.winnerLamports) : [];
+  const mile = miles.length ? miles[miles.length - 1] : 0;
+  if (added <= 0 && !mile) {
+    return { skipped: true as const, reason: "no new slips or pot mark", round: tape.round };
+  }
+
+  const buy = added > 0 ? await sendKennelCard(formatBuyCheer(tape, added)) : { skipped: true as const, reason: "no new slips" };
+  const mark = mile
+    ? await sendKennelCard(formatMilestone(tape, mile), kennelPhotoUrl("open", tape.round))
+    : { skipped: true as const, reason: "no pot mark" };
+  await markRound("tickets", packRoundTickets(tape.round, tape.totalTickets));
+  if (mile) await markRound("mile", packRoundMile(tape.round, mile));
+  return {
+    skipped: Boolean(buy.skipped && mark.skipped),
+    round: tape.round,
+    added: added > 0 ? added : 0,
+    mile,
+    buy,
+    mark,
+  };
+}
+
+export async function runKennelDesk(
+  input: { tape?: LottoSnapshot; justPaid?: boolean; justOpened?: boolean; justRolling?: boolean } = {},
+) {
   if (!telegramConfigured()) return { skipped: true as const, reason: "telegram not configured" };
   const tape =
-    input.justPaid || input.justOpened || !input.tape ? await getLottoSnapshot(true) : input.tape;
+    input.justPaid || input.justOpened || input.justRolling || !input.tape
+      ? await getLottoSnapshot(true)
+      : input.tape;
   const winner = await maybeAnnounceWinner({ tape, justPaid: input.justPaid });
   const opened = await maybeAnnounceNewRock({ tape, justOpened: input.justOpened });
   const hour = await maybeAnnounceLastHour({ tape });
-  return { skipped: false as const, winner, opened, hour, round: tape.round };
+  const rolling = await maybeAnnounceRolling({ tape, justRolling: input.justRolling });
+  const heat = await maybeAnnounceHeat({ tape });
+  return { skipped: false as const, winner, opened, hour, rolling, heat, round: tape.round };
 }
 
 export async function pulseKennel(nowMs = Date.now()) {
@@ -135,6 +219,11 @@ export async function verifyText() {
   const win = winFromTape(tape);
   const receipt = win ? await receiptFor(win.round) : null;
   return formatVerify(win, receipt);
+}
+
+export async function lastText() {
+  const tape = await getLottoSnapshot(true);
+  return formatLastWin(winFromTape(tape));
 }
 
 export async function welcomeJoiners(input: {

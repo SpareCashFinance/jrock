@@ -90,6 +90,44 @@ export function solFromLamports(lamports: number, digits = 4) {
 
 export const LAST_HOUR_MS = 60 * 60 * 1000;
 export const LAST_HOUR_OPEN_MS = 58 * 60 * 1000;
+export const POT_MILESTONES_SOL = [5, 10, 25, 50, 100] as const;
+const TICKET_PACK = 1_000_000;
+const MILE_PACK = 1_000;
+
+export function playReplyMarkup(label = "▶️ Play") {
+  return {
+    inline_keyboard: [[{ text: label, url: TELEGRAM_PLAY_URL }]],
+  };
+}
+
+export function packRoundTickets(round: number, tickets: number) {
+  return Math.max(0, round) * TICKET_PACK + Math.max(0, tickets);
+}
+
+export function unpackRoundTickets(value: number) {
+  return { round: Math.floor(value / TICKET_PACK), tickets: value % TICKET_PACK };
+}
+
+export function packRoundMile(round: number, mile: number) {
+  return Math.max(0, round) * MILE_PACK + Math.max(0, mile);
+}
+
+export function unpackRoundMile(value: number) {
+  return { round: Math.floor(value / MILE_PACK), mile: value % MILE_PACK };
+}
+
+export function crossedPotMilestones(prevSol: number, winnerLamports: number) {
+  const sol = winnerLamports / 1e9;
+  return POT_MILESTONES_SOL.filter((n) => n > prevSol && sol >= n);
+}
+
+export function highestPotMilestone(winnerLamports: number) {
+  return [...POT_MILESTONES_SOL].reverse().find((n) => winnerLamports / 1e9 >= n) ?? 0;
+}
+
+export function isRollingStatus(status: LottoStatus) {
+  return status === "awaiting_vrf_request" || status === "awaiting_vrf";
+}
 
 export function remainingMs(endsAt: string, nowMs: number) {
   const end = Date.parse(endsAt);
@@ -138,6 +176,7 @@ export function parseTelegramCommand(text: string | undefined) {
   const name = first.slice(1).split("@", 1)[0]?.toLowerCase() ?? "";
   if (name === "jackpot" || name === "pot" || name === "rock") return "jackpot";
   if (name === "verify") return "verify";
+  if (name === "last" || name === "winner") return "last";
   if (name === "help" || name === "start") return name;
   return null;
 }
@@ -297,10 +336,65 @@ export function formatHelp() {
     "🪨 <b>Kennel desk</b>",
     "",
     " /jackpot — live pot, slips, time left",
+    "🏆 /last — last paid rock",
     "🔎 /verify — rematch the last paid rock",
     "❓ /help — this list",
     "",
     `▶️ <a href="${TELEGRAM_PLAY_URL}">Play</a> · 📜 <a href="${programUrl()}">Verified contract</a>`,
+  ].join("\n");
+}
+
+export function formatLastWin(win: TelegramWinTape | null) {
+  if (!win) return "No paid rock yet. Buy a slip and the last winner will show here after payout.";
+  return [
+    `🏆 <b>Last rock ${win.round}</b>`,
+    "",
+    `Winner\n${walletLink(win.winner)}`,
+    `🎫 Slip ${formatCount(win.winnerIndex)}`,
+    ` <b>${escapeHtml(solFromLamports(win.jackpotLamports))}</b>`,
+    "",
+    `🔗 <a href="${verifyUrl(win.round)}">Verify</a> · <a href="${walletUrl(win.winner)}">Solscan txs</a>`,
+    `▶️ <a href="${TELEGRAM_PLAY_URL}">Play</a> · 📜 <a href="${programUrl(win.programId)}">Verified contract</a>`,
+  ].join("\n");
+}
+
+export function formatBuyCheer(tape: TelegramPotTape, added: number) {
+  const pot = solFromLamports(tape.split.winnerLamports);
+  const slips = formatCount(tape.totalTickets) ?? "0";
+  const extra = Math.max(1, added);
+  return [
+    `🎫 <b>+${formatCount(extra)} ${extra === 1 ? "slip" : "slips"}</b> just landed`,
+    "",
+    ` The pot is now <b>${escapeHtml(pot)}</b>`,
+    `🎫 ${escapeHtml(slips)} slips · ${escapeHtml(String(tape.ticketPriceSol))} SOL a slip`,
+    "",
+    "Enter for your chance to win!",
+    `▶️ <a href="${TELEGRAM_PLAY_URL}">Play</a>`,
+  ].join("\n");
+}
+
+export function formatMilestone(tape: TelegramPotTape, mile: number) {
+  return [
+    ` The pot just crossed <b>${escapeHtml(String(mile))} SOL</b>`,
+    "",
+    `🪨 Rock ${tape.round}`,
+    `🎫 ${escapeHtml(formatCount(tape.totalTickets) ?? "0")} slips · ${escapeHtml(String(tape.ticketPriceSol))} SOL a slip`,
+    "",
+    "Enter for your chance to win!",
+    `▶️ <a href="${TELEGRAM_PLAY_URL}">Play</a>`,
+  ].join("\n");
+}
+
+export function formatRolling(tape: TelegramPotTape) {
+  const pot = solFromLamports(tape.split.winnerLamports);
+  return [
+    `🪨 <b>Rock ${tape.round} is rolling</b>`,
+    "",
+    ` ${escapeHtml(pot)}`,
+    `🎫 ${escapeHtml(formatCount(tape.totalTickets) ?? "0")} slips`,
+    "",
+    "The rock is picking a wallet.",
+    `▶️ <a href="${TELEGRAM_PLAY_URL}">Play the next rock</a> · 📜 <a href="${programUrl(tape.programId || TELEGRAM_PROGRAM_ID)}">Verified contract</a>`,
   ].join("\n");
 }
 

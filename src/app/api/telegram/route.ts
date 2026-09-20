@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { jackpotText, verifyText, welcomeJoiners } from "@/lib/telegram-announce";
+import { jackpotText, lastText, verifyText, welcomeJoiners } from "@/lib/telegram-announce";
 import {
   chatAllowed,
   parseTelegramUpdate,
@@ -83,9 +83,11 @@ export async function POST(request: Request) {
         ? await jackpotText()
         : command === "verify"
           ? await verifyText()
-          : command === "start"
-            ? formatStart()
-            : formatHelp();
+          : command === "last"
+            ? await lastText()
+            : command === "start"
+              ? formatStart()
+              : formatHelp();
     await sendTelegramMessage(message.chat.id, text, message.message_id);
     return NextResponse.json({ ok: true, command });
   } catch (error) {

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { TELEGRAM_LOTTO_CLIP, type TelegramGuest } from "@/lib/telegram-copy";
+import { playReplyMarkup, TELEGRAM_LOTTO_CLIP, type TelegramGuest } from "@/lib/telegram-copy";
 
 const TELEGRAM_API = "https://api.telegram.org";
 
@@ -99,6 +99,7 @@ export async function sendTelegramMessage(
     disable_web_page_preview: true,
     reply_to_message_id: replyTo,
     allow_sending_without_reply: true,
+    reply_markup: playReplyMarkup(),
   });
 }
 
@@ -140,6 +141,7 @@ export async function sendKennelClip(html: string, chatId?: string | number) {
       parse_mode: "HTML",
       width: 360,
       height: 240,
+      reply_markup: playReplyMarkup(),
     });
     return { skipped: false as const, messageId: sent.message_id, photo: true as const };
   } catch {
@@ -152,6 +154,7 @@ export async function sendKennelClip(html: string, chatId?: string | number) {
         width: 360,
         height: 240,
         supports_streaming: true,
+        reply_markup: playReplyMarkup(),
       });
       return { skipped: false as const, messageId: sent.message_id, photo: true as const };
     } catch {
@@ -174,6 +177,7 @@ export async function setTelegramWebhook() {
   await telegramCall("setMyCommands", {
     commands: [
       { command: "jackpot", description: "Current pot, slips, time left" },
+      { command: "last", description: "Last paid rock" },
       { command: "verify", description: "Last paid rock rematch" },
       { command: "help", description: "Kennel desk commands" },
     ],
