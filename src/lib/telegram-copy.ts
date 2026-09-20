@@ -15,6 +15,9 @@ function shortenAddress(value: string, size = 4) {
 }
 
 export const TELEGRAM_PLAY_URL = "https://petrock.fun/lotto";
+export const TELEGRAM_BUY_URL = "https://petrock.fun/#adopt";
+export const TELEGRAM_BURN_URL = "https://petrock.fun/#burn";
+export const TELEGRAM_MEMES_URL = "https://t.me/petrockmemes";
 export const TELEGRAM_VERIFY_URL = "https://petrock.fun/lotto/verify";
 export const TELEGRAM_PROGRAM_ID = "66FyiUTkw4JMYMi3yErfa7UBqrHm9GZha1meAxcgbjDg";
 export const TELEGRAM_SITE = "https://petrock.fun";
@@ -117,7 +120,16 @@ const MILE_PACK = 1_000;
 
 export function playReplyMarkup(label = "▶️ Play") {
   return {
-    inline_keyboard: [[{ text: label, url: TELEGRAM_PLAY_URL }]],
+    inline_keyboard: [
+      [
+        { text: label, url: TELEGRAM_PLAY_URL },
+        { text: "🛒 Buy", url: TELEGRAM_BUY_URL },
+      ],
+      [
+        { text: "🔥 Burn", url: TELEGRAM_BURN_URL },
+        { text: " Memes", url: TELEGRAM_MEMES_URL },
+      ],
+    ],
   };
 }
 

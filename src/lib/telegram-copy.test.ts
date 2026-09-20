@@ -243,7 +243,11 @@ test("rolling post says the rock is picking", () => {
   assert.equal(isRollingStatus("awaiting_vrf"), true);
   assert.equal(isRollingStatus("open"), false);
   assert.doesNotMatch(text, /provably fair/i);
-  assert.equal(playReplyMarkup().inline_keyboard[0]?.[0]?.url, "https://petrock.fun/lotto");
+  const buttons = playReplyMarkup().inline_keyboard.flat();
+  assert.equal(buttons[0]?.url, "https://petrock.fun/lotto");
+  assert.equal(buttons[1]?.url, "https://petrock.fun/#adopt");
+  assert.equal(buttons[2]?.url, "https://petrock.fun/#burn");
+  assert.equal(buttons[3]?.url, "https://t.me/petrockmemes");
 });
 
 test("X forwards keep the tweet text and a play link", () => {
