@@ -1,5 +1,11 @@
 import "server-only";
 
+import {
+  TELEGRAM_LOTTO_CLIP,
+  TELEGRAM_LOTTO_STICKER,
+  type TelegramGuest,
+} from "@/lib/telegram-copy";
+
 const TELEGRAM_API = "https://api.telegram.org";
 
 export type TelegramChat = {
@@ -9,10 +15,13 @@ export type TelegramChat = {
   username?: string;
 };
 
+export type TelegramUser = TelegramGuest;
+
 export type TelegramMessage = {
   message_id: number;
   text?: string;
   chat: TelegramChat;
+  new_chat_members?: TelegramUser[];
 };
 
 export type TelegramUpdate = {
@@ -121,6 +130,33 @@ export async function sendKennelPhoto(html: string, photoUrl: string) {
 export async function sendKennelCard(html: string, photoUrl?: string | null) {
   if (photoUrl) return sendKennelPhoto(html, photoUrl);
   return sendKennelMessage(html);
+}
+
+export async function sendKennelClip(html: string, chatId?: string | number) {
+  if (!telegramConfigured()) return { skipped: true as const, reason: "TELEGRAM_BOT_TOKEN is not set." };
+  const dest = chatId ?? telegramChatId();
+  try {
+    await telegramCall<{ message_id: number }>("sendSticker", {
+      chat_id: dest,
+      sticker: TELEGRAM_LOTTO_STICKER,
+      disable_notification: true,
+    });
+    const sent = await sendTelegramMessage(dest, html);
+    return { skipped: false as const, messageId: sent.message_id, photo: true as const };
+  } catch {
+    try {
+      const sent = await telegramCall<{ message_id: number }>("sendAnimation", {
+        chat_id: dest,
+        animation: TELEGRAM_LOTTO_CLIP,
+        caption: html.slice(0, 1024),
+        parse_mode: "HTML",
+      });
+      return { skipped: false as const, messageId: sent.message_id, photo: true as const };
+    } catch {
+      const sent = await sendTelegramMessage(dest, html);
+      return { skipped: false as const, messageId: sent.message_id };
+    }
+  }
 }
 
 export async function setTelegramWebhook() {

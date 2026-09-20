@@ -4,17 +4,20 @@ import { getLottoSnapshot } from "@/lib/lotto-chain";
 import { lastPostedWin } from "@/lib/lotto-history";
 import type { LottoSnapshot } from "@/lib/lotto";
 import { verifyRoundIndependent } from "@/lib/lotto-verify";
-import { sendKennelCard, telegramConfigured } from "@/lib/telegram-bot";
+import { sendKennelCard, sendKennelClip, telegramConfigured } from "@/lib/telegram-bot";
 import {
   formatJackpot,
   formatLastHour,
   formatNewRock,
   formatPulse,
   formatVerify,
+  formatWelcome,
   formatWinner,
+  humanJoiners,
   isLastHour,
   isLastHourOpen,
   kennelPhotoUrl,
+  type TelegramGuest,
 } from "@/lib/telegram-copy";
 import { markedRound, markRound, telegramStatePersistent } from "@/lib/telegram-state";
 
@@ -132,4 +135,28 @@ export async function verifyText() {
   const win = winFromTape(tape);
   const receipt = win ? await receiptFor(win.round) : null;
   return formatVerify(win, receipt);
+}
+
+export async function welcomeJoiners(input: {
+  chatId: string | number;
+  guests: TelegramGuest[];
+  nowMs?: number;
+}) {
+  if (!telegramConfigured()) return { skipped: true as const, reason: "telegram not configured" };
+  const guests = humanJoiners(input.guests);
+  if (!guests.length) return { skipped: true as const, reason: "no human joiners" };
+
+  let tape: LottoSnapshot | null = null;
+  try {
+    tape = await getLottoSnapshot(true);
+  } catch {
+    tape = null;
+  }
+  const sent = await sendKennelClip(formatWelcome(guests, tape, input.nowMs ?? Date.now()), input.chatId);
+  return {
+    skipped: sent.skipped,
+    reason: "reason" in sent ? sent.reason : undefined,
+    messageId: "messageId" in sent ? sent.messageId : undefined,
+    guests: guests.length,
+  };
 }

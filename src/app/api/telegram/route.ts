@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { jackpotText, verifyText } from "@/lib/telegram-announce";
+import { jackpotText, verifyText, welcomeJoiners } from "@/lib/telegram-announce";
 import {
   chatAllowed,
   parseTelegramUpdate,
@@ -8,7 +8,7 @@ import {
   telegramConfigured,
   webhookSecretMatches,
 } from "@/lib/telegram-bot";
-import { formatHelp, formatStart, parseTelegramCommand } from "@/lib/telegram-copy";
+import { formatHelp, formatStart, humanJoiners, parseTelegramCommand } from "@/lib/telegram-copy";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -54,12 +54,27 @@ export async function POST(request: Request) {
 
   const update = parseTelegramUpdate(body);
   const message = update?.message;
-  const command = parseTelegramCommand(message?.text);
-  if (!message || !command) {
+  if (!message) {
     return NextResponse.json({ ok: true });
   }
   if (!chatAllowed(message.chat)) {
     return NextResponse.json({ ok: true, ignored: true });
+  }
+
+  const joiners = humanJoiners(message.new_chat_members);
+  if (joiners.length) {
+    try {
+      const welcome = await welcomeJoiners({ chatId: message.chat.id, guests: joiners });
+      return NextResponse.json({ ok: true, welcome });
+    } catch (error) {
+      const messageText = error instanceof Error ? error.message : "Welcome failed";
+      return NextResponse.json({ ok: false, error: messageText }, { status: 500 });
+    }
+  }
+
+  const command = parseTelegramCommand(message.text);
+  if (!command) {
+    return NextResponse.json({ ok: true });
   }
 
   try {

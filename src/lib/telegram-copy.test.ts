@@ -8,12 +8,16 @@ import {
   formatPulse,
   formatStart,
   formatVerify,
+  formatWelcome,
   formatWinner,
+  humanJoiners,
   isLastHour,
   isLastHourOpen,
   kennelPhotoUrl,
+  mentionUser,
   parseTelegramCommand,
   remainingLabel,
+  TELEGRAM_LOTTO_STICKER,
   type TelegramPotTape,
   type TelegramReceiptTape,
   type TelegramWinTape,
@@ -194,4 +198,28 @@ test("help and start stay kennel-voiced", () => {
   assert.match(formatStart(), /0\.05 SOL/);
   assert.doesNotMatch(formatHelp(), /refund/i);
   assert.doesNotMatch(formatStart(), /provably fair/i);
+});
+
+test("join welcomes @ the user and name the live payout", () => {
+  const text = formatWelcome(
+    [{ id: 7, username: "jamie", first_name: "Jamie" }],
+    pot(),
+    NOW,
+  );
+  assert.match(text, /Welcome @jamie/);
+  assert.match(text, /0\.5049 SOL/);
+  assert.match(text, /0\.05 SOL a slip/);
+  assert.match(text, /petrock\.fun\/lotto/);
+  assert.match(text, /\/jackpot/);
+  assert.doesNotMatch(text, /refund/i);
+  assert.doesNotMatch(text, /provably fair/i);
+  assert.match(TELEGRAM_LOTTO_STICKER, /\/media\/tg\/lotto-rock\.webm/);
+});
+
+test("join welcomes without a username still mention the person", () => {
+  const text = formatWelcome([{ id: 9, first_name: "Rock" }], pot({ totalTickets: 0 }), NOW);
+  assert.match(text, /tg:\/\/user\?id=9/);
+  assert.match(text, /first slips start the pot/);
+  assert.equal(humanJoiners([{ id: 1, is_bot: true }, { id: 2, first_name: "A" }]).length, 1);
+  assert.match(mentionUser({ id: 2, username: "kennel" }), /@kennel/);
 });

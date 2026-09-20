@@ -18,6 +18,15 @@ export const TELEGRAM_PLAY_URL = "https://petrock.fun/lotto";
 export const TELEGRAM_VERIFY_URL = "https://petrock.fun/lotto/verify";
 export const TELEGRAM_PROGRAM_ID = "66FyiUTkw4JMYMi3yErfa7UBqrHm9GZha1meAxcgbjDg";
 export const TELEGRAM_SITE = "https://petrock.fun";
+export const TELEGRAM_LOTTO_STICKER = `${TELEGRAM_SITE}/media/tg/lotto-rock.webm`;
+export const TELEGRAM_LOTTO_CLIP = `${TELEGRAM_SITE}/media/tg/lotto-rock.mp4`;
+
+export type TelegramGuest = {
+  id: number;
+  is_bot?: boolean;
+  first_name?: string;
+  username?: string;
+};
 
 export type KennelPhotoKind = "hour" | "open" | "winner" | "pulse";
 
@@ -147,6 +156,17 @@ export function walletLink(wallet: string, short = false) {
   if (!raw) return "";
   const label = short ? shortenAddress(raw, 6) : raw;
   return `<a href="${walletUrl(raw)}">${escapeHtml(label)}</a>`;
+}
+
+export function mentionUser(user: TelegramGuest) {
+  const username = user.username?.trim();
+  if (username) return `@${escapeHtml(username)}`;
+  const name = (user.first_name ?? "").trim() || "rock";
+  return `<a href="tg://user?id=${user.id}">${escapeHtml(name)}</a>`;
+}
+
+export function humanJoiners(users: TelegramGuest[] | undefined) {
+  return (users ?? []).filter((user) => !user.is_bot && Number.isFinite(user.id));
 }
 
 export function verifyUrl(round: number) {
@@ -293,5 +313,30 @@ export function formatStart() {
     "",
     " /jackpot for the live pot.",
     `▶️ <a href="${TELEGRAM_PLAY_URL}">petrock.fun/lotto</a>`,
+  ].join("\n");
+}
+
+export function formatWelcome(guests: TelegramGuest[], tape?: TelegramPotTape | null, nowMs = Date.now()) {
+  const who = humanJoiners(guests).map(mentionUser).join(" · ") || "rock";
+  const price = tape ? String(tape.ticketPriceSol) : "0.05";
+  const potLine = !tape
+    ? " The kennel pot is live"
+    : tape.totalTickets > 0
+      ? ` <b>${escapeHtml(solFromLamports(tape.split.winnerLamports))}</b> sitting in rock ${tape.round}`
+      : `🌱 Rock ${tape.round} is open · first slips start the pot`;
+  const clock = tape ? remainingLabel(tape.endsAt, nowMs) : "48h rounds";
+  const slips = tape ? `${formatCount(tape.totalTickets) ?? "0"} slips in` : "buy a slip";
+  return [
+    `🪨 Welcome ${who}`,
+    "",
+    "The kennel lotto is on-chain. One rock. One wallet.",
+    potLine,
+    `🎫 ${escapeHtml(price)} SOL a slip · ${escapeHtml(slips)}`,
+    `⏱ ${escapeHtml(clock)}`,
+    "",
+    "Buy a slip. If anyone buys, the rock always picks one of those wallets.",
+    "",
+    `▶️ <a href="${TELEGRAM_PLAY_URL}">Play</a> · 📜 <a href="${programUrl(tape?.programId)}">Verified contract</a>`,
+    " /jackpot for the live pot",
   ].join("\n");
 }
