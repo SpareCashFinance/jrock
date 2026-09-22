@@ -152,9 +152,10 @@ export type LottoPostedWin = {
   verified: boolean;
   entropySlot: number | null;
   entropyHash: string | null;
+  legacy?: boolean;
 };
 
-export { drawFromPostedWin, lastPostedWin } from "./lotto-history";
+export { drawFromPostedWin, lastPostedWin, postedWinKey, postedWinLabel } from "./lotto-history";
 
 export type LottoSnapshot = {
   pot: string;

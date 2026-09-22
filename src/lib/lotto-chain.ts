@@ -472,15 +472,18 @@ async function historicalV1RoundZero(rpc: Connection, ticketPrice: number): Prom
   if (round.status === "open" || round.status === "closed") return [];
   const draw = await drawFromRound(round, ticketPrice);
   return [
-    postedFromRound(
-      round,
-      pda.toBase58(),
-      info.lamports,
-      info.data.length,
-      ticketPrice,
-      round.status === "settled" || round.status === "claimed",
-      draw?.verified ?? false,
-    ),
+    {
+      ...postedFromRound(
+        round,
+        pda.toBase58(),
+        info.lamports,
+        info.data.length,
+        ticketPrice,
+        round.status === "settled" || round.status === "claimed",
+        draw?.verified ?? false,
+      ),
+      legacy: true,
+    },
   ];
 }
 

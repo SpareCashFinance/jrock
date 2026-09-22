@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { drawFromPostedWin, lastPostedWin, type LottoPostedWin } from "./lotto-history.ts";
+import { drawFromPostedWin, lastPostedWin, postedWinKey, postedWinLabel, type LottoPostedWin } from "./lotto-history.ts";
 
 function posted(partial: Partial<LottoPostedWin>): LottoPostedWin {
   return {
@@ -32,6 +32,18 @@ test("last posted win skips open and void rounds", () => {
   ]);
   assert.equal(win?.winner, "3CJZNCvudnMMedpCH8dyxM2wSDeZrkYsMZP7aeSjxWuZ");
   assert.equal(win?.winnerIndex, 4);
+});
+
+test("posted win keys stay unique when two kennels both used round 0", () => {
+  const live = posted({ round: 0, pot: "6R2TdLtWQEqgUVe2yLnhf1GKX651JHja1yUfwEurL8st" });
+  const first = posted({
+    round: 0,
+    pot: "3Q5u97fxVbwxPBcqg34CgqtfPdQ1RTyvnwQHPrg7CUe1",
+    legacy: true,
+  });
+  assert.notEqual(postedWinKey(live), postedWinKey(first));
+  assert.equal(postedWinLabel(live), "Round 01 · claimed");
+  assert.equal(postedWinLabel(first), "First kennel · claimed");
 });
 
 test("draw from posted win keeps the paid rock while the next round is empty", () => {

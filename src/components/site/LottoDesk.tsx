@@ -27,6 +27,8 @@ import {
   slipRange,
   drawFromPostedWin,
   lastPostedWin,
+  postedWinKey,
+  postedWinLabel,
   type LottoPostedWin,
   type LottoSnapshot,
 } from "@/lib/lotto";
@@ -974,7 +976,7 @@ function PostedWinners({ tape }: { tape: LottoSnapshot }) {
       ) : (
         <div className="divide-y divide-[rgba(232,210,176,0.08)]">
           {rows.map((row) => (
-            <PostedWinRow key={row.round} row={row} />
+            <PostedWinRow key={postedWinKey(row)} row={row} />
           ))}
         </div>
       )}
@@ -987,7 +989,7 @@ function PostedWinRow({ row }: { row: LottoPostedWin }) {
     <div className="flex flex-col gap-3 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
       <div>
         <p className="text-[10px] tracking-[0.16em] uppercase text-[var(--gold)]">
-          Round {String(row.round + 1).padStart(2, "0")} · {row.status}
+          {postedWinLabel(row)}
           {row.verified ? " · proof checks" : ""}
         </p>
         {row.winner ? (

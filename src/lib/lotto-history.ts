@@ -11,6 +11,15 @@ export function lastPostedWin(posted: LottoPostedWin[]): LottoPostedWin | null {
   );
 }
 
+export function postedWinKey(win: LottoPostedWin) {
+  return `${win.legacy ? "legacy" : "live"}:${win.round}:${win.pot}`;
+}
+
+export function postedWinLabel(win: LottoPostedWin) {
+  const round = win.legacy ? "First kennel" : `Round ${String(win.round + 1).padStart(2, "0")}`;
+  return `${round} · ${win.status}`;
+}
+
 export function drawFromPostedWin(win: LottoPostedWin | null): LottoDraw | null {
   if (!win?.winner || win.winnerIndex == null) return null;
   if (win.status !== "claimed" && win.status !== "settled") return null;
